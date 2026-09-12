@@ -39,6 +39,9 @@ for arg in "$@"; do
         blxss|ambient)
             CATEGORY="blxss"
             ;;
+        blxss4k|4k|uhd)
+            CATEGORY="blxss4k"
+            ;;
     esac
 done
 
@@ -50,6 +53,9 @@ fi
 case "$CATEGORY" in
     blxss)
         DISPLAY_NAME="blxss ambient"
+        ;;
+    blxss4k)
+        DISPLAY_NAME="blxss 4K"
         ;;
     creepy)
         DISPLAY_NAME="Creepy & Dark"
@@ -67,11 +73,11 @@ esac
 # ------------------------------------------------------------------------------
 if [[ "$FETCH_NEW" -eq 0 ]]; then
     # Search for cached images for the selected category
-    mapfile -t CACHED_FILES < <(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 -type f \( -name "${CATEGORY}_*.jpg" -o -name "${CATEGORY}_*.png" \) 2>/dev/null)
+    mapfile -t CACHED_FILES < <(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 \( -type f -o -type l \) \( -name "${CATEGORY}_*.jpg" -o -name "${CATEGORY}_*.png" \) 2>/dev/null)
 
     # Fallback to any cached image if category specific not found
     if [[ ${#CACHED_FILES[@]} -eq 0 ]]; then
-        mapfile -t CACHED_FILES < <(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null)
+        mapfile -t CACHED_FILES < <(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 \( -type f -o -type l \) \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null)
     fi
 
     if [[ ${#CACHED_FILES[@]} -gt 0 ]]; then

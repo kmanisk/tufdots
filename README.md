@@ -38,10 +38,13 @@ into i3 via `startx` (TTY1 autologin).
 | `Win+Return` | Alacritty |
 | `Ctrl+Space` | Scratch terminal dropdown |
 | `Win+n` | Notes dropdown (nvim + notes.md) |
-| `Alt+Shift+S` | Steam gaming workspace (starts Steam if off) |
+| `Win+m` | Spotify scratchpad dropdown |
+| `Alt+Shift+S` | Steam client, workspace 3 (starts Steam if off) |
+| `Win+4` | Games workspace (CS2 / Steam games, tiled) |
 | `Win+Shift+u/i/o/p` | Move window to ws 1–4 **and follow it** |
+| `Win+[` / `Win+]` | Move window to ws 5 / ws 6 **and follow it** |
 | `Alt+Shift+N` | Nightlight toggle |
-| `Alt+Shift+W` | Next blxss wallpaper |
+| `Alt+Shift+W` / `Alt+Shift+Q` | Next wallpaper: blxss originals / blxss 4K pack |
 | `Alt+0` | Toggle Polybar (state persists across reboots) |
 | `Ctrl+Alt+Del` | Kill hung game, restore display + bar |
 

@@ -43,6 +43,22 @@ if [ "$FORCE" -eq 0 ] && { pgrep -x cs2 >/dev/null 2>&1 || pgrep -x gamescope >/
     exit 0
 fi
 
+# 3b. Gaming workspace: no system bar on ws4 (games) unless explicitly forced.
+#     The ws-focus daemon re-runs this on every switch, so leaving ws4
+#     restores the bar automatically (iff state is visible).
+if [ "$FORCE" -eq 0 ]; then
+    FOCUSED_WS="$(i3-msg -t get_workspaces 2>/dev/null | jq -r '.[] | select(.focused == true) | .num' 2>/dev/null)"
+    if [ "$FOCUSED_WS" = "4" ]; then
+        i=0
+        while [ $i -lt 5 ]; do
+            polybar-msg cmd hide >/dev/null 2>&1 && break
+            sleep 0.3
+            i=$((i + 1))
+        done
+        exit 0
+    fi
+fi
+
 # 4. Enforce state with retries (single IPC shot can miss a starting bar)
 if [ "$state" = "hidden" ]; then
     i=0

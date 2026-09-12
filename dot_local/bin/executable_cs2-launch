@@ -35,8 +35,8 @@ polybar-msg cmd hide 2>/dev/null || true
 # 3. Set Intel display controller hardware scaling to Full (Zero-lag stretched 4:3)
 xrandr --output eDP-1 --set "scaling mode" "Full" 2>/dev/null || true
 
-# 4. Switch to 4:3 165Hz mode
-TARGET_RES="${CS2_RES:-1440x1080}"
+# 4. Switch to 4:3 165Hz mode (default 1344x1008: best perf/clarity balance)
+TARGET_RES="${CS2_RES:-1344x1008}"
 case "$TARGET_RES" in
     1344|1344x1008)
         xrandr --output eDP-1 --mode "1344x1008_165.00" --rate 164.89 2>/dev/null || true
@@ -55,11 +55,9 @@ case "$TARGET_RES" in
         ;;
 esac
 
-# 5. Start i3 workspace restack hook to eliminate Steam bleed-through on workspace switches
-if ! pgrep -f "cs2-restack-hook" >/dev/null 2>&1; then
-    "$HOME/.local/bin/cs2-restack-hook" &
-    HOOK_PID=$!
-fi
+# 5. Restack hook retired: tiled game tabs can't bleed through, and its
+# force-fullscreen would trap focus (breaks Win+h/l tab switching).
+HOOK_PID=""
 
 # 6. Fallback to local game binary if invoked without Steam %command% arguments
 if [ $# -eq 0 ] || [[ "$1" == -* ]]; then

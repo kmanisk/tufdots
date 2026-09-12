@@ -1,9 +1,9 @@
 #!/bin/sh
-# steam-workspace - jump to gaming workspace 5, starting Steam only if needed.
+# steam-workspace - jump to Steam workspace 3, starting Steam only if needed.
 # Second and later presses just switch to the workspace (no duplicate client).
 set -u
 
-WS=5
+WS=3
 
 i3-msg "workspace number $WS" >/dev/null
 

@@ -1,15 +1,19 @@
 #!/bin/sh
-# scratch-toggle <term|notes>
+# scratch-toggle <term|notes|spotify>
 # Toggle a scratchpad dropdown by name. If its window doesn't exist
 # (closed/crashed), spawn it first -- the i3 for_window rule auto-hides it
 # into the scratchpad, then it is shown. Keys never go silently dead.
+#
+# First-press race fix: after spawning, wait until the window is actually
+# HIDDEN in the scratchpad before issuing `show`. Showing a still-visible
+# fresh window would re-hide it (launch, blink, gone).
 #
 # Spawn commands live here (not in the i3 bindsym line) because i3's command
 # parser treats commas as command separators, which breaks
 # `alacritty --class Alacritty,<instance>` when passed through a binding.
 set -u
 
-mode="${1:?usage: scratch-toggle <term|notes>}"
+mode="${1:?usage: scratch-toggle <term|notes|spotify>}"
 
 case "$mode" in
     term)
@@ -20,23 +24,65 @@ case "$mode" in
         instance="scratch-notes"
         spawn="alacritty --class Alacritty,scratch-notes -e nvim /home/manisk/notes.md"
         ;;
+    spotify)
+        instance="spotify"
+        spawn="spotify"
+        ;;
     *)
         echo "unknown mode: $mode" >&2
         exit 1
         ;;
 esac
 
-tree_has() {
-    i3-msg -t get_tree 2>/dev/null | grep -qE "\"instance\": ?\"$instance\""
+# Reports where the window is: missing | visible | hidden (output __i3).
+win_state() {
+    i3-msg -t get_tree 2>/dev/null | python3 -c '
+import json, sys
+inst = sys.argv[1]
+try:
+    tree = json.load(sys.stdin)
+except Exception:
+    print("missing")
+    sys.exit(0)
+result = ["missing"]
+
+def walk(n, output):
+    if result[0] == "hidden":
+        return
+    if n.get("type") == "output":
+        output = n.get("name")
+    wp = n.get("window_properties") or {}
+    if wp.get("instance") == inst:
+        result[0] = "hidden" if output == "__i3" else "visible"
+        return
+    for c in n.get("nodes", []) + n.get("floating_nodes", []):
+        walk(c, output)
+
+walk(tree, "")
+print(result[0])
+' "$instance"
 }
 
-if ! tree_has; then
-    # shellcheck disable=SC2086
+show_it() {
+    i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1
+}
+
+state="$(win_state)"
+if [ "$state" = "missing" ]; then
+    # Fresh spawn: wait for the for_window rule to hide it first.
     setsid sh -c "$spawn" </dev/null >/dev/null 2>&1 &
-    for _ in 1 2 3 4 5 6 7 8; do
-        tree_has && break
+    for _ in $(seq 1 30); do
+        state="$(win_state)"
+        [ "$state" = "hidden" ] && break
         sleep 0.3
     done
+    # Show only a hidden window. If it stayed visible the rule missed it,
+    # but it is already on screen, so leave it alone (no blink-hide).
+    [ "$state" = "hidden" ] && show_it
+elif [ "$state" = "hidden" ]; then
+    # Normal toggle-on.
+    show_it
+else
+    # Steady visible window: toggle-off (moves it back to scratchpad).
+    show_it
 fi
-
-i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null

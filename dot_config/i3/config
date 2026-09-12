@@ -25,11 +25,11 @@ bindsym $mod+Shift+t exec $term -e nvim
 # File Manager
 bindsym $mod+e exec thunar
 
-# Spotify (Windows + m)
-bindsym $mod+m exec spotify
-
 # Steam (Alt + Shift + s) - gaming workspace 5; starts Steam only if not running
 bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
+
+# Spotify scratchpad (Windows + m toggle, spawns if closed)
+bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
 
 # Task Manager (TMOG in floating window)
 bindsym Control+Shift+Escape exec --no-startup-id /usr/bin/TaskManagerOG
@@ -144,6 +144,10 @@ bindsym $mod+Shift+i move container to workspace number $ws2; workspace number $
 bindsym $mod+Shift+o move container to workspace number $ws3; workspace number $ws3
 bindsym $mod+Shift+p move container to workspace number $ws4; workspace number $ws4
 
+# Bracket-row Move Window + follow it (Windows + [ to ws5, Windows + ] to ws6)
+bindsym $mod+bracketleft move container to workspace number $ws5; workspace number $ws5
+bindsym $mod+bracketright move container to workspace number $ws6; workspace number $ws6
+
 # Standard Number Workspace Switching (Windows + 1..0)
 bindsym $mod+1 workspace number $ws1
 bindsym $mod+2 workspace number $ws2
@@ -232,13 +236,13 @@ client.background       #282828
 ########################################################################
 ########################################################################
 ####
-####                   Workplaces layout
+####                   Workplaces layout: settled after restore by boot-workspaces
+####                   (ws1 terminal if empty, ws2 browser if empty, focus ws2)
 ####
 ########################################################################
 ########################################################################
 
-exec --no-startup-id "i3-msg 'workspace 1; exec alacritty'"
-
+exec --no-startup-id ~/.local/bin/boot-workspaces
 ########################################################################
 ########################################################################
 ####
@@ -257,8 +261,8 @@ for_window [class="imv"] floating enable
 for_window [class="zenity"] floating enable
 for_window [class="cachyos-welcome"] floating enable
 for_window [class="(?i)^nvidia-settings$"] floating enable, move position center
-for_window [class="(?i)^btop$"] floating enable, resize set 1150 720
-for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1200 750, move position center
+for_window [class="(?i)^btop$"] floating enable, resize set 1300 800, move position center
+for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1300 800, move position center
 for_window [instance="(?i)^AppRun\.wrapped$"] floating enable, resize set 1200 750, move position center
 for_window [instance="(?i)^pkg-float$"] floating enable, resize set 1250 780, move position center
 # Alacritty dropdown scratch terminal - auto-hidden, toggle via Ctrl+Space
@@ -267,22 +271,30 @@ for_window [instance="scratch-term"] floating enable, resize set 1700 1000, move
 for_window [instance="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
 # Hide outer edge borders when tabs/windows fill the edge
 hide_edge_borders smart
-# Set Workspace 2 and 5 to Tabbed mode by default
-for_window [workspace="^2$"] layout tabbed
-for_window [workspace="^5$"] layout tabbed
+# Workspace 3 (Steam client) uses Tabbed mode by default and is the boot
+# default workspace (see boot-workspaces).
+# NOTE: ws2 (browser) gets its tabbed default from boot-workspaces (one-shot
+# after restore). No for_window tabbed rule for ws2: per-window forcing
+# reorders windows while session-restore recreates them at startup.
+for_window [workspace="^3$"] layout tabbed
 
 # ==============================================================================
-# Web Browser Rules (Workspace 2 Tabbed)
+# Web Browser Rules (Workspace 2)
 # ==============================================================================
 assign [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] workspace number $ws2
-for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2, layout tabbed
+for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2
 
 # ==============================================================================
 # Steam & Gaming Rules
 # ==============================================================================
-# Send all Steam windows to dedicated Gaming Workspace (Workspace 5)
-assign [class="(?i)^steam$"] workspace number $ws5
-for_window [class="(?i)^steam$"] move to workspace number $ws5
+# Send all Steam windows to dedicated Steam Workspace (Workspace 3)
+assign [class="(?i)^steam$"] workspace number $ws3
+for_window [class="(?i)^steam$"] move to workspace number $ws3
+
+# ==============================================================================
+# Spotify Scratchpad (toggled via Win+m, auto-hidden on launch)
+# ==============================================================================
+for_window [class="(?i)^spotify$"] floating enable, resize set 1400 900, move position center, move to scratchpad
 
 # Window layout configuration:
 # 1. Main Steam library window opens tiled
@@ -297,11 +309,13 @@ for_window [class="(?i)^steam$" title="^Steam Guard.*"] floating enable, move po
 for_window [class="(?i)^steam$" title="^Sign in to Steam$"] floating enable, move position center
 for_window [class="(?i)^steam$" window_role="pop-up"] floating enable
 
-# Game window rules (Always launch CS2, Gamescope, and Steam games in Gaming Workspace 5: Alt + g)
-assign [class="(?i)^(cs2|gamescope)$"] workspace number $ws5
-assign [class="^steam_app_.*"] workspace number $ws5
-for_window [class="(?i)^(cs2|gamescope)$"] move to workspace number $ws5, floating enable, border none, fullscreen enable
-for_window [class="^steam_app_.*"] move to workspace number $ws5, floating enable, border none, fullscreen enable
+# Game window rules (tiled on Games Workspace 4, reached via Win+4.
+# Steam client stays on ws3; dialogs stay floating above. No forced
+# fullscreen: it would trap focus. Single game fills the workspace.)
+assign [class="(?i)^(cs2|gamescope)$"] workspace number $ws4
+assign [class="^steam_app_.*"] workspace number $ws4
+for_window [class="(?i)^(cs2|gamescope)$"] move to workspace number $ws4, floating disable, border none
+for_window [class="^steam_app_.*"] move to workspace number $ws4, floating disable, border none
 for_window [window_role="pop-up"] floating enable
 focus_on_window_activation focus
 mouse_warping none
@@ -328,8 +342,9 @@ bindsym XF86MonBrightnessDown exec --no-startup-id ~/.local/bin/change-brightnes
 bindsym $mod+c exec gnome-calculator
 #bindsym $mod+p exec ~/.scripts/dmshot
 
-# Random Wallpaper Switcher (Gaming, Creepy, Creative, Nature)
-bindsym Mod1+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper
+# Wallpaper Switcher: Alt+Shift+W = blxss originals, Alt+Shift+Q = blxss 4K pack
+bindsym Mod1+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper blxss
+bindsym Mod1+Shift+q exec --no-startup-id ~/.local/bin/random-wallpaper blxss4k
 bindsym Mod1+Control+w exec --no-startup-id ~/.local/bin/wallpaper-menu
 # Toggle Bottom Bar (Polybar) (Alt + 0)
 bindsym Mod1+0 exec --no-startup-id ~/.local/bin/toggle-bar
@@ -367,8 +382,11 @@ exec --no-startup-id alacritty --class Alacritty,scratch-term
 exec --no-startup-id alacritty --class Alacritty,scratch-notes -e nvim /home/manisk/notes.md
 # Autotiling: automatically switch horizontal/vertical splits based on focused window dimensions
 exec_always --no-startup-id sh -c 'pkill -x autotiling; sleep 0.2; exec autotiling'
-# CS2 Window Restack Hook: forces CS2 to top of stacking order on workspace focus
-exec_always --no-startup-id sh -c 'pkill -f cs2-restack-hook; sleep 0.2; exec ~/.local/bin/cs2-restack-hook'
+# CS2 Window Restack Hook: RETIRED (tiled game tabs can't bleed through;
+# its force-fullscreen breaks Win+h/l tab switching)
+#exec_always --no-startup-id sh -c 'pkill -f cs2-restack-hook; sleep 0.2; exec ~/.local/bin/cs2-restack-hook'
+# Polybar gaming-workspace guard: hide bar on ws4, restore elsewhere (via bar-apply)
+exec_always --no-startup-id sh -c 'pkill -f "polybar-ws-hid[e]"; sleep 0.2; exec ~/.local/bin/polybar-ws-hide'
 # Auto-restore previous workspace session on login / startup
 exec --no-startup-id sh -c 'sleep 1.2 && ~/.local/bin/i3-session-restore --all'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
