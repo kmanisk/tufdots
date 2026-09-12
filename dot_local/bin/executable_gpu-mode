@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# ASUS GPU MUX Switch Controller (OS-level hardware MUX switching)
+# ==============================================================================
+CMD="${1:-status}"
+
+get_status() {
+    local cur
+    local pend
+    cur=$(cat /sys/class/firmware-attributes/asus-armoury/attributes/gpu_mux_mode/current_value 2>/dev/null || echo "unknown")
+    pend=$(cat /sys/class/firmware-attributes/asus-armoury/attributes/pending_reboot 2>/dev/null || echo "0")
+
+    echo "=== ASUS GPU MUX Status ==="
+    if [[ "$cur" == "0" ]]; then
+        echo "Active Mode:     Dedicated NVIDIA dGPU (Ultimate)"
+    elif [[ "$cur" == "1" ]]; then
+        echo "Active Mode:     Hybrid / Optimus (Intel iGPU display)"
+    else
+        echo "Active Mode:     Unknown ($cur)"
+    fi
+
+    if [[ "$pend" == "1" ]]; then
+        echo "Pending Action:  A MUX switch is scheduled and will apply on NEXT REBOOT."
+    else
+        echo "Pending Action:  None (Current mode is active)"
+    fi
+}
+
+case "$CMD" in
+    status)
+        get_status
+        ;;
+    dgpu|ultimate|nvidia)
+        echo "Setting GPU MUX mode to Dedicated NVIDIA dGPU (Ultimate)..."
+        asusctl armoury set gpu_mux_mode 0
+        get_status
+        echo ""
+        echo "Please reboot your system for the hardware MUX switch to take effect."
+        ;;
+    hybrid|optimus|integrated)
+        echo "Setting GPU MUX mode to Hybrid / Optimus..."
+        asusctl armoury set gpu_mux_mode 1
+        get_status
+        echo ""
+        echo "Please reboot your system for the hardware MUX switch to take effect."
+        ;;
+    *)
+        echo "Usage: gpu-mode [status | dgpu | hybrid]"
+        ;;
+esac

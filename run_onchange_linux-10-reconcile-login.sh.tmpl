@@ -1,0 +1,126 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+# Login Provider Hash: {{ (index .machines (default "generic-linux" .machine)).providers | toJson | sha256sum }}
+
+{{ $machineKey := "" -}}
+{{ if hasKey . "machine" -}}
+{{   $machineKey = .machine -}}
+{{ else if eq .chezmoi.os "windows" -}}
+{{   $machineKey = "windows-workstation" -}}
+{{ else if eq .chezmoi.os "linux" -}}
+{{   $machineKey = "generic-linux" -}}
+{{ else -}}
+{{   fail "Unsupported operating system" -}}
+{{ end -}}
+{{ $m := index .machines $machineKey -}}
+{{ if not $m }}{{ fail (printf "Machine profile %q not found in .chezmoidata.toml" $machineKey) }}{{ end -}}
+
+set -euo pipefail
+
+DRY_RUN="${CHEZMOI_DRY_RUN:-0}"
+
+echo "=============================================================================="
+echo "==> Chezmoi: Reconciling Login & Greeter Providers"
+echo "==> Machine: {{ $machineKey }}"
+echo "=============================================================================="
+
+LOGIN_MODE="{{ $m.providers.login_mode }}"
+GREETER="{{ $m.providers.greeter }}"
+
+echo "Desired Login Mode: $LOGIN_MODE"
+echo "Desired Greeter:    $GREETER"
+
+GETTY_OVERRIDE_DIR="/etc/systemd/system/getty@tty1.service.d"
+GETTY_OVERRIDE_FILE="$GETTY_OVERRIDE_DIR/override.conf"
+
+if [ "$LOGIN_MODE" = "getty-tty1-autologin" ]; then
+    echo "--> [Reconciliation: getty-tty1-autologin active]"
+    # 1. Retire any active display manager (Ly, SDDM, GDM) to prevent TTY1 contention
+    for dm in ly.service sddm.service gdm.service lightdm.service; do
+        if systemctl is-enabled "$dm" >/dev/null 2>&1 || systemctl is-active --quiet "$dm"; then
+            echo "    Retiring conflicting display manager: $dm..."
+            if [ "$DRY_RUN" -eq 0 ]; then
+                sudo systemctl disable --now "$dm" 2>/dev/null || true
+            fi
+        fi
+    done
+
+    # 2. Reconcile getty@tty1 autologin override
+    DESIRED_CONTENT="[Service]
+ExecStart=
+ExecStart=-/usr/bin/agetty --autologin {{ .chezmoi.username }} --noclear %I \$TERM"
+
+    CURRENT_CONTENT=""
+    if [ -f "$GETTY_OVERRIDE_FILE" ]; then
+        CURRENT_CONTENT=$(cat "$GETTY_OVERRIDE_FILE")
+    fi
+
+    if [ "$CURRENT_CONTENT" != "$DESIRED_CONTENT" ]; then
+        echo "    Applying systemd autologin override to $GETTY_OVERRIDE_FILE..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo mkdir -p "$GETTY_OVERRIDE_DIR"
+            echo "$DESIRED_CONTENT" | sudo tee "$GETTY_OVERRIDE_FILE" >/dev/null
+            sudo systemctl daemon-reload
+            sudo systemctl restart getty@tty1.service || true
+        fi
+    else
+        echo "    getty@tty1 override already matches desired state (idempotent)."
+    fi
+
+elif [ "$GREETER" = "ly" ]; then
+    echo "--> [Reconciliation: Ly display manager active]"
+    # 1. Retire getty autologin override if present
+    if [ -f "$GETTY_OVERRIDE_FILE" ]; then
+        echo "    Retiring getty autologin override..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo rm -f "$GETTY_OVERRIDE_FILE"
+            sudo systemctl daemon-reload
+        fi
+    fi
+
+    # 2. Activate Ly service
+    if ! systemctl is-enabled ly.service >/dev/null 2>&1; then
+        echo "    Enabling ly.service..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo systemctl enable --now ly.service 2>/dev/null || true
+        fi
+    else
+        echo "    ly.service already enabled (idempotent)."
+    fi
+
+elif [ "$GREETER" = "sddm" ]; then
+    echo "--> [Reconciliation: SDDM display manager active]"
+    if [ -f "$GETTY_OVERRIDE_FILE" ]; then
+        echo "    Retiring getty autologin override..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo rm -f "$GETTY_OVERRIDE_FILE"
+            sudo systemctl daemon-reload
+        fi
+    fi
+    if ! systemctl is-enabled sddm.service >/dev/null 2>&1; then
+        echo "    Enabling sddm.service..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo systemctl enable --now sddm.service 2>/dev/null || true
+        fi
+    fi
+
+elif [ "$LOGIN_MODE" = "native" ] && [ "$GREETER" = "none" ]; then
+    echo "--> [Reconciliation: Standard native TTY login]"
+    if [ -f "$GETTY_OVERRIDE_FILE" ]; then
+        echo "    Retiring getty autologin override..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo rm -f "$GETTY_OVERRIDE_FILE"
+            sudo systemctl daemon-reload
+        fi
+    fi
+    for dm in ly.service sddm.service gdm.service; do
+        if systemctl is-enabled "$dm" >/dev/null 2>&1; then
+            if [ "$DRY_RUN" -eq 0 ]; then
+                sudo systemctl disable --now "$dm" 2>/dev/null || true
+            fi
+        fi
+    done
+fi
+
+echo "==> Login & greeter reconciliation complete."
+{{ end }}

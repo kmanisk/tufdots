@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Interactive Region Screenshot -> Clipboard (X11 & Wayland)
+# ==============================================================================
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+export DISPLAY="${DISPLAY:-:0}"
+
+FILE="/tmp/screenshot_$(date +%s).png"
+
+# Select region and capture
+if maim -s "$FILE" 2>/dev/null; then
+    if [ -s "$FILE" ]; then
+        if [ -n "$WAYLAND_DISPLAY" ] && command -v wl-copy >/dev/null 2>&1; then
+            wl-copy -t image/png < "$FILE"
+        else
+            xclip -selection clipboard -t image/png -i "$FILE"
+        fi
+        notify-send -t 1500 -i camera-photo "Screenshot Captured"
+    fi
+    rm -f "$FILE"
+fi

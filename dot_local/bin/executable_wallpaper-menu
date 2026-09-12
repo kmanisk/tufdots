@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+export PATH="$HOME/.local/bin:$PATH"
+
+options="🎲 Random (Cached - Instant)\n🎮 Gaming (Cached - Instant)\n💀 Creepy & Dark (Cached - Instant)\n🌐 Fetch New Online Wallpaper (Download)"
+chosen=$(echo -e "$options" | rofi -dmenu -i -p "Wallpaper")
+
+case "$chosen" in
+    *"Random"*)
+        ~/.local/bin/random-wallpaper random
+        ;;
+    *"Gaming"*)
+        ~/.local/bin/random-wallpaper gaming
+        ;;
+    *"Creepy"*)
+        ~/.local/bin/random-wallpaper creepy
+        ;;
+    *"Fetch New"*)
+        ~/.local/bin/random-wallpaper --new random
+        ;;
+esac

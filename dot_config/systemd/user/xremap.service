@@ -1,0 +1,13 @@
+[Unit]
+Description=xremap key remapper
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/xremap --watch %h/.config/xremap/config.yml
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target graphical-session.target

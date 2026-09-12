@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""
+Smart i3 session restore with duplicate prevention and automatic placeholder cleanup.
+Prevents empty ghost placeholder boxes when restore is triggered multiple times.
+"""
+import sys
+import json
+import time
+import subprocess
+from pathlib import Path
+
+SAVE_DIR = Path.home() / ".i3" / "i3-resurrect"
+
+def get_tree():
+    try:
+        return json.loads(subprocess.check_output(["i3-msg", "-t", "get_tree"]))
+    except Exception:
+        return {}
+
+def get_workspace_windows(tree):
+    """Returns a dict mapping workspace_name -> list of window dicts."""
+    ws_map = {}
+    def walk(node, cur_ws=None):
+        if node.get("type") == "workspace":
+            cur_ws = node.get("name")
+            if cur_ws not in ws_map:
+                ws_map[cur_ws] = []
+        if node.get("window") and cur_ws:
+            props = node.get("window_properties", {})
+            ws_map[cur_ws].append({
+                "id": node.get("id"),
+                "window": node.get("window"),
+                "class": props.get("class", "").lower(),
+                "instance": props.get("instance", "").lower(),
+            })
+        for child in node.get("nodes", []) + node.get("floating_nodes", []):
+            walk(child, cur_ws)
+    walk(tree)
+    return ws_map
+
+def clean_unfilled_placeholders(workspace_name=None):
+    """Kill any placeholder containers that failed to swallow a window."""
+    tree = get_tree()
+    killed = 0
+    def walk(node, cur_ws=None):
+        nonlocal killed
+        if node.get("type") == "workspace":
+            cur_ws = node.get("name")
+        if node.get("swallows") and not node.get("window") and node.get("type") == "con":
+            swallows = node.get("swallows", [])
+            # Skip docks / polybar
+            if not any("dock" in s for s in swallows):
+                if workspace_name is None or str(cur_ws) == str(workspace_name):
+                    con_id = node.get("id")
+                    try:
+                        subprocess.call(["i3-msg", f'[con_id="{con_id}"] kill'])
+                        killed += 1
+                    except Exception:
+                        pass
+        for child in node.get("nodes", []) + node.get("floating_nodes", []):
+            walk(child, cur_ws)
+    walk(tree)
+    return killed
+
+def is_workspace_already_populated(ws_num, ws_windows):
+    """Check if all programs saved for this workspace are already open on it."""
+    prog_file = SAVE_DIR / f"workspace_{ws_num}_programs.json"
+    if not prog_file.exists():
+        return False
+    
+    try:
+        with open(prog_file) as f:
+            saved_progs = json.load(f)
+    except Exception:
+        return False
+    
+    if not saved_progs:
+        return False
+
+    current_wins = ws_windows.get(str(ws_num), [])
+    if not current_wins:
+        return False
+
+    cmd_to_class = {
+        "ghostty": "ghostty",
+        "alacritty": "alacritty",
+        "brave": "brave-origin",
+        "brave-origin": "brave-origin",
+        "steam": "steam",
+        "zed": "zed",
+    }
+
+    for prog in saved_progs:
+        cmd = prog.get("command", [])
+        if isinstance(cmd, list) and cmd:
+            base_cmd = Path(cmd[0]).name.lower()
+        elif isinstance(cmd, str):
+            base_cmd = Path(cmd.split()[0]).name.lower()
+        else:
+            continue
+        
+        expected_class = cmd_to_class.get(base_cmd, base_cmd)
+        found = any(expected_class in w["class"] or expected_class in w["instance"] for w in current_wins)
+        if not found:
+            return False
+
+    return True
+
+def restore_workspace(ws_num, ws_windows):
+    if is_workspace_already_populated(ws_num, ws_windows):
+        return False
+    
+    subprocess.call(["i3-resurrect", "restore", "-w", str(ws_num)])
+    return True
+
+def notify(summary, body, icon="view-restore"):
+    try:
+        subprocess.call(["notify-send", "-i", icon, summary, body])
+    except Exception:
+        pass
+
+def main():
+    if not SAVE_DIR.exists():
+        notify("i3 Session", "No saved sessions found", "dialog-warning")
+        sys.exit(1)
+
+    args = sys.argv[1:]
+    tree = get_tree()
+    ws_windows = get_workspace_windows(tree)
+
+    if "--all" in args:
+        layout_files = sorted(SAVE_DIR.glob("workspace_*_layout.json"))
+        if not layout_files:
+            notify("i3 Session", "No saved sessions found", "dialog-warning")
+            sys.exit(1)
+        
+        restored_count = 0
+        for f in layout_files:
+            ws_num = f.stem.replace("workspace_", "").replace("_layout", "")
+            if restore_workspace(ws_num, ws_windows):
+                restored_count += 1
+                time.sleep(0.4)
+
+        # Cleanup any placeholders that failed to swallow
+        time.sleep(1.2)
+        clean_unfilled_placeholders()
+
+        if restored_count > 0:
+            notify("i3 Session", f"Restored {restored_count} workspace session(s)")
+        else:
+            notify("i3 Session", "All workspaces are already open (no duplicates created)")
+    else:
+        # Restore focused workspace only
+        focused_ws = None
+        try:
+            workspaces = json.loads(subprocess.check_output(["i3-msg", "-t", "get_workspaces"]))
+            for ws in workspaces:
+                if ws.get("focused"):
+                    focused_ws = ws.get("num")
+                    break
+        except Exception:
+            pass
+
+        if focused_ws:
+            layout_file = SAVE_DIR / f"workspace_{focused_ws}_layout.json"
+            if not layout_file.exists():
+                notify("i3 Session", f"No saved session for workspace {focused_ws}", "dialog-warning")
+            elif is_workspace_already_populated(focused_ws, ws_windows):
+                notify("i3 Session", f"Workspace {focused_ws} is already open", "dialog-information")
+            else:
+                subprocess.call(["i3-resurrect", "restore", "-w", str(focused_ws)])
+                time.sleep(1.2)
+                clean_unfilled_placeholders(focused_ws)
+                notify("i3 Session", f"Restored workspace {focused_ws}")
+
+if __name__ == "__main__":
+    main()

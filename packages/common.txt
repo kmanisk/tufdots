@@ -1,0 +1,16 @@
+# ==============================================================================
+# Common CLI Utilities (Cross-Platform / Baseline)
+# ==============================================================================
+git
+github-cli
+ripgrep
+fastfetch
+btop
+yazi
+micro
+neovim
+rsync
+unzip
+wget
+which
+uv

@@ -1,0 +1,15 @@
+[Unit]
+Description=Auto-save i3 session on shutdown, reboot or logout
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target exit.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/true
+ExecStop=%h/.local/bin/i3-session-save --all
+Environment=DISPLAY=:0
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

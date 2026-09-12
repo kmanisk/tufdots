@@ -1,0 +1,227 @@
+# ~/.bashrc
+# Ported from PowerShell Profile
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export PATH="$HOME/.local/bin:$PATH"
+export EDITOR="nvim"
+export VISUAL="nvim"
+
+# Starship & Zoxide
+command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
+
+# Navigation
+alias up="cd .."
+alias ...="cd ../.."
+alias g.="cd .."
+alias home="cd ~"
+alias doc="cd ~/Documents"
+alias docs="cd ~/Documents"
+alias des="cd ~/Desktop"
+alias dot="cd ~/.local/share/chezmoi"
+alias dots="cd ~/.local/share/chezmoi"
+alias local="cd ~/.local"
+
+# General Utilities
+alias q="exit"
+alias :q="exit"
+alias cls="clear"
+alias vim="nvim"
+alias vi="nvim"
+alias nivm="nvim"
+alias ep="nvim ~/.bashrc"
+alias editdot="nvim ~/.local/share/chezmoi"
+alias rel="source ~/.bashrc && echo 'Bashrc reloaded!'"
+alias envs="echo \$PATH | tr ':' '\n'"
+alias kg="killgame"
+
+# Modern CLI Replacements
+command -v bat >/dev/null 2>&1 && alias cat="bat"
+if command -v lsd >/dev/null 2>&1; then
+    alias ls="lsd"
+    alias la="lsd -A"
+    alias ll="lsd -la"
+else
+    alias ls="ls --color=auto"
+    alias la="ls -A --color=auto"
+    alias ll="ls -la --color=auto"
+fi
+
+# Chezmoi
+alias st="chezmoi status"
+alias chm="chezmoi managed"
+alias chu="chezmoi update"
+alias madd="chezmoi re-add"
+
+# Git
+alias gs="git status"
+alias ga="git add ."
+alias gp="git push"
+alias lgall="git add . && git commit -m 'something' && git push -u origin master"
+
+# Package Management (Arch / CachyOS)
+alias pcheck="checkupdates; paru -Qua 2>/dev/null"
+alias uall="paru -Syu"
+
+# Functions
+mkcd() { mkdir -p "$1" && cd "$1"; }
+cha() { chezmoi add "$@"; }
+cadd() { chezmoi add "$@"; }
+cadd-secret() { chezmoi add --encrypt "$@"; }
+alias cenc="cadd-secret"
+
+gc() { git commit -m "$*"; }
+gcl() { git clone "$@"; }
+gcom() { git add . && git commit -m "$*"; }
+lazyg() { git add . && git commit -m "$*" && git push; }
+gitall() { git add . && git commit -m "$*" && git push; }
+
+dfor() {
+    chezmoi status | grep '^ D' | awk '{print $2}' | while read -r f; do
+        echo "Forgetting: $HOME/$f"
+        chezmoi forget "$HOME/$f"
+    done
+}
+
+dp() {
+    echo "Starting automation..."
+    cd ~/.local/share/chezmoi && git add . && git commit -m "added lazyily .files" && git push -u origin master && cd - >/dev/null
+}
+
+dpush() {
+    echo "Starting automation..."
+    cd ~/.local/share/chezmoi && git add .
+    read -rp "Enter commit message: " msg
+    [[ -z "$msg" ]] && msg="update dotfiles"
+    git commit -m "$msg" && git push -u origin master && cd - >/dev/null
+}
+
+dall() {
+    local msg="$1"
+    echo "Checking chezmoi status..."
+    chezmoi status
+    echo "Forgetting deleted files if any..."
+    dfor
+    echo "Re-adding modified files..."
+    chezmoi re-add
+    cd ~/.local/share/chezmoi && git add .
+    if [[ -z "$msg" ]]; then
+        git commit -m "added lazyily .files"
+    else
+        git commit -m "$msg"
+    fi
+    git push -u origin master && cd - >/dev/null
+    echo "Dotfiles synchronized successfully!"
+}
+
+gall() {
+    cd ~/.local/share/chezmoi && git add . && git commit -m "for readme file" && git push -u origin master && cd - >/dev/null
+}
+
+sec() {
+    local file="new 1.txt"
+    local clip=0
+    for arg in "$@"; do
+        if [[ "$arg" == "-c" || "$arg" == "--clip" ]]; then
+            clip=1
+        else
+            file="$arg"
+        fi
+    done
+    local target="$HOME/Documents/$file"
+    [[ ! -f "$target" ]] && target="$file"
+    local content
+    content=$(chezmoi cat "$target" 2>/dev/null)
+    if [[ -z "$content" ]]; then
+        echo "Secret not found or unable to decrypt: $file"
+        return 1
+    fi
+    if [[ $clip -eq 1 ]]; then
+        printf "%s" "$content" | xclip -selection clipboard
+        echo "Decrypted secret copied to clipboard!"
+    else
+        printf "%s\n" "$content"
+    fi
+}
+
+gtok() {
+    local clip=0 raw=0
+    for arg in "$@"; do
+        [[ "$arg" == "-c" || "$arg" == "--clip" ]] && clip=1
+        [[ "$arg" == "-r" || "$arg" == "--raw" ]] && raw=1
+    done
+    local content
+    content=$(chezmoi cat "$HOME/Documents/new 1.txt" 2>/dev/null)
+    [[ -z "$content" ]] && content=$(chezmoi cat "$HOME/.test-secret.txt" 2>/dev/null)
+    if [[ $raw -eq 1 ]]; then
+        if [[ $clip -eq 1 ]]; then
+            printf "%s" "$content" | xclip -selection clipboard
+            echo "Full secret copied to clipboard!"
+        else
+            printf "%s\n" "$content"
+        fi
+        return 0
+    fi
+    local token
+    token=$(echo "$content" | grep -oE 'ghp_[a-zA-Z0-9]+' | head -n 1)
+    [[ -z "$token" ]] && token="$content"
+    if [[ $clip -eq 1 ]]; then
+        printf "%s" "$token" | xclip -selection clipboard
+        echo "Token copied to clipboard!"
+    else
+        echo "$token"
+    fi
+}
+
+cf() {
+    if [[ -f "$1" ]]; then
+        cat "$1" | xclip -selection clipboard
+        echo "Copied $1 to clipboard!"
+    else
+        echo "File does not exist: $1"
+    fi
+}
+
+cpypath() {
+    if [[ -e "$1" ]]; then
+        realpath "$1" | tr -d '\n' | xclip -selection clipboard
+        echo "Path copied to clipboard!"
+    else
+        echo "Path does not exist: $1"
+    fi
+}
+
+cpycmd() {
+    eval "$*" | xclip -selection clipboard
+    echo "Command output copied to clipboard!"
+}
+
+cdf() {
+    local sel
+    sel=$(find . -maxdepth 4 -not -path '*/.*' 2>/dev/null | fzf)
+    if [[ -n "$sel" ]]; then
+        if [[ -d "$sel" ]]; then
+            cd "$sel" || return
+        else
+            cd "$(dirname "$sel")" || return
+        fi
+    fi
+}
+
+cdwhich() {
+    local p
+    p=$(type -p "$1" 2>/dev/null)
+    if [[ -n "$p" ]]; then
+        cd "$(dirname "$p")" || return
+    else
+        echo "Command not found: $1"
+    fi
+}
+
+ff() { find . -iname "*$1*"; }
+fs() { grep -rnI "$1" "${2:-.}"; }
+size() { du -sh "$1"; }

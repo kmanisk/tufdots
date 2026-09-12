@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Auto Night Light Controller
+# Schedule: Active from 10:00 PM (22:00) to 6:00 AM (06:00)
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+
+STATE_FILE="/tmp/nightlight_state"
+MANUAL_OVERRIDE_FILE="/tmp/nightlight_manual_override"
+
+check_and_apply() {
+    local hour
+    hour=$(date +%H)
+    local override=""
+    [[ -f "$MANUAL_OVERRIDE_FILE" ]] && override=$(cat "$MANUAL_OVERRIDE_FILE" 2>/dev/null)
+    
+    # 22, 23, 00, 01, 02, 03, 04, 05 -> Night mode active
+    if (( 10#$hour >= 22 || 10#$hour < 6 )); then
+        # If user manually turned it off, respect the override during night window
+        if [[ "$override" == "manual_off" ]]; then
+            return 0
+        fi
+        # Clear daytime override if it was manual_on (since night is naturally on)
+        if [[ "$override" == "manual_on" ]]; then
+            rm -f "$MANUAL_OVERRIDE_FILE"
+        fi
+
+        local current_state
+        current_state=$(cat "$STATE_FILE" 2>/dev/null || echo "off")
+        if [[ "$current_state" != "on" ]]; then
+            "$HOME/.local/bin/toggle-nightlight" on --silent
+        fi
+    else
+        # 06..21 -> Daytime mode
+        # If user manually turned it on, respect the override during daytime window
+        if [[ "$override" == "manual_on" ]]; then
+            return 0
+        fi
+        # Clear night override if it was manual_off (since daytime is naturally off)
+        if [[ "$override" == "manual_off" ]]; then
+            rm -f "$MANUAL_OVERRIDE_FILE"
+        fi
+
+        local current_state
+        current_state=$(cat "$STATE_FILE" 2>/dev/null || echo "off")
+        if [[ "$current_state" == "on" ]]; then
+            "$HOME/.local/bin/toggle-nightlight" off --silent
+        fi
+    fi
+}
+
+if [[ "$1" == "--daemon" ]]; then
+    while true; do
+        check_and_apply
+        sleep 60
+    done
+else
+    check_and_apply
+fi

@@ -1,0 +1,30 @@
+# ==============================================================================
+# Linux Core System & Maintenance Packages
+# ==============================================================================
+base-devel
+btrfs-progs
+snapper
+cryptsetup
+dosfstools
+e2fsprogs
+efibootmgr
+grub
+grub-btrfs-support
+intel-ucode
+linux-firmware
+man-db
+man-pages
+networkmanager
+polkit
+sudo
+udiskie
+ufw
+bluez
+bluez-utils
+blueman
+brightnessctl
+cliphist
+intel-media-driver
+vpl-gpu-rt
+vulkan-icd-loader
+vulkan-intel

@@ -1,0 +1,61 @@
+/**
+ * Tsoding-like bottom bar menu for Rofi
+ */
+* {
+    background-color: #000000;
+    border-color:     #222222;
+    text-color:       #ffffff;
+    font:             "Iosevka Nerd Font Mono 13";
+}
+
+window {
+    anchor:           south;
+    location:         south;
+    width:            100%;
+    padding:          4px 8px;
+    border:           1px 0px 0px 0px;
+    border-color:     #333333;
+    children:         [ horibox ];
+}
+
+horibox {
+    orientation: horizontal;
+    children:    [ prompt, entry, listview ];
+}
+
+listview {
+    layout:      horizontal;
+    spacing:     8px;
+    lines:       100;
+}
+
+prompt {
+    padding:          0px 8px 0px 0px;
+    text-color:       #aaaaaa;
+}
+
+entry {
+    expand:           false;
+    width:            14em;
+    text-color:       #ffffff;
+}
+
+element {
+    padding:          2px 8px;
+    border-radius:    0px;
+}
+
+element selected {
+    background-color: #ffffff;
+    text-color:       #000000;
+}
+
+element-text {
+    background-color: inherit;
+    text-color:       inherit;
+}
+
+element-icon {
+    size:             1.0em;
+    background-color: inherit;
+}

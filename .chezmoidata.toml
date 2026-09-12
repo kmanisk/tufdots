@@ -1,0 +1,99 @@
+# ==============================================================================
+# Chezmoi Master Workstation Data: Architecture Definition
+# Hierarchy: Common -> OS -> Machine -> Hardware -> Providers -> Features
+# ==============================================================================
+
+[defaults]
+profile = "full"
+isWork = false
+
+[defaults.machines]
+linux = "generic-linux"
+windows = "windows-workstation"
+
+# ------------------------------------------------------------------------------
+# 1. Composable Hardware Profiles (Canonical Source of Hardware Truth)
+# ------------------------------------------------------------------------------
+[hardware.asus-tuf-f16]
+type = "laptop"
+chassis = "asus-tuf-f16"
+cpu = "Intel Core i5-13450HX (6P + 4E, 16 Threads)"
+igpu = "Intel Raptor Lake-S UHD Graphics (iHD)"
+dgpu = "NVIDIA GeForce RTX 5050 Mobile (GB207M, 8GB GDDR6)"
+gpu_strategy = "hybrid-optimus-d3cold"
+display_primary = "eDP-1"
+display_resolution = "1920x1200@165Hz"
+display_scale = "1.0"
+storage_type = "nvme"
+filesystem = "btrfs"
+
+[hardware.generic-laptop]
+type = "generic"
+gpu_strategy = "integrated"
+display_primary = "eDP-1"
+display_resolution = "1920x1080@60Hz"
+display_scale = "1.0"
+storage_type = "ssd"
+filesystem = "ext4"
+
+# ------------------------------------------------------------------------------
+# 2. Composable Machine Definitions
+# ------------------------------------------------------------------------------
+
+# 1. Primary Linux Gaming Laptop (ASUS TUF Gaming F16 FX608J)
+[machines.asus-tuf-f16]
+description = "ASUS TUF Gaming F16 (FX608J) - Primary Linux Gaming Laptop"
+os = "linux"
+distribution = "cachyos"
+hardware_profile = "asus-tuf-f16"
+
+[machines.asus-tuf-f16.providers]
+package_manager = "paru"
+greeter = "none"                       # Headless: no GUI display manager active
+login_mode = "getty-tty1-autologin"    # Active: headless systemd TTY1 getty autologin -> startx / i3
+fallback_greeter = "ly"                # Standby: Ly greeter config & service preserved in backups/
+bootloader = "grub"                    # Declarative /etc/default/grub (NVRAM/ESP installation separate)
+network = "networkmanager"
+dns = "systemd-resolved"
+xremap = "user-service"
+audio = "pipewire-standard"
+browser_secret_store = "basic"         # Decoupled from locked PAM keyring on headless autologin
+
+[machines.asus-tuf-f16.features]
+gaming = true
+development = true
+asus_ctl = true
+bluetooth = true
+i3 = true
+snapper = true
+hdr = false
+tearing_opt = true
+
+# 2. Generic Portable Linux Fallback
+[machines.generic-linux]
+description = "Generic Linux Workstation"
+os = "linux"
+distribution = "arch"
+hardware_profile = "generic-laptop"
+
+[machines.generic-linux.providers]
+package_manager = "pacman"
+greeter = "none"
+login_mode = "native"
+fallback_greeter = "ly"
+bootloader = "grub"
+network = "networkmanager"
+dns = "systemd-resolved"
+xremap = "none"
+audio = "pipewire-standard"
+browser_secret_store = "basic"
+
+[machines.generic-linux.features]
+gaming = false
+development = true
+asus_ctl = false
+bluetooth = true
+i3 = true
+snapper = false
+hdr = false
+tearing_opt = false

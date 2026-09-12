@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Steam Launcher
+# Prevent PRIME offload variables from breaking Chromium Embedded Framework (CEF) / steamwebhelper
+unset __NV_PRIME_RENDER_OFFLOAD
+unset __NV_PRIME_RENDER_OFFLOAD_PROVIDER
+unset __VK_LAYER_NV_optimus
+unset VK_DRIVER_FILES
+unset VK_ICD_FILENAMES
+unset __GLX_VENDOR_LIBRARY_NAME
+unset LIBVA_DRIVER_NAME
+unset NVD_BACKEND
+
+# Force desktop UI / font scaling for 16" 1920x1200 Display (i3/X11, scale 1.0)
+export STEAM_FORCE_DESKTOPUI_SCALING="${STEAM_FORCE_DESKTOPUI_SCALING:-1.35}"
+
+exec /usr/bin/steam "$@"

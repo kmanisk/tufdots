@@ -1,0 +1,379 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# pkg - Fast interactive package manager wrapper for Arch Linux (pacman & paru)
+# Provides fzf-powered interactive installation, uninstallation, AUR management,
+# orphan cleaning, and package browsing with rich live previews.
+# Inspired by Omarchy's fzf package management tools.
+# ==============================================================================
+
+set -eo pipefail
+
+# Re-exec in floating Alacritty terminal if launched without a TTY (e.g. rofi/i3)
+if [[ ! -t 0 && ! -p /dev/stdin ]]; then
+  if command -v alacritty >/dev/null 2>&1; then
+    exec alacritty --class pkg-float,pkg-float -e "$0" "$@"
+  fi
+fi
+
+# Ensure required commands exist
+for cmd in fzf pacman paru; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: Required command '$cmd' is not installed." >&2
+    exit 1
+  fi
+done
+
+# Preview highlighter
+HIGHLIGHTER="cat"
+if command -v bat >/dev/null 2>&1; then
+  HIGHLIGHTER="bat -l bash --color=always --style=plain"
+fi
+
+# Nord-inspired colors for FZF
+COMMON_FZF_ARGS=(
+  --ansi
+  --layout=reverse
+  --height=100%
+  --border=rounded
+  --color='bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#88c0d0,fg:#d8dee9,header:#81a1c1,info:#ebcb8b,pointer:#a3be8c,marker:#a3be8c,fg+:#eceff4,prompt:#81a1c1,hl+:#8fbcbb,border:#4c566a'
+)
+
+# ------------------------------------------------------------------------------
+# Handlers
+# ------------------------------------------------------------------------------
+
+install_repo() {
+  local query="$*"
+  local q_arg=()
+  [[ -n "$query" ]] && q_arg=(-q "$query")
+
+  local selected
+  selected=$(pacman -Slq | sort -u | fzf \
+    "${q_arg[@]}" \
+    --multi \
+    --prompt="📦 Install (Repo)> " \
+    --header="[Tab] Select | [Enter] Install | [Alt-a] AUR | [Alt-l] All | [Alt-p] Preview" \
+    --preview="pacman --color=always -Si {} 2>/dev/null || paru --color=always -Siia {} 2>/dev/null" \
+    --preview-window="right,60%,wrap,<100(down,60%)" \
+    --preview-label="[Alt-j/k] Scroll | [Alt-d/u] Page | [Alt-b] PKGBUILD" \
+    --preview-label-pos="bottom" \
+    --bind 'alt-p:toggle-preview' \
+    --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up' \
+    --bind 'alt-k:preview-up,alt-j:preview-down' \
+    --bind 'alt-a:reload(paru -Slqa)+change-prompt(🚀 Install (AUR)> )+change-header([Tab] Select | [Enter] Install | [Alt-b] PKGBUILD | [Alt-B] Info | [Alt-r] Repos)' \
+    --bind 'alt-r:reload(pacman -Slq | sort -u)+change-prompt(📦 Install (Repo)> )+change-header([Tab] Select | [Enter] Install | [Alt-a] AUR | [Alt-l] All | [Alt-p] Preview)' \
+    --bind 'alt-l:reload(paru -Slq | sort -u)+change-prompt(🌐 Install (All)> )+change-header([Tab] Select | [Enter] Install | [Alt-r] Repos | [Alt-a] AUR)' \
+    --bind "alt-b:change-preview(paru -Gpa {} 2>/dev/null | $HIGHLIGHTER)" \
+    --bind 'alt-B:change-preview(pacman --color=always -Si {} 2>/dev/null || paru --color=always -Siia {} 2>/dev/null)' \
+    --color='pointer:#a3be8c,marker:#a3be8c,prompt:#88c0d0' \
+    "${COMMON_FZF_ARGS[@]}"
+  ) || true
+
+  [[ -z "$selected" ]] && return 0
+
+  mapfile -t pkgs <<< "$selected"
+  echo -e "\e[32m\nSelected packages to install:\e[0m"
+  for p in "${pkgs[@]}"; do
+    echo "  • $p"
+  done
+  echo
+  paru -S "${pkgs[@]}"
+}
+
+install_aur() {
+  local query="$*"
+  local q_arg=()
+  [[ -n "$query" ]] && q_arg=(-q "$query")
+
+  local selected
+  selected=$(paru -Slqa | fzf \
+    "${q_arg[@]}" \
+    --multi \
+    --prompt="🚀 Install (AUR)> " \
+    --header="[Tab] Select | [Enter] Install | [Alt-b] PKGBUILD | [Alt-B] Info | [Alt-r] Repos" \
+    --preview="paru --color=always -Siia {} 2>/dev/null" \
+    --preview-window="right,60%,wrap,<100(down,60%)" \
+    --preview-label="[Alt-b] PKGBUILD | [Alt-B] Info | [Alt-j/k] Scroll preview" \
+    --preview-label-pos="bottom" \
+    --bind 'alt-p:toggle-preview' \
+    --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up' \
+    --bind 'alt-k:preview-up,alt-j:preview-down' \
+    --bind "alt-b:change-preview(paru -Gpa {} 2>/dev/null | $HIGHLIGHTER)" \
+    --bind 'alt-B:change-preview(paru --color=always -Siia {} 2>/dev/null)' \
+    --bind 'alt-r:reload(pacman -Slq | sort -u)+change-prompt(📦 Install (Repo)> )+change-header([Tab] Select | [Enter] Install | [Alt-a] AUR | [Alt-l] All | [Alt-p] Preview)' \
+    --color='pointer:#a3be8c,marker:#a3be8c,prompt:#b48ead' \
+    "${COMMON_FZF_ARGS[@]}"
+  ) || true
+
+  [[ -z "$selected" ]] && return 0
+
+  mapfile -t pkgs <<< "$selected"
+  echo -e "\e[35m\nSelected AUR packages to install:\e[0m"
+  for p in "${pkgs[@]}"; do
+    echo "  • $p"
+  done
+  echo
+  paru -S "${pkgs[@]}"
+}
+
+install_all() {
+  local query="$*"
+  local q_arg=()
+  [[ -n "$query" ]] && q_arg=(-q "$query")
+
+  local selected
+  selected=$(paru -Slq | sort -u | fzf \
+    "${q_arg[@]}" \
+    --multi \
+    --prompt="🌐 Install (All)> " \
+    --header="[Tab] Select | [Enter] Install | [Alt-b] PKGBUILD | [Alt-B] Info | [Alt-p] Preview" \
+    --preview="pacman --color=always -Si {} 2>/dev/null || paru --color=always -Siia {} 2>/dev/null" \
+    --preview-window="right,60%,wrap,<100(down,60%)" \
+    --preview-label="[Alt-j/k] Scroll preview | [Alt-d/u] Page scroll" \
+    --preview-label-pos="bottom" \
+    --bind 'alt-p:toggle-preview' \
+    --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up' \
+    --bind 'alt-k:preview-up,alt-j:preview-down' \
+    --bind "alt-b:change-preview(paru -Gpa {} 2>/dev/null | $HIGHLIGHTER)" \
+    --bind 'alt-B:change-preview(pacman --color=always -Si {} 2>/dev/null || paru --color=always -Siia {} 2>/dev/null)' \
+    --color='pointer:#a3be8c,marker:#a3be8c,prompt:#8fbcbb' \
+    "${COMMON_FZF_ARGS[@]}"
+  ) || true
+
+  [[ -z "$selected" ]] && return 0
+
+  mapfile -t pkgs <<< "$selected"
+  echo -e "\e[32m\nSelected packages to install:\e[0m"
+  for p in "${pkgs[@]}"; do
+    echo "  • $p"
+  done
+  echo
+  paru -S "${pkgs[@]}"
+}
+
+remove_pkgs() {
+  local query="$*"
+  local q_arg=()
+  [[ -n "$query" ]] && q_arg=(-q "$query")
+
+  local selected
+  selected=$(pacman -Qqe | fzf \
+    "${q_arg[@]}" \
+    --multi \
+    --prompt="🗑️  Remove> " \
+    --header="[Tab] Select | [Enter] Remove (paru -Rns) | [Alt-a] Show all (inc. deps) | [Alt-e] Explicit only" \
+    --preview="pacman --color=always -Qi {} 2>/dev/null || paru -Qi {} 2>/dev/null" \
+    --preview-window="right,60%,wrap,<100(down,60%)" \
+    --preview-label="[Alt-f] View files | [Alt-i] View info | [Alt-p] Toggle preview" \
+    --preview-label-pos="bottom" \
+    --border=rounded \
+    --bind 'alt-p:toggle-preview' \
+    --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up' \
+    --bind 'alt-k:preview-up,alt-j:preview-down' \
+    --bind 'alt-f:change-preview(pacman -Ql {} | head -n 300)' \
+    --bind 'alt-i:change-preview(pacman --color=always -Qi {} 2>/dev/null || paru -Qi {} 2>/dev/null)' \
+    --bind 'alt-a:reload(pacman -Qq)+change-prompt(🗑️  Remove (All Installed)> )+change-header([Tab] Select | [Enter] Remove | [Alt-e] Explicit only | [Alt-p] Preview)' \
+    --bind 'alt-e:reload(pacman -Qqe)+change-prompt(🗑️  Remove> )+change-header([Tab] Select | [Enter] Remove | [Alt-a] Show all | [Alt-p] Preview)' \
+    --color='pointer:#bf616a,marker:#bf616a,prompt:#bf616a' \
+    "${COMMON_FZF_ARGS[@]}"
+  ) || true
+
+  [[ -z "$selected" ]] && return 0
+
+  mapfile -t pkgs <<< "$selected"
+  echo -e "\e[31m\nSelected packages to remove:\e[0m"
+  for p in "${pkgs[@]}"; do
+    echo "  • $p"
+  done
+  echo
+  paru -Rns "${pkgs[@]}"
+}
+
+clean_orphans() {
+  local orphans
+  orphans=$(pacman -Qtdq 2>/dev/null)
+  if [[ -z "$orphans" ]]; then
+    echo -e "\e[32m✓ No orphaned packages found. System is clean!\e[0m"
+    return 0
+  fi
+
+  local selected
+  selected=$(echo "$orphans" | fzf \
+    --multi \
+    --prompt="🧹 Clean Orphans> " \
+    --header="[Tab] Multi-select | [Enter] Remove selected | [Alt-p] Toggle preview" \
+    --preview="pacman --color=always -Qi {} 2>/dev/null" \
+    --preview-window="right,60%,wrap,<100(down,60%)" \
+    --preview-label="[Alt-j/k] Scroll preview | [Tab] Select" \
+    --preview-label-pos="bottom" \
+    --color='pointer:#bf616a,marker:#bf616a,prompt:#ebcb8b' \
+    "${COMMON_FZF_ARGS[@]}"
+  ) || true
+
+  [[ -z "$selected" ]] && return 0
+
+  mapfile -t pkgs <<< "$selected"
+  echo -e "\e[31m\nRemoving orphaned packages:\e[0m"
+  for p in "${pkgs[@]}"; do
+    echo "  • $p"
+  done
+  echo
+  paru -Rns "${pkgs[@]}"
+}
+
+browse_pkgs() {
+  local query="$*"
+  local q_arg=()
+  [[ -n "$query" ]] && q_arg=(-q "$query")
+
+  pacman -Qq | fzf \
+    "${q_arg[@]}" \
+    --prompt="🔍 Browse Installed> " \
+    --header="[Alt-f] View Files | [Alt-i] View Info | [Alt-d/u] Page Scroll" \
+    --preview="pacman --color=always -Qi {} 2>/dev/null" \
+    --preview-window="right,60%,wrap,<100(down,60%)" \
+    --preview-label="[Alt-f] Files | [Alt-i] Info | [Alt-p] Toggle" \
+    --preview-label-pos="bottom" \
+    --bind 'alt-f:change-preview(pacman -Ql {} | head -n 300)' \
+    --bind 'alt-i:change-preview(pacman --color=always -Qi {})' \
+    --bind 'alt-p:toggle-preview' \
+    --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up' \
+    --bind 'alt-k:preview-up,alt-j:preview-down' \
+    --color='pointer:#81a1c1,marker:#81a1c1,prompt:#88c0d0' \
+    "${COMMON_FZF_ARGS[@]}" || true
+}
+
+update_system() {
+  echo -e "\e[36m\nUpdating system packages with paru...\e[0m\n"
+  paru -Syu
+}
+
+show_menu() {
+  local options=(
+    "📦  Install (Official Repos)    Search & install from Arch / CachyOS repos"
+    "🚀  Install (AUR)               Search & install from Arch User Repository"
+    "🌐  Install (All)               Search & install from both Repos and AUR"
+    "🗑️   Remove / Uninstall          Select & uninstall installed packages"
+    "🧹  Clean Orphans               Remove orphaned dependencies (pacman -Qtdq)"
+    "🔍  Browse Installed            Inspect installed packages, info & files"
+    "🔄  Update System               Full system & AUR upgrade (paru -Syu)"
+  )
+  local choice
+  choice=$(printf '%s\n' "${options[@]}" | fzf \
+    --prompt="󰣇 Package Manager> " \
+    --header="Select an action [Enter to confirm, Esc to exit]" \
+    --height=40% \
+    --color='pointer:#88c0d0,prompt:#88c0d0' \
+    "${COMMON_FZF_ARGS[@]}"
+  ) || true
+
+  [[ -z "$choice" ]] && exit 0
+
+  case "$choice" in
+    *"Install (Official"*)   install_repo ;;
+    *"Install (AUR)"*)       install_aur ;;
+    *"Install (All)"*)       install_all ;;
+    *"Remove"*)              remove_pkgs ;;
+    *"Clean Orphans"*)       clean_orphans ;;
+    *"Browse Installed"*)    browse_pkgs ;;
+    *"Update System"*)       update_system ;;
+  esac
+}
+
+show_help() {
+  cat <<'HELP_TEXT'
+pkg - Interactive Arch Linux & AUR Package Manager (fzf + paru)
+Inspired by Omarchy's fzf package management tools.
+
+Usage:
+  pkg                      Open interactive selection menu
+  pkg install, i [query]   Search & install packages (Official repos, Alt-a for AUR)
+  pkg aur, -a [query]      Search & install AUR packages (Alt-b for PKGBUILD)
+  pkg all [query]          Search & install from both Repos and AUR
+  pkg remove, rm, r [q]    Search & uninstall packages (paru -Rns)
+  pkg clean, orphans, c    Find & remove orphaned packages
+  pkg list, ls, info [q]   Browse installed packages (Alt-f for files)
+  pkg update, up, u        Update system packages (paru -Syu)
+  pkg help, -h             Show this help message
+
+Keybindings inside FZF:
+  Tab / Shift-Tab          Multi-select packages
+  Enter                    Confirm selection & proceed with install/remove
+  Alt-p                    Toggle preview window
+  Alt-j / Alt-k            Scroll preview window down / up
+  Alt-d / Alt-u            Half-page down / up in preview
+  Alt-a                    Switch to AUR mode (in install) / Show all (in remove)
+  Alt-r                    Switch to Repo mode (in install)
+  Alt-l                    Switch to All packages (Repo + AUR)
+  Alt-e                    Show explicitly installed only (in remove)
+  Alt-b / Alt-B            View PKGBUILD / View package info (AUR)
+  Alt-f / Alt-i            View owned files / View package info (Installed)
+HELP_TEXT
+}
+
+# ------------------------------------------------------------------------------
+# Dispatch
+# ------------------------------------------------------------------------------
+
+cmd_name="$(basename "$0")"
+
+# Support direct symlink calls like pkg-install, pkg-remove, etc.
+case "$cmd_name" in
+  pkg-install|pacfzf)
+    install_repo "$@"
+    exit 0
+    ;;
+  pkg-remove|pkg-uninstall|parufzf)
+    remove_pkgs "$@"
+    exit 0
+    ;;
+  pkg-aur)
+    install_aur "$@"
+    exit 0
+    ;;
+  pkg-clean)
+    clean_orphans "$@"
+    exit 0
+    ;;
+esac
+
+case "$1" in
+  install|i|in)
+    shift
+    install_repo "$@"
+    ;;
+  aur|-a|auri)
+    shift
+    install_aur "$@"
+    ;;
+  all)
+    shift
+    install_all "$@"
+    ;;
+  remove|rm|r|uninstall)
+    shift
+    remove_pkgs "$@"
+    ;;
+  clean|orphans|orphan|c)
+    shift
+    clean_orphans "$@"
+    ;;
+  list|ls|info|l)
+    shift
+    browse_pkgs "$@"
+    ;;
+  update|up|u|upgrade)
+    shift
+    update_system "$@"
+    ;;
+  help|-h|--help)
+    show_help
+    ;;
+  "")
+    show_menu
+    ;;
+  *)
+    # If unknown argument given, treat as a search query to install
+    install_repo "$@"
+    ;;
+esac

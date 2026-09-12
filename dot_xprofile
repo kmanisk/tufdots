@@ -1,0 +1,11 @@
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+
+# Load Xresources DPI scaling (120 DPI = ~120% UI scale)
+[[ -f "$HOME/.Xresources" ]] && xrdb -merge "$HOME/.Xresources"
+
+# Global toolkit scaling for GTK and Qt
+export GDK_SCALE=1
+export GDK_DPI_SCALE=1.2
+export QT_AUTO_SCREEN_SCALE_FACTOR=1
+export QT_SCALE_FACTOR=1.2

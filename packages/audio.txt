@@ -1,0 +1,10 @@
+# ==============================================================================
+# PipeWire Audio, WirePlumber & Low-Latency Neural DSP
+# ==============================================================================
+pipewire-alsa
+pipewire-pulse
+wireplumber
+rnnoise
+pavucontrol
+sof-firmware
+gst-plugin-pipewire

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Display Configuration & Custom 4:3 165Hz Stretched Gaming Modelines
+# Ensures CS2 and other games scale stretched to full screen without black bars
+# ==============================================================================
+
+# Find connected display dynamically (e.g. DP-2 in dGPU mode, eDP-1 in hybrid mode)
+PRIMARY_OUT=$(xrandr --query 2>/dev/null | awk '/ connected/ {print $1; exit}')
+
+if [[ -z "$PRIMARY_OUT" ]]; then
+    exit 0
+fi
+
+# 1. Register 4:3 165Hz modelines if not already present
+xrandr --newmode "1440x1080" 393.00 1440 1560 1720 2000 1080 1083 1087 1192 -hsync +vsync 2>/dev/null || true
+xrandr --addmode "$PRIMARY_OUT" "1440x1080" 2>/dev/null || true
+xrandr --newmode "1440x1080_165.00" 393.00 1440 1560 1720 2000 1080 1083 1087 1192 -hsync +vsync 2>/dev/null || true
+xrandr --addmode "$PRIMARY_OUT" "1440x1080_165.00" 2>/dev/null || true
+
+xrandr --newmode "1344x1008_165.00" 343.25 1344 1464 1608 1872 1008 1011 1015 1112 -hsync +vsync 2>/dev/null || true
+xrandr --addmode "$PRIMARY_OUT" "1344x1008_165.00" 2>/dev/null || true
+
+xrandr --newmode "1280x960_165.00" 310.25 1280 1392 1528 1776 960 963 967 1060 -hsync +vsync 2>/dev/null || true
+xrandr --addmode "$PRIMARY_OUT" "1280x960_165.00" 2>/dev/null || true
+
+xrandr --newmode "1024x768_165.00" 196.75 1024 1104 1216 1408 768 771 775 848 -hsync +vsync 2>/dev/null || true
+xrandr --addmode "$PRIMARY_OUT" "1024x768_165.00" 2>/dev/null || true
+
+xrandr --newmode "1600x1200_165.00" 489.00 1600 1744 1920 2240 1200 1203 1207 1324 -hsync +vsync 2>/dev/null || true
+xrandr --addmode "$PRIMARY_OUT" "1600x1200_165.00" 2>/dev/null || true
+
+# 2. Set native resolution @ 165Hz as primary
+xrandr --output "$PRIMARY_OUT" --primary --mode 1920x1200 --rate 165.00 2>/dev/null || true

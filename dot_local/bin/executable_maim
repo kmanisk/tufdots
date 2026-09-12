@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+exec "$HOME/.local/bin/maim.bin" "$@"

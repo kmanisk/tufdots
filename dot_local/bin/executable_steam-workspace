@@ -1,0 +1,12 @@
+#!/bin/sh
+# steam-workspace - jump to gaming workspace 5, starting Steam only if needed.
+# Second and later presses just switch to the workspace (no duplicate client).
+set -u
+
+WS=5
+
+i3-msg "workspace number $WS" >/dev/null
+
+if ! pgrep -x steam >/dev/null 2>&1; then
+    setsid steam </dev/null >/dev/null 2>&1 &
+fi

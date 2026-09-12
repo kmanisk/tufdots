@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+
+def run_chezmoi(cmd_args, capture=True):
+    try:
+        cmd = ["chezmoi"] + cmd_args
+        res = subprocess.run(
+            cmd,
+            capture_output=capture,
+            text=True,
+            timeout=30
+        )
+        if res.returncode != 0:
+            err = res.stderr.strip() or res.stdout.strip() or f"Exit code {res.returncode}"
+            return f"Error ({res.returncode}): {err}"
+        return res.stdout.strip() if res.stdout.strip() else "(empty output / success)"
+    except subprocess.TimeoutExpired:
+        return "Error: Command timed out after 30 seconds"
+    except Exception as e:
+        return f"Error executing chezmoi: {str(e)}"
+
+def read_message():
+    line = sys.stdin.readline()
+    if not line:
+        return None
+    return json.loads(line)
+
+def write_message(msg):
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+TOOLS = [
+    {
+        "name": "chezmoi_status",
+        "description": "Show status of managed target files (changes between working copy and source state).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Optional file or directory path to check status for"}
+            }
+        }
+    },
+    {
+        "name": "chezmoi_diff",
+        "description": "Show unified diff between the target files and the desired state declared in chezmoi source repo.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "targets": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional list of target file paths to diff. If empty, diffs all managed files."
+                }
+            }
+        }
+    },
+    {
+        "name": "chezmoi_apply",
+        "description": "Apply the source state to the target destination files (updates your live config files).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "targets": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional list of target files to apply. If omitted, applies to all."
+                },
+                "dry_run": {"type": "boolean", "default": False, "description": "Simulate without making any actual filesystem changes"},
+                "verbose": {"type": "boolean", "default": False, "description": "Show changes applied"}
+            }
+        }
+    },
+    {
+        "name": "chezmoi_add",
+        "description": "Add files or directories to chezmoi management from the live filesystem.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "targets": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of files or directories to add to chezmoi"
+                },
+                "template": {"type": "boolean", "default": False, "description": "Add the file as a Go text/template"},
+                "exact": {"type": "boolean", "default": False, "description": "Set directory to exact mode (deleting extra files)"}
+            },
+            "required": ["targets"]
+        }
+    },
+    {
+        "name": "chezmoi_forget",
+        "description": "Remove files from chezmoi management without deleting the actual live files.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "targets": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Target files to stop managing"
+                }
+            },
+            "required": ["targets"]
+        }
+    },
+    {
+        "name": "chezmoi_list",
+        "description": "List managed files in chezmoi, optionally filtered by directory or pattern.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Optional subpath to filter by"}
+            }
+        }
+    },
+    {
+        "name": "chezmoi_managed",
+        "description": "List all target files currently managed by chezmoi in the user home directory.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "chezmoi_unmanaged",
+        "description": "List files in the target directory that are not managed by chezmoi.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Directory to inspect (defaults to home)"}
+            }
+        }
+    },
+    {
+        "name": "chezmoi_source_path",
+        "description": "Translate live destination file paths to their corresponding files in the chezmoi source repository.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "targets": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Target file paths (e.g. ~/.bashrc or ~/.config/i3/config)"
+                }
+            },
+            "required": ["targets"]
+        }
+    },
+    {
+        "name": "chezmoi_target_path",
+        "description": "Translate chezmoi source repository files to their live destination target paths.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sources": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Source file paths (e.g. ~/.local/share/chezmoi/dot_bashrc)"
+                }
+            },
+            "required": ["sources"]
+        }
+    },
+    {
+        "name": "chezmoi_git",
+        "description": "Execute a git command in the chezmoi source directory (e.g. [\"status\"], [\"log\", \"-n\", \"5\"], [\"commit\", \"-m\", \"update i3 config\"]).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Git arguments to execute inside chezmoi repo"
+                }
+            },
+            "required": ["args"]
+        }
+    },
+    {
+        "name": "chezmoi_data",
+        "description": "Output computed template data and system variables (OS, arch, user info, custom data) in JSON format.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "chezmoi_doctor",
+        "description": "Run chezmoi system diagnostics and check version, diff tool, git repo status, and permissions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    }
+]
+
+def main():
+    while True:
+        req = read_message()
+        if req is None:
+            break
+        req_id = req.get("id")
+        method = req.get("method")
+        
+        if method == "initialize":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "chezmoi-mcp",
+                        "version": "1.0.0"
+                    }
+                }
+            })
+        elif method == "notifications/initialized":
+            pass
+        elif method == "tools/list":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": TOOLS
+                }
+            })
+        elif method == "tools/call":
+            params = req.get("params", {})
+            name = params.get("name")
+            args = params.get("arguments", {})
+            
+            content = ""
+            if name == "chezmoi_status":
+                cmd = ["status"]
+                if args.get("path"):
+                    cmd.append(args["path"])
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_diff":
+                cmd = ["diff"]
+                targets = args.get("targets", [])
+                if targets:
+                    cmd.extend(targets)
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_apply":
+                cmd = ["apply"]
+                if args.get("dry_run"):
+                    cmd.append("--dry-run")
+                if args.get("verbose"):
+                    cmd.append("--verbose")
+                targets = args.get("targets", [])
+                if targets:
+                    cmd.extend(targets)
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_add":
+                cmd = ["add"]
+                if args.get("template"):
+                    cmd.append("--template")
+                if args.get("exact"):
+                    cmd.append("--exact")
+                targets = args.get("targets", [])
+                cmd.extend(targets)
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_forget":
+                cmd = ["forget"]
+                targets = args.get("targets", [])
+                cmd.extend(targets)
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_list":
+                cmd = ["list"]
+                if args.get("path"):
+                    cmd.append(args["path"])
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_managed":
+                content = run_chezmoi(["managed"])
+            elif name == "chezmoi_unmanaged":
+                cmd = ["unmanaged"]
+                if args.get("path"):
+                    cmd.append(args["path"])
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_source_path":
+                targets = args.get("targets", [])
+                cmd = ["source-path"] + targets
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_target_path":
+                sources = args.get("sources", [])
+                cmd = ["target-path"] + sources
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_git":
+                git_args = args.get("args", [])
+                cmd = ["git", "--"] + git_args
+                content = run_chezmoi(cmd)
+            elif name == "chezmoi_data":
+                content = run_chezmoi(["data", "--format=json"])
+            elif name == "chezmoi_doctor":
+                content = run_chezmoi(["doctor"])
+            else:
+                content = f"Unknown tool: {name}"
+
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": content}
+                    ]
+                }
+            })
+        else:
+            if req_id is not None:
+                write_message({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Method {method} not found"
+                    }
+                })
+
+if __name__ == "__main__":
+    main()

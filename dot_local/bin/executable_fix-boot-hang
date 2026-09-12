@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Fix Boot Hang on ASUS TUF Optimus Hybrid Laptop
+#
+# Root Cause:
+# Early KMS in /etc/mkinitcpio.conf.d/10-chwd.conf loaded NVIDIA kernel modules
+# inside initramfs before ACPI and Intel display KMS were initialized.
+# This caused an ACPI power race condition and internal lockup:
+#   NVRM: nvAssertFailedNoLog: Assertion failed: !rmapiLockIsOwner() @ rmapi.c:563
+#   rm_power_source_change_event: Failed to handle Power Source change event
+# Leading to:
+#   1. systemd-modules-load.service failing after 1m 30s timeout
+#   2. systemd-udevd worker stalling on 0000:01:00.0, causing 3m stop-job hang
+#
+# Solution:
+# Remove 10-chwd.conf and rebuild initramfs. The Intel iGPU (eDP-1) handles
+# display during early boot (<1s initramfs). The NVIDIA GPU is cleanly loaded
+# by udev in userspace after ACPI is initialized, eliminating the hang completely.
+# ==============================================================================
+
+set -euo pipefail
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run with sudo: sudo fix-boot-hang"
+    exit 1
+fi
+
+echo "==> [1/3] Removing NVIDIA early KMS from initramfs (/etc/mkinitcpio.conf.d/10-chwd.conf)..."
+if [ -f /etc/mkinitcpio.conf.d/10-chwd.conf ]; then
+    mv /etc/mkinitcpio.conf.d/10-chwd.conf /etc/mkinitcpio.conf.d/10-chwd.conf.bak
+    echo "    Backup saved to 10-chwd.conf.bak"
+else
+    echo "    10-chwd.conf is not present or already removed."
+fi
+
+echo "==> [2/3] Rebuilding initramfs for all installed kernels (mkinitcpio -P)..."
+mkinitcpio -P
+
+echo "==> [3/3] Boot hang fix applied successfully!"
+echo "    On next reboot, initramfs will load in ~1-2 seconds with zero timeouts."

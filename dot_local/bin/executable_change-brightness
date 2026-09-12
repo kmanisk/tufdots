@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Adjust Brightness and update on-screen slider (xob + dunst)
+# ==============================================================================
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:/usr/bin:$PATH"
+STEP="${1:-+5%}"
+
+brightnessctl set "$STEP" >/dev/null 2>&1
+PERCENT=$(brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d '%')
+
+if [[ -n "$PERCENT" ]]; then
+    echo "$PERCENT" > /tmp/xobpipe 2>/dev/null || true
+fi

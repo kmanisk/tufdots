@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""
+Lightweight xdotool compatibility shim for i3-resurrect (windowmap, windowunmap, windowkill).
+Enables i3-resurrect layout restoration to manage X11 window mapping and placeholders.
+"""
+import sys
+import ctypes
+
+def main():
+    if len(sys.argv) < 3:
+        sys.exit(0)
+
+    subcmd = sys.argv[1]
+    try:
+        wid = int(sys.argv[2], 0)
+    except ValueError:
+        sys.exit(1)
+
+    try:
+        x11 = ctypes.cdll.LoadLibrary("libX11.so.6")
+        x11.XOpenDisplay.restype = ctypes.c_void_p
+        d = x11.XOpenDisplay(None)
+        if not d:
+            sys.exit(1)
+
+        # Suppress X11 errors for invalid or closed windows
+        ERROR_HANDLER = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+        c_handler = ERROR_HANDLER(lambda display_ptr, error_event: 0)
+        x11.XSetErrorHandler(c_handler)
+
+        x_wid = ctypes.c_ulong(wid)
+        if subcmd in ("windowunmap", "unmap"):
+            x11.XUnmapWindow(d, x_wid)
+        elif subcmd in ("windowmap", "map"):
+            x11.XMapWindow(d, x_wid)
+        elif subcmd in ("windowkill", "kill"):
+            x11.XKillClient(d, x_wid)
+
+        x11.XFlush(d)
+        x11.XCloseDisplay(d)
+    except Exception:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

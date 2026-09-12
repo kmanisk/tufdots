@@ -1,0 +1,314 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Gorgeous-GRUB & GrubSouls Theme Manager
+# Interactive tool to install, switch, and customize GRUB themes & backgrounds
+# ==============================================================================
+
+set -e
+
+# Terminal Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+THEMES_STORE="${HOME}/.local/share/grub-themes"
+GRUBSOULS_DIR="$THEMES_STORE/grubsouls-theme"
+GALLERY_DIR="$GRUBSOULS_DIR/background_galery"
+TARGET_THEME_DIR="/boot/grub/themes/grubsouls"
+GRUB_DEFAULT_FILE="/etc/default/grub"
+
+run_root() {
+    if [[ $EUID -eq 0 ]]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+header() {
+    clear 2>/dev/null || true
+    echo -e "${CYAN}${BOLD}"
+    echo "======================================================================"
+    echo "         🔥 GORGEOUS-GRUB THEME MANAGER & SELECTOR 🔥                 "
+    echo "======================================================================"
+    echo -e "${RESET}"
+}
+
+ensure_grubsouls() {
+    if [[ ! -d "$GRUBSOULS_DIR" ]]; then
+        echo -e "${YELLOW}[+] Downloading GrubSouls theme repository...${RESET}"
+        mkdir -p "$THEMES_STORE"
+        git clone --depth=1 https://github.com/PedroMMarinho/grubsouls-theme.git "$GRUBSOULS_DIR"
+        echo -e "${GREEN}[OK] GrubSouls downloaded.${RESET}"
+    fi
+}
+
+get_current_theme() {
+    if [[ -f "$GRUB_DEFAULT_FILE" ]]; then
+        grep "^GRUB_THEME=" "$GRUB_DEFAULT_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'"
+    else
+        echo "Unknown"
+    fi
+}
+
+show_status() {
+    header
+    echo -e "${BOLD}Current Bootloader & Theme Status:${RESET}"
+    echo -e "  Active GRUB Theme : ${GREEN}$(get_current_theme)${RESET}"
+    echo -e "  Screen Resolution : ${YELLOW}$(xrandr 2>/dev/null | grep '\*' | awk '{print $1}' || echo "1920x1200")${RESET}"
+    echo -e "  System Font (GTK) : ${CYAN}$(gsettings get org.gnome.desktop.interface font-name 2>/dev/null || echo "Iosevka Nerd Font")${RESET}"
+    echo -e "  Terminal Font     : ${CYAN}Iosevka Nerd Font Mono${RESET}"
+    echo ""
+    echo -e "${BOLD}Theme Locations:${RESET}"
+    echo -e "  GrubSouls Store   : $GRUBSOULS_DIR"
+    echo -e "  Target GRUB Dir   : $TARGET_THEME_DIR"
+    echo ""
+    read -rp "Press Enter to return to menu..."
+}
+
+choose_background_file() {
+    ensure_grubsouls
+    local images=()
+    mapfile -t images < <(find "$GALLERY_DIR" -maxdepth 1 -type f -name "*.png" | sort)
+    
+    if [[ ${#images[@]} -eq 0 ]]; then
+        echo -e "${RED}[ERROR] No images found in $GALLERY_DIR${RESET}"
+        return 1
+    fi
+
+    local selected=""
+
+    if command -v fzf >/dev/null 2>&1; then
+        echo -e "${YELLOW}Use Arrow keys / fuzzy search to select Dark Souls background (Press Enter):${RESET}"
+        selected=$(printf '%s\n' "${images[@]}" | while read -r p; do
+            basename "$p"
+        done | fzf --prompt="Select Dark Souls Background > " --height=40% --reverse)
+        
+        if [[ -n "$selected" ]]; then
+            echo "$GALLERY_DIR/$selected"
+            return 0
+        fi
+    fi
+
+    # Fallback numbered menu
+    echo -e "${YELLOW}Available Dark Souls Backgrounds:${RESET}"
+    for i in "${!images[@]}"; do
+        printf "  ${CYAN}[%2d]${RESET} %s\n" "$i" "$(basename "${images[$i]}")"
+    done
+    echo ""
+    read -rp "Enter background number [0]: " choice
+    choice="${choice:-0}"
+    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 0 && choice < ${#images[@]} )); then
+        echo "${images[$choice]}"
+        return 0
+    else
+        echo "${images[0]}"
+        return 0
+    fi
+}
+
+apply_grubsouls() {
+    header
+    echo -e "${BOLD}[+] Installing and Applying GrubSouls Theme${RESET}\n"
+    ensure_grubsouls
+
+    echo -e "${CYAN}Step 1: Choose your Dark Souls background${RESET}"
+    local bg_file
+    bg_file=$(choose_background_file)
+
+    if [[ -z "$bg_file" || ! -f "$bg_file" ]]; then
+        echo -e "${YELLOW}[!] Defaulting to Bonfire background.${RESET}"
+        bg_file="$GALLERY_DIR/[00] Default Background.png"
+    fi
+
+    local bg_name
+    bg_name=$(basename "$bg_file")
+    echo -e "${GREEN}[OK] Selected Background: ${BOLD}$bg_name${RESET}"
+
+    echo -e "\n${CYAN}Step 2: Preparing GrubSouls files...${RESET}"
+    cp -v "$bg_file" "$GRUBSOULS_DIR/grubsouls/background.png"
+
+    echo -e "\n${CYAN}Step 3: Copying theme to /boot/grub/themes/ (requires root)...${RESET}"
+    run_root mkdir -p /boot/grub/themes
+    run_root cp -r "$GRUBSOULS_DIR/grubsouls" /boot/grub/themes/
+    run_root chmod -R 755 /boot/grub/themes/grubsouls
+
+    echo -e "\n${CYAN}Step 4: Updating /etc/default/grub...${RESET}"
+    run_root cp -n /etc/default/grub "/etc/default/grub.bak.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+
+    # Update GRUB_THEME
+    if grep -q "^GRUB_THEME=" "$GRUB_DEFAULT_FILE"; then
+        run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"$TARGET_THEME_DIR/theme.txt\"|" "$GRUB_DEFAULT_FILE"
+    else
+        run_root bash -c "echo 'GRUB_THEME=\"$TARGET_THEME_DIR/theme.txt\"' >> $GRUB_DEFAULT_FILE"
+    fi
+
+    # Ensure 1920x1200 resolution for sharp rendering
+    if grep -q "^GRUB_GFXMODE=" "$GRUB_DEFAULT_FILE"; then
+        run_root sed -i 's|^GRUB_GFXMODE=.*|GRUB_GFXMODE=1920x1200,1920x1080,auto|' "$GRUB_DEFAULT_FILE"
+    else
+        run_root bash -c "echo 'GRUB_GFXMODE=1920x1200,1920x1080,auto' >> $GRUB_DEFAULT_FILE"
+    fi
+
+    echo -e "\n${CYAN}Step 5: Generating GRUB configuration (grub-mkconfig)...${RESET}"
+    run_root grub-mkconfig -o /boot/grub/grub.cfg
+
+    echo -e "\n${GREEN}${BOLD}======================================================================${RESET}"
+    echo -e "${GREEN}${BOLD} [SUCCESS] GrubSouls theme applied successfully!${RESET}"
+    echo -e " Background set to: ${YELLOW}$bg_name${RESET}"
+    echo -e " It will appear on your next boot/reboot."
+    echo -e "${GREEN}${BOLD}======================================================================${RESET}\n"
+    read -rp "Press Enter to return to menu..."
+}
+
+quick_change_background() {
+    header
+    echo -e "${BOLD}[+] Quick Change GrubSouls Background${RESET}\n"
+
+    if [[ ! -d "$TARGET_THEME_DIR" ]]; then
+        echo -e "${YELLOW}[!] GrubSouls is not installed in /boot/grub/themes/ yet.${RESET}"
+        echo -e "Running full GrubSouls installation first...\n"
+        apply_grubsouls
+        return
+    fi
+
+    local bg_file
+    bg_file=$(choose_background_file)
+    if [[ -n "$bg_file" && -f "$bg_file" ]]; then
+        local bg_name
+        bg_name=$(basename "$bg_file")
+        echo -e "\n${CYAN}Updating /boot/grub/themes/grubsouls/background.png (requires root)...${RESET}"
+        run_root cp -v "$bg_file" "$TARGET_THEME_DIR/background.png"
+        run_root chmod 644 "$TARGET_THEME_DIR/background.png"
+        echo -e "\n${GREEN}[SUCCESS] Background changed to '$bg_name'!${RESET}"
+        echo -e "${CYAN}Note: No grub-mkconfig rebuild needed for background changes.${RESET}\n"
+    fi
+    read -rp "Press Enter to return to menu..."
+}
+
+restore_cachyos() {
+    header
+    echo -e "${BOLD}[+] Restoring CachyOS Default GRUB Theme${RESET}\n"
+    local cachy_theme="/usr/share/grub/themes/cachyos/theme.txt"
+    if [[ ! -f "$cachy_theme" ]]; then
+        echo -e "${RED}[ERROR] CachyOS theme file not found at $cachy_theme${RESET}"
+        read -rp "Press Enter to continue..."
+        return 1
+    fi
+
+    run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"$cachy_theme\"|" "$GRUB_DEFAULT_FILE"
+    echo -e "${CYAN}Regenerating GRUB configuration...${RESET}"
+    run_root grub-mkconfig -o /boot/grub/grub.cfg
+    echo -e "\n${GREEN}[SUCCESS] Restored original CachyOS theme!${RESET}\n"
+    read -rp "Press Enter to return to menu..."
+}
+
+install_other_theme() {
+    header
+    echo -e "${BOLD}[+] Install Additional Themes from Gorgeous-GRUB${RESET}\n"
+    echo -e "Select a community theme to install:"
+    echo -e "  ${CYAN}[1]${RESET} Catppuccin Mocha"
+    echo -e "  ${CYAN}[2]${RESET} Sekiro: Shadows Die Twice"
+    echo -e "  ${CYAN}[3]${RESET} Cyberpunk 2077"
+    echo -e "  ${CYAN}[4]${RESET} Minegrub (Minecraft World Select)"
+    echo -e "  ${CYAN}[5]${RESET} Hollow Knight"
+    echo -e "  ${CYAN}[6]${RESET} Back to Main Menu"
+    echo ""
+    read -rp "Select option [1-6]: " opt
+    case "$opt" in
+        1)
+            echo -e "${YELLOW}Installing Catppuccin Mocha...${RESET}"
+            mkdir -p "$THEMES_STORE/catppuccin"
+            git clone --depth=1 https://github.com/catppuccin/grub.git "$THEMES_STORE/catppuccin" 2>/dev/null || (cd "$THEMES_STORE/catppuccin" && git pull)
+            run_root mkdir -p /boot/grub/themes
+            run_root cp -r "$THEMES_STORE/catppuccin/src/catppuccin-mocha-grub-theme" /boot/grub/themes/
+            run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"/boot/grub/themes/catppuccin-mocha-grub-theme/theme.txt\"|" "$GRUB_DEFAULT_FILE"
+            run_root grub-mkconfig -o /boot/grub/grub.cfg
+            echo -e "${GREEN}[SUCCESS] Catppuccin Mocha applied!${RESET}"
+            read -rp "Press Enter to continue..."
+            ;;
+        2)
+            echo -e "${YELLOW}Installing Sekiro Theme...${RESET}"
+            mkdir -p "$THEMES_STORE/sekiro"
+            git clone --depth=1 https://github.com/semimqmo/sekiro_grub_theme.git "$THEMES_STORE/sekiro" 2>/dev/null || true
+            run_root mkdir -p /boot/grub/themes
+            run_root cp -r "$THEMES_STORE/sekiro" /boot/grub/themes/sekiro
+            run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"/boot/grub/themes/sekiro/theme.txt\"|" "$GRUB_DEFAULT_FILE"
+            run_root grub-mkconfig -o /boot/grub/grub.cfg
+            echo -e "${GREEN}[SUCCESS] Sekiro theme applied!${RESET}"
+            read -rp "Press Enter to continue..."
+            ;;
+        3)
+            echo -e "${YELLOW}Installing Cyberpunk 2077 Theme...${RESET}"
+            mkdir -p "$THEMES_STORE/cyberpunk"
+            git clone --depth=1 https://github.com/adnksharp/CyberGRUB-2077.git "$THEMES_STORE/cyberpunk" 2>/dev/null || true
+            run_root mkdir -p /boot/grub/themes
+            run_root cp -r "$THEMES_STORE/cyberpunk" /boot/grub/themes/cyberpunk
+            run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"/boot/grub/themes/cyberpunk/theme.txt\"|" "$GRUB_DEFAULT_FILE"
+            run_root grub-mkconfig -o /boot/grub/grub.cfg
+            echo -e "${GREEN}[SUCCESS] Cyberpunk 2077 theme applied!${RESET}"
+            read -rp "Press Enter to continue..."
+            ;;
+        4)
+            echo -e "${YELLOW}Installing Minegrub Theme...${RESET}"
+            mkdir -p "$THEMES_STORE/minegrub"
+            git clone --depth=1 https://github.com/Lxtharia/minegrub-theme.git "$THEMES_STORE/minegrub" 2>/dev/null || true
+            run_root mkdir -p /boot/grub/themes
+            run_root cp -r "$THEMES_STORE/minegrub/minegrub" /boot/grub/themes/minegrub
+            run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"/boot/grub/themes/minegrub/theme.txt\"|" "$GRUB_DEFAULT_FILE"
+            run_root grub-mkconfig -o /boot/grub/grub.cfg
+            echo -e "${GREEN}[SUCCESS] Minegrub theme applied!${RESET}"
+            read -rp "Press Enter to continue..."
+            ;;
+        5)
+            echo -e "${YELLOW}Installing Hollow Knight Theme...${RESET}"
+            mkdir -p "$THEMES_STORE/hollow-knight"
+            git clone --depth=1 https://github.com/sergoncano/hollow-knight-grub-theme.git "$THEMES_STORE/hollow-knight" 2>/dev/null || true
+            run_root mkdir -p /boot/grub/themes
+            run_root cp -r "$THEMES_STORE/hollow-knight/hollow-knight" /boot/grub/themes/hollow-knight 2>/dev/null || true
+            run_root sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"/boot/grub/themes/hollow-knight/theme.txt\"|" "$GRUB_DEFAULT_FILE"
+            run_root grub-mkconfig -o /boot/grub/grub.cfg
+            echo -e "${GREEN}[SUCCESS] Hollow Knight theme applied!${RESET}"
+            read -rp "Press Enter to continue..."
+            ;;
+        *)
+            return
+            ;;
+    esac
+}
+
+# Main Loop
+while true; do
+    header
+    echo -e "Current Active Theme: ${GREEN}$(get_current_theme)${RESET}\n"
+    echo -e "${BOLD}Select an action:${RESET}"
+    echo -e "  ${CYAN}[1]${RESET} 🔥 ${BOLD}Apply GrubSouls Theme${RESET} (Pick Dark Souls Background)"
+    echo -e "  ${CYAN}[2]${RESET} 🖼️  ${BOLD}Change GrubSouls Background${RESET} (Instant, from 27 Locations)"
+    echo -e "  ${CYAN}[3]${RESET} 🎨 ${BOLD}Install Other Gorgeous-GRUB Themes${RESET} (Catppuccin, Sekiro, Cyberpunk...)"
+    echo -e "  ${CYAN}[4]${RESET} ↩️  ${BOLD}Restore CachyOS Original Theme${RESET}"
+    echo -e "  ${CYAN}[5]${RESET} ℹ️  ${BOLD}View System & Font Status${RESET}"
+    echo -e "  ${CYAN}[q]${RESET} 🚪 ${BOLD}Exit${RESET}"
+    echo ""
+    read -rp "Enter choice [1-5, q]: " main_choice
+
+    case "$main_choice" in
+        1) apply_grubsouls ;;
+        2) quick_change_background ;;
+        3) install_other_theme ;;
+        4) restore_cachyos ;;
+        5) show_status ;;
+        q|Q)
+            echo -e "\n${GREEN}Exiting GRUB Theme Manager. Stay safe, Ashen One!${RESET}\n"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option.${RESET}"
+            sleep 1
+            ;;
+    esac
+done

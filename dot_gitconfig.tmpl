@@ -1,0 +1,39 @@
+{{ template "git-identity.tmpl" . -}}
+{{- if eq .chezmoi.os "windows" }}
+[credential "helperselector"]
+	selected = manager
+[credential]
+	helper = manager
+{{- else }}
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+{{- end }}
+[init]
+	defaultBranch = main
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[core]
+    pager = delta
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true    # use n and N to move between diff sections
+    side-by-side = true
+    line-numbers = true
+    hyperlinks = true
+    tabs = 2
+    true-color = always
+# the ugly thing at the top being omited
+    hunk-header-style = omit
+# 2. FORCE the File Path to the top in a nice box
+    file-style = box bold yellow
+    file-decoration-style = none
+# Wrap as many times as needed.
+    wrap-max-lines = 100

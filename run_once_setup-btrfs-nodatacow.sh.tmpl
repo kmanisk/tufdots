@@ -1,0 +1,49 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -euo pipefail
+
+echo "=========================================="
+echo "==> Chezmoi: Btrfs No-CoW Setup for Games"
+echo "=========================================="
+
+# Check if home is on btrfs
+FS_TYPE=$(df -T "$HOME" | awk 'NR==2 {print $2}')
+if [ "$FS_TYPE" != "btrfs" ]; then
+    echo "Filesystem for $HOME is $FS_TYPE (not btrfs). Skipping No-CoW configuration."
+    exit 0
+fi
+
+NODATACOW_DIRS=(
+    "$HOME/.local/share/Steam/steamapps/common"
+    "$HOME/.local/share/Steam/steamapps/compatdata"
+    "$HOME/.local/share/Steam/steamapps/shadercache"
+    "$HOME/.wine"
+    "$HOME/.local/share/bottles"
+)
+
+for target_dir in "${NODATACOW_DIRS[@]}"; do
+    if [ ! -d "$target_dir" ]; then
+        echo "Creating directory with +C (No-CoW): $target_dir"
+        mkdir -p "$target_dir"
+        chattr +C "$target_dir" 2>/dev/null || echo "Failed to set +C on $target_dir"
+    else
+        # Check if already +C
+        ATTRS=$(lsattr -d "$target_dir" 2>/dev/null | awk '{print $1}')
+        if echo "$ATTRS" | grep -q "C"; then
+            echo "Already No-CoW: $target_dir"
+        else
+            # Directory exists. If empty, apply +C. If not empty, warn about Btrfs CoW behavior
+            if [ -z "$(ls -A "$target_dir" 2>/dev/null)" ]; then
+                echo "Applying +C to empty directory: $target_dir"
+                chattr +C "$target_dir" 2>/dev/null || true
+            else
+                echo "NOTICE: $target_dir exists and is non-empty."
+                echo "Btrfs rule: chattr +C only applies to files created AFTER the attribute is set."
+                chattr +C "$target_dir" 2>/dev/null || true
+            fi
+        fi
+    fi
+done
+
+echo "==> Btrfs No-CoW setup complete."
+{{- end }}

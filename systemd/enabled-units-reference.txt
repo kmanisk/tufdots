@@ -1,0 +1,42 @@
+# ==============================================================================
+# SYSTEMD ENABLED UNITS REFERENCE
+# ==============================================================================
+# Dumped from CachyOS gaming laptop
+# System Units:
+UNIT FILE                         STATE   PRESET
+cachyos-iw-set-regdomain.path     enabled disabled
+grub-btrfs-snapper.path           enabled disabled
+ananicy-cpp.service               enabled disabled
+bluetooth.service                 enabled disabled
+getty@.service                    enabled enabled
+glance_cpu_pkg_watt.service       enabled disabled
+intel_lpmd.service                enabled disabled
+linux-modules-cleanup.service     enabled disabled
+NetworkManager-dispatcher.service enabled disabled
+NetworkManager.service            enabled disabled
+nvidia-hibernate.service          enabled disabled
+nvidia-powerd.service             enabled disabled
+nvidia-resume.service             enabled disabled
+nvidia-suspend.service            enabled disabled
+supergfxd.service                 enabled disabled
+switcheroo-control.service        enabled disabled
+systemd-oomd.service              enabled disabled
+systemd-resolved.service          enabled enabled
+systemd-timesyncd.service         enabled enabled
+udisks2.service                   enabled disabled
+ufw.service                       enabled disabled
+systemd-oomd.socket               enabled disabled
+systemd-resolved-monitor.socket   enabled disabled
+systemd-resolved-varlink.socket   enabled disabled
+systemd-userdbd.socket            enabled enabled
+remote-fs.target                  enabled enabled
+cachyos-rate-mirrors.timer        enabled disabled
+fstrim.timer                      enabled disabled
+snapper-cleanup.timer             enabled disabled
+
+32 unit files listed.
+
+# User Units:
+# Enabled under graphical-session.target.wants / default.target.wants:
+#   xremap.service
+#   nightlight-auto.timer

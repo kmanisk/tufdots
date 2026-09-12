@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Zed GPU Launcher (forces NVIDIA dedicated GPU for WGPU / Vulkan backend)
+exec "$HOME/.local/bin/prime-run" "$HOME/.local/zed.app/bin/zed" "$@"

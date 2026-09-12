@@ -1,0 +1,9 @@
+# ==============================================================================
+# Linux Gaming Stack (Steam, Gamescope, Optimus Offload)
+# ==============================================================================
+steam
+gamescope
+gamemode
+mangohud
+vulkan-tools
+cachyos-gaming-meta

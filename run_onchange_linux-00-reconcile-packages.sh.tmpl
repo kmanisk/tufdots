@@ -1,0 +1,187 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+# common.txt hash: {{ include "packages/common.txt" | sha256sum }}
+# linux-core.txt hash: {{ include "packages/linux-core.txt" | sha256sum }}
+# gaming.txt hash: {{ include "packages/gaming.txt" | sha256sum }}
+# nvidia.txt hash: {{ include "packages/nvidia.txt" | sha256sum }}
+# asus.txt hash: {{ include "packages/asus.txt" | sha256sum }}
+# audio.txt hash: {{ include "packages/audio.txt" | sha256sum }}
+# i3.txt hash: {{ include "packages/i3.txt" | sha256sum }}
+# development.txt hash: {{ include "packages/development.txt" | sha256sum }}
+# aur-explicit.txt hash: {{ include "packages/aur-explicit.txt" | sha256sum }}
+
+{{ $machineKey := "" -}}
+{{ if hasKey . "machine" -}}
+{{   $machineKey = .machine -}}
+{{ else if eq .chezmoi.os "windows" -}}
+{{   $machineKey = "windows-workstation" -}}
+{{ else if eq .chezmoi.os "linux" -}}
+{{   $machineKey = "generic-linux" -}}
+{{ else -}}
+{{   fail "Unsupported operating system" -}}
+{{ end -}}
+{{ $m := index .machines $machineKey -}}
+{{ if not $m }}{{ fail (printf "Machine profile %q not found in .chezmoidata.toml" $machineKey) }}{{ end -}}
+{{ $hw := index .hardware $m.hardware_profile -}}
+{{ if not $hw }}{{ fail (printf "Hardware profile %q not found in .chezmoidata.toml" $m.hardware_profile) }}{{ end -}}
+
+set -euo pipefail
+
+MODE="${CHEZMOI_INSTALL_MODE:-interactive}"
+DRY_RUN=0
+CONFIRM_FLAG=""
+
+case "$MODE" in
+    dry-run)
+        DRY_RUN=1
+        echo "==> [MODE: DRY-RUN] Package commands will be displayed without modifying the host."
+        ;;
+    noninteractive)
+        CONFIRM_FLAG="--noconfirm"
+        echo "==> [MODE: NON-INTERACTIVE] Proceeding without interactive prompts."
+        ;;
+    interactive|*)
+        CONFIRM_FLAG=""
+        echo "==> [MODE: INTERACTIVE] Running package reconciliation interactively."
+        ;;
+esac
+
+echo "=============================================================================="
+echo "==> Chezmoi: Reconciling System Packages"
+echo "==> Machine: {{ $machineKey }} (Hardware: {{ $m.hardware_profile }})"
+echo "=============================================================================="
+
+# 1. Feature-Aware Snapshot Check
+{{ if $m.features.snapper }}
+if [ "$DRY_RUN" -eq 0 ] && command -v snapper >/dev/null 2>&1 && sudo snapper list-configs 2>/dev/null | grep -qw root; then
+    echo "--> Creating pre-package-reconciliation Snapper snapshot (snapper feature enabled)..."
+    sudo snapper -c root create -d "chezmoi package reconciliation" -t pre || echo "Notice: Snapper pre-snapshot skipped."
+fi
+{{ end }}
+
+# 2. Package Manager Provider Resolution
+PREF_PM="{{ $m.providers.package_manager }}"
+declare -a PKG_INSTALL_CMD=()
+declare -a AUR_INSTALL_CMD=()
+
+case "$PREF_PM" in
+    paru)
+        if command -v paru >/dev/null 2>&1; then
+            PKG_INSTALL_CMD=(paru -S --needed)
+            AUR_INSTALL_CMD=(paru -S --needed)
+        elif command -v yay >/dev/null 2>&1; then
+            PKG_INSTALL_CMD=(yay -S --needed)
+            AUR_INSTALL_CMD=(yay -S --needed)
+        else
+            PKG_INSTALL_CMD=(sudo pacman -S --needed)
+            AUR_INSTALL_CMD=()
+        fi
+        ;;
+    yay)
+        if command -v yay >/dev/null 2>&1; then
+            PKG_INSTALL_CMD=(yay -S --needed)
+            AUR_INSTALL_CMD=(yay -S --needed)
+        elif command -v paru >/dev/null 2>&1; then
+            PKG_INSTALL_CMD=(paru -S --needed)
+            AUR_INSTALL_CMD=(paru -S --needed)
+        else
+            PKG_INSTALL_CMD=(sudo pacman -S --needed)
+            AUR_INSTALL_CMD=()
+        fi
+        ;;
+    pacman|*)
+        PKG_INSTALL_CMD=(sudo pacman -S --needed)
+        AUR_INSTALL_CMD=()
+        ;;
+esac
+
+if [ -n "$CONFIRM_FLAG" ]; then
+    PKG_INSTALL_CMD+=("$CONFIRM_FLAG")
+    if [ ${#AUR_INSTALL_CMD[@]} -gt 0 ]; then
+        AUR_INSTALL_CMD+=("$CONFIRM_FLAG")
+    fi
+fi
+
+# 3. Assemble Declarative Package Lists
+LISTS=()
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/common.txt")
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/linux-core.txt")
+
+{{ if $m.features.gaming -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/gaming.txt")
+{{ end -}}
+
+{{ if eq $hw.gpu_strategy "hybrid-optimus-d3cold" -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/nvidia.txt")
+{{ end -}}
+
+{{ if $m.features.asus_ctl -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/asus.txt")
+{{ end -}}
+
+{{ if $m.features.i3 -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/i3.txt")
+{{ end -}}
+
+{{ if hasPrefix "pipewire" $m.providers.audio -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/audio.txt")
+{{ end -}}
+
+{{ if $m.features.development -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/development.txt")
+{{ end }}
+
+declare -a PKGS=()
+for file in "${LISTS[@]}"; do
+    if [ -f "$file" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            trimmed=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            if [ -n "$trimmed" ] && [[ ! "$trimmed" =~ ^# ]]; then
+                PKGS+=("$trimmed")
+            fi
+        done < "$file"
+    fi
+done
+
+if [ ${#PKGS[@]} -gt 0 ]; then
+    echo "==> Reconciling ${#PKGS[@]} official packages via: ${PKG_INSTALL_CMD[*]}"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "    [DRY-RUN] Would execute: ${PKG_INSTALL_CMD[*]} ${PKGS[*]}"
+    else
+        "${PKG_INSTALL_CMD[@]}" "${PKGS[@]}"
+    fi
+fi
+
+# 4. Reconcile Explicit AUR Packages
+AUR_LIST="{{ .chezmoi.sourceDir }}/packages/aur-explicit.txt"
+declare -a AUR_PKGS=()
+if [ -f "$AUR_LIST" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+        trimmed=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        if [ -n "$trimmed" ] && [[ ! "$trimmed" =~ ^# ]]; then
+            AUR_PKGS+=("$trimmed")
+        fi
+    done < "$AUR_LIST"
+fi
+
+if [ ${#AUR_PKGS[@]} -gt 0 ]; then
+    if [ ${#AUR_INSTALL_CMD[@]} -gt 0 ]; then
+        echo "==> Reconciling ${#AUR_PKGS[@]} AUR packages via: ${AUR_INSTALL_CMD[*]}"
+        if [ "$DRY_RUN" -eq 1 ]; then
+            echo "    [DRY-RUN] Would execute: ${AUR_INSTALL_CMD[*]} ${AUR_PKGS[*]}"
+        else
+            "${AUR_INSTALL_CMD[@]}" "${AUR_PKGS[@]}"
+        fi
+    else
+        echo "==============================================================================" >&2
+        echo "ERROR: Machine profile requires AUR packages: ${AUR_PKGS[*]}" >&2
+        echo "However, the active package manager provider is '$PREF_PM' with no AUR helper available." >&2
+        echo "Package closure cannot be satisfied with official pacman alone." >&2
+        echo "FAILING CLEARLY: Install an AUR helper (paru/yay) or remove AUR requirements." >&2
+        echo "==============================================================================" >&2
+        exit 1
+    fi
+fi
+
+echo "==> Package reconciliation completed successfully."
+{{ end }}

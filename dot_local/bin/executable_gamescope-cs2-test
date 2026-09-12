@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Standalone Gamescope DRM CS2 test
+# Run from a TTY (not inside a graphical session) to isolate crash path
+set -Eeuo pipefail
+
+# NVIDIA Vulkan offload
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export __VK_LAYER_NV_optimus=NVIDIA_only
+export LIBVA_DRIVER_NAME=iHD
+export SDL_VIDEO_DRIVER=wayland
+
+# CS2 flags
+CS2_FLAGS=(-vulkan -novid -nojoy -condebug -noabsoluteinput +fps_max 0 +fps_max_ui 0)
+
+# Launch command
+TARGET="$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/linuxsteamrt64/cs2"
+
+if [ ! -x "$TARGET" ]; then
+    echo "ERROR: CS2 binary not found at $TARGET" >&2
+    exit 1
+fi
+
+echo "==> Starting standalone Gamescope DRM CS2 test"
+echo "    Game resolution: 1440x1080"
+echo "    Panel: 1920x1200 @ 165Hz"
+echo "    Backend: DRM (standalone, no compositor)"
+echo ""
+echo "Press Ctrl+C to exit."
+sleep 2
+
+exec gamescope \
+    --backend drm \
+    -w 1440 -h 1080 \
+    -W 1920 -H 1200 \
+    -r 165 -o 165 \
+    -f -S stretch \
+    --force-grab-cursor \
+    --prefer-vk-device 10de:2dd8 \
+    -- \
+    gamemoderun \
+    "${TARGET}" \
+    -windowed -noborder \
+    "${CS2_FLAGS[@]}"

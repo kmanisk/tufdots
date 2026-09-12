@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Brave Browser Launcher (runs on power-efficient Intel iGPU with VA-API hardware decode)
+BRAVE_BIN=$(command -v /usr/bin/brave-origin || command -v /usr/sbin/brave-origin || command -v /usr/bin/brave)
+if [ -z "$BRAVE_BIN" ]; then
+    echo "brave launcher: real binary not found" >&2
+    exit 1
+fi
+
+exec "$BRAVE_BIN" --force-device-scale-factor=1.40 "$@"

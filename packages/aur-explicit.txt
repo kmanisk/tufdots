@@ -1,0 +1,6 @@
+antigravity-cli
+bibata-cursor-theme-bin
+papirus-folders
+tmog-appimage
+xdg-terminal-exec
+xremap-x11-bin

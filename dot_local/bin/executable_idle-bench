@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+"""
+System Idle Resource Benchmark (CPU & RAM)
+Closes all applications, stabilizes, logs for 15 seconds, and calculates exact idle averages
+for comparison against Windows.
+"""
+
+import os
+import sys
+import time
+import signal
+import argparse
+import subprocess
+
+def get_cpu_times():
+    """Read CPU time counters from /proc/stat."""
+    with open('/proc/stat', 'r') as f:
+        fields = [float(x) for x in f.readline().split()[1:]]
+    idle = fields[3] + fields[4]  # idle + iowait
+    total = sum(fields)
+    return idle, total
+
+def get_mem_stats():
+    """Read memory stats from /proc/meminfo in MB."""
+    mem = {}
+    with open('/proc/meminfo', 'r') as f:
+        for line in f:
+            parts = line.split(':')
+            if len(parts) == 2:
+                mem[parts[0].strip()] = int(parts[1].split()[0])
+    
+    total = mem.get('MemTotal', 0) / 1024.0
+    avail = mem.get('MemAvailable', 0) / 1024.0
+    free = mem.get('MemFree', 0) / 1024.0
+    buffers = mem.get('Buffers', 0) / 1024.0
+    cached = mem.get('Cached', 0) / 1024.0
+    used = total - avail
+    pct = (used / total * 100.0) if total > 0 else 0.0
+    
+    swap_total = mem.get('SwapTotal', 0) / 1024.0
+    swap_free = mem.get('SwapFree', 0) / 1024.0
+    swap_used = swap_total - swap_free
+
+    return {
+        'total': total,
+        'used': used,
+        'avail': avail,
+        'free': free,
+        'buffers': buffers,
+        'cached': cached,
+        'pct': pct,
+        'swap_total': swap_total,
+        'swap_used': swap_used
+    }
+
+def get_top_memory_processes(limit=5):
+    """Retrieve the top memory consumers by RSS."""
+    proc_mem = {}
+    for pid_str in os.listdir('/proc'):
+        if pid_str.isdigit():
+            try:
+                with open(f'/proc/{pid_str}/status', 'r') as f:
+                    name, rss = '', 0
+                    for line in f:
+                        if line.startswith('Name:'):
+                            name = line.split()[1]
+                        elif line.startswith('VmRSS:'):
+                            rss = int(line.split()[1])
+                    if name and rss:
+                        proc_mem[name] = proc_mem.get(name, 0) + rss
+            except (FileNotFoundError, PermissionError, ProcessLookupError):
+                pass
+    sorted_procs = sorted(proc_mem.items(), key=lambda x: x[1], reverse=True)
+    return [(name, kb / 1024.0) for name, kb in sorted_procs[:limit]]
+
+def close_all_programs(kill_terminals=False):
+    """Close applications gracefully then forcefully."""
+    my_pid = os.getpid()
+    protected_pids = {1, my_pid}
+    
+    # Trace parent PIDs so caller shell/terminal is never accidentally killed
+    curr = my_pid
+    while curr > 1:
+        try:
+            with open(f'/proc/{curr}/status') as f:
+                for line in f:
+                    if line.startswith('PPid:'):
+                        ppid = int(line.split()[1])
+                        protected_pids.add(ppid)
+                        curr = ppid
+                        break
+                else:
+                    break
+        except Exception:
+            break
+
+    # Protect agy and system daemons
+    for pid_str in os.listdir('/proc'):
+        if pid_str.isdigit():
+            pid = int(pid_str)
+            try:
+                with open(f'/proc/{pid}/cmdline', 'rb') as f:
+                    cmd = f.read().decode('utf-8', errors='ignore')
+                    if any(k in cmd for k in ['agy', 'antigravity', 'idle-bench']):
+                        protected_pids.add(pid)
+            except Exception:
+                pass
+
+    target_apps = [
+        'brave', 'brave-origin', 'brave-browser', 'chrome', 'chromium',
+        'firefox', 'librewolf', 'zen-browser',
+        'steam', 'steamwebhelper', 'cs2', 'gamescope', 'heroic', 'lutris', 'bottles',
+        'spotify', 'discord', 'telegram-desktop', 'slack', 'vlc', 'mpv',
+        'zed', 'code', 'code-oss', 'cursor', 'sublime_text', 'nvim', 'vim',
+        'thunar', 'TaskManagerOG', 'pavucontrol', 'blueman-manager', 'gnome-calculator',
+        'btop', 'yazi'
+    ]
+    if kill_terminals:
+        target_apps.extend(['alacritty', 'kitty', 'ghostty', 'xterm', 'urxvt'])
+
+    # If i3 is running, politely close windows
+    if os.environ.get('DISPLAY'):
+        try:
+            if kill_terminals:
+                subprocess.run(['i3-msg', '[class=".*"] kill'], capture_output=True)
+            else:
+                subprocess.run(['i3-msg', '[class="(?i)^(brave|steam|zed|code|discord|spotify|thunar|taskmanagerog).*"] kill'], capture_output=True)
+        except Exception:
+            pass
+
+    killed = []
+    for pid_str in os.listdir('/proc'):
+        if not pid_str.isdigit():
+            continue
+        pid = int(pid_str)
+        if pid in protected_pids:
+            continue
+        try:
+            with open(f'/proc/{pid}/comm', 'r') as f:
+                comm = f.read().strip()
+            if any(t == comm or comm.startswith(t) for t in target_apps):
+                os.kill(pid, signal.SIGTERM)
+                killed.append((pid, comm))
+        except Exception:
+            pass
+
+    if killed:
+        time.sleep(1.5)
+        for pid, comm in killed:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except Exception:
+                pass
+
+def main():
+    parser = argparse.ArgumentParser(description="System Idle Resource Benchmark")
+    parser.add_argument('-d', '--duration', type=int, default=15, help="Logging duration in seconds (default: 15)")
+    parser.add_argument('--full-idle', action='store_true', help="Close all windows including terminals and run detached in background")
+    parser.add_argument('--detached', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--no-kill', action='store_true', help="Do not close running programs before logging")
+    parser.add_argument('-o', '--output', type=str, default=os.path.expanduser('~/idle_benchmark_result.txt'), help="Log file path")
+    args = parser.parse_args()
+
+    # Handle Full Idle mode (detach, close terminals, notify on completion)
+    if args.full_idle and not args.detached:
+        print("\n" + "=" * 70)
+        print("  [!] FULL IDLE MODE: TRUE 0-WINDOW BENCHMARK")
+        print("=" * 70)
+        print("  All applications AND terminal windows will be closed.")
+        print(f"  The benchmark will log silently in the background for {args.duration} seconds.")
+        print(f"  Results will be written to: {args.output}")
+        print("  When finished, a Dunst notification will trigger and Alacritty will show the results.")
+        print("=" * 70)
+        for i in range(3, 0, -1):
+            print(f"  Starting in {i} seconds... (Press Ctrl+C to abort)")
+            time.sleep(1)
+
+        script_path = os.path.abspath(__file__)
+        subprocess.Popen([sys.executable, script_path, '--detached', '-d', str(args.duration), '-o', args.output],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, start_new_session=True)
+        # Terminate caller terminal
+        time.sleep(0.5)
+        close_all_programs(kill_terminals=True)
+        sys.exit(0)
+
+    log_lines = []
+    def log(msg="", end="\n"):
+        if not args.detached:
+            print(msg, end=end, flush=True)
+        log_lines.append(msg)
+
+    log("=" * 80)
+    log("                     SYSTEM IDLE RESOURCE BENCHMARK")
+    log("=" * 80)
+    log(f"OS: Arch Linux | Kernel: {os.uname().release} | WM: i3wm")
+    log(f"Duration: {args.duration}s | Interval: 1.0s | Log File: {args.output}")
+    log("-" * 80)
+
+    if not args.no_kill:
+        log("[-] Closing background user programs (Steam, Brave, Editors, Media)...")
+        close_all_programs(kill_terminals=args.detached)
+        log("[+] Allowing 3 seconds for kernel memory and page reclamation to settle...")
+        time.sleep(3)
+        log("[+] System settled. Starting logging window...")
+        log("-" * 80)
+
+    cpu_samples = []
+    mem_used_samples = []
+    mem_pct_samples = []
+
+    idle_prev, total_prev = get_cpu_times()
+    initial_mem = get_mem_stats()
+
+    for sec in range(1, args.duration + 1):
+        time.sleep(1.0)
+        idle_curr, total_curr = get_cpu_times()
+        mem_curr = get_mem_stats()
+
+        idle_delta = idle_curr - idle_prev
+        total_delta = total_curr - total_prev
+        if total_delta > 0:
+            cpu_pct = max(0.0, min(100.0, (1.0 - (idle_delta / total_delta)) * 100.0))
+        else:
+            cpu_pct = 0.0
+
+        cpu_samples.append(cpu_pct)
+        mem_used_samples.append(mem_curr['used'])
+        mem_pct_samples.append(mem_curr['pct'])
+
+        idle_prev, total_prev = idle_curr, total_curr
+
+        log(f"  Sample {sec:2d}/{args.duration}s:   CPU: {cpu_pct:5.2f}%   |   RAM In-Use: {mem_curr['used']:6.0f} MB ({mem_curr['pct']:4.1f}%)   |   Swap: {mem_curr['swap_used']:.0f} MB")
+
+    avg_cpu = sum(cpu_samples) / len(cpu_samples)
+    min_cpu = min(cpu_samples)
+    max_cpu = max(cpu_samples)
+
+    avg_mem = sum(mem_used_samples) / len(mem_used_samples)
+    min_mem = min(mem_used_samples)
+    max_mem = max(mem_used_samples)
+    avg_mem_pct = sum(mem_pct_samples) / len(mem_pct_samples)
+
+    final_mem = get_mem_stats()
+    top_procs = get_top_memory_processes(limit=6)
+
+    log("-" * 80)
+    log(f"BENCHMARK RESULTS ({args.duration}s IDLE AVERAGE):")
+    log("-" * 80)
+    log(f"  CPU Average Usage:       {avg_cpu:.2f}%  (Min: {min_cpu:.2f}%, Max: {max_cpu:.2f}%)")
+    log(f"  RAM In-Use:              {avg_mem:.0f} MB ({avg_mem/1024:.2f} GB) / {final_mem['total']:.0f} MB ({avg_mem_pct:.1f}% of total)")
+    log(f"  RAM Available / Free:    {final_mem['avail']:.0f} MB ({final_mem['avail']/1024:.2f} GB) ready for applications/games")
+    log(f"  Swap In-Use:             {final_mem['swap_used']:.0f} MB")
+    log("-" * 80)
+    log("TOP MEMORY CONSUMERS AT IDLE:")
+    log("-" * 80)
+    for name, mb in top_procs:
+        log(f"  - {name:<24}: {mb:6.1f} MB")
+    log("-" * 80)
+    log("DIRECT WINDOWS COMPARISON BASELINE:")
+    log("-" * 80)
+    log("  Metric             Linux (Your Current Arch/i3)    Windows 11 (Clean Idle)")
+    log(f"  RAM In-Use:        ~{avg_mem/1024:.2f} GB ({avg_mem:.0f} MB)               ~4.0 - 5.5 GB (DWM, Defender, Telemetry)")
+    log(f"  CPU At Idle:       ~{avg_cpu:.2f}%                          ~2.0% - 6.0% (Antimalware, SysMain)")
+    log(f"  Memory Available:  ~{final_mem['avail']/1024:.2f} GB                         ~10.5 - 12.0 GB (on 16 GB system)")
+    log(f"  Advantage:         Linux gives ~{max(0.0, 4.8 - (avg_mem/1024)):.1f} GB MORE free RAM directly to CS2 / games.")
+    log("=" * 80)
+
+    # Write to log file
+    try:
+        with open(args.output, 'w') as f:
+            f.write("\n".join(log_lines) + "\n")
+    except Exception as e:
+        log(f"[!] Warning: Could not write output file: {e}")
+
+    # If detached, notify via Dunst and open a display window
+    if args.detached:
+        try:
+            subprocess.run([
+                'notify-send', '-u', 'critical', '-t', '10000',
+                'Idle Benchmark Completed',
+                f'CPU Avg: {avg_cpu:.2f}%\nRAM In-Use: {avg_mem:.0f} MB ({avg_mem/1024:.2f} GB / {final_mem["total"]:.0f} MB)'
+            ], capture_output=True)
+            subprocess.Popen(['alacritty', '-e', 'sh', '-c', f'cat "{args.output}"; echo ""; read -p "Press Enter to close..."'])
+        except Exception:
+            pass
+
+if __name__ == '__main__':
+    main()

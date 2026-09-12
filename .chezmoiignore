@@ -1,0 +1,41 @@
+# ==============================================================================
+# tufx11 chezmoi ignore rules (Linux-only repo)
+# ==============================================================================
+
+# --- Sensitive Files & Histories (never manage) ---
+**/*history*
+**/*.tmp
+**/*.log
+.config/chezmoi/key.txt
+key.txt
+
+# --- Internal Repository Paths (never deploy to $HOME) ---
+README.md
+install.sh
+packages/**
+systemd/**
+wallpapers/**
+
+# --- Machine Resolution (defaults to generic-linux) ---
+{{- $machineKey := "" -}}
+{{- if hasKey . "machine" -}}
+{{-   $machineKey = .machine -}}
+{{- else if eq .chezmoi.os "linux" -}}
+{{-   $machineKey = "generic-linux" -}}
+{{- else -}}
+{{-   fail "tufx11 supports Linux only" -}}
+{{- end -}}
+{{- $m := index .machines $machineKey -}}
+{{- if not $m -}}
+{{-   fail (printf "Machine profile %q not found in .chezmoidata.toml" $machineKey) -}}
+{{- end -}}
+
+# --- Feature-Toggled Exclusions (Linux) ---
+{{- if eq .chezmoi.os "linux" }}
+{{-   if not $m.features.gaming }}
+.config/MangoHud/**
+{{-   end }}
+{{-   if or (eq $m.providers.xremap "none") (not (hasKey $m.providers "xremap")) }}
+.config/xremap/**
+{{-   end }}
+{{- end }}

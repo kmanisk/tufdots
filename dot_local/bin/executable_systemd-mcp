@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+
+def get_user_env():
+    env = os.environ.copy()
+    env["XDG_RUNTIME_DIR"] = "/run/user/1000"
+    env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
+    return env
+
+def run_cmd(cmd, user=False, timeout=20):
+    try:
+        env = get_user_env() if user else os.environ.copy()
+        if user and os.geteuid() == 0:
+            # Running as root, execute as user manisk
+            full_cmd = ["runuser", "-u", "manisk", "--", "env", "XDG_RUNTIME_DIR=/run/user/1000", "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"] + cmd
+        else:
+            full_cmd = cmd
+            
+        res = subprocess.run(
+            full_cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env
+        )
+        if res.returncode != 0 and not res.stdout.strip():
+            err = res.stderr.strip() or f"Exit code {res.returncode}"
+            return f"Error ({res.returncode}): {err}"
+        out = res.stdout.strip()
+        if res.stderr.strip():
+            out += "\n[stderr]: " + res.stderr.strip()
+        return out if out else "(success)"
+    except subprocess.TimeoutExpired:
+        return "Error: Command timed out after 20 seconds"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def read_message():
+    line = sys.stdin.readline()
+    if not line:
+        return None
+    return json.loads(line)
+
+def write_message(msg):
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+TOOLS = [
+    {
+        "name": "systemd_list_units",
+        "description": "List systemd units (services, timers, sockets) for user session or system.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user": {"type": "boolean", "default": True, "description": "True for user session services (pipewire, xremap, timers), False for system services"},
+                "unit_type": {"type": "string", "default": "service", "description": "Unit type: service, timer, target, socket"},
+                "state": {"type": "string", "description": "Filter by state: active, running, failed, inactive"}
+            }
+        }
+    },
+    {
+        "name": "systemd_unit_status",
+        "description": "Get detailed status, memory, PID, and recent logs of a systemd unit.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "unit": {"type": "string", "description": "Unit name (e.g. polybar.service, pipewire.service, ananicy-cpp.service)"},
+                "user": {"type": "boolean", "default": True, "description": "True for user session units, False for system units"}
+            },
+            "required": ["unit"]
+        }
+    },
+    {
+        "name": "systemd_unit_action",
+        "description": "Control a systemd unit: start, stop, restart, reload.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["start", "stop", "restart", "reload", "try-restart"], "description": "Action to perform"},
+                "unit": {"type": "string", "description": "Unit name (e.g. polybar.service, xremap.service, pipewire.service)"},
+                "user": {"type": "boolean", "default": True, "description": "True for user units, False for system units"}
+            },
+            "required": ["action", "unit"]
+        }
+    },
+    {
+        "name": "systemd_failed_units",
+        "description": "Check for all failed system and user systemd units on the machine.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "systemd_journal_logs",
+        "description": "Query systemd journal logs for a unit or error priority.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "unit": {"type": "string", "description": "Optional unit name to filter logs"},
+                "user": {"type": "boolean", "default": True, "description": "True for user unit logs"},
+                "lines": {"type": "number", "default": 50, "description": "Number of log lines (max 300)"},
+                "priority": {"type": "string", "description": "Log priority filter (e.g. err, warning, notice, debug)"},
+                "grep": {"type": "string", "description": "Pattern to grep in logs"}
+            }
+        }
+    },
+    {
+        "name": "systemd_coredump_list",
+        "description": "List recent application and game crashes recorded by systemd-coredump.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "match": {"type": "string", "description": "Optional binary name or pattern (e.g. cs2, proton, wine)"},
+                "limit": {"type": "number", "default": 20, "description": "Maximum number of entries to return"}
+            }
+        }
+    },
+    {
+        "name": "systemd_coredump_info",
+        "description": "Get detailed backtrace and crash dump analysis for a crashed process from coredumpctl.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "match": {"type": "string", "description": "PID, executable path, or binary name"}
+            },
+            "required": ["match"]
+        }
+    }
+]
+
+def main():
+    while True:
+        req = read_message()
+        if req is None:
+            break
+        req_id = req.get("id")
+        method = req.get("method")
+        
+        if method == "initialize":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "systemd-mcp",
+                        "version": "1.0.0"
+                    }
+                }
+            })
+        elif method == "notifications/initialized":
+            pass
+        elif method == "tools/list":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": TOOLS
+                }
+            })
+        elif method == "tools/call":
+            params = req.get("params", {})
+            name = params.get("name")
+            args = params.get("arguments", {})
+            
+            content = ""
+            if name == "systemd_list_units":
+                user = args.get("user", True)
+                cmd = ["systemctl"]
+                if user:
+                    cmd.append("--user")
+                cmd.extend(["list-units", "--no-pager"])
+                if args.get("unit_type"):
+                    cmd.extend(["--type", args["unit_type"]])
+                if args.get("state"):
+                    cmd.extend(["--state", args["state"]])
+                content = run_cmd(cmd, user=user)
+            elif name == "systemd_unit_status":
+                user = args.get("user", True)
+                unit = args["unit"]
+                cmd = ["systemctl"]
+                if user:
+                    cmd.append("--user")
+                cmd.extend(["status", unit, "--no-pager", "-l"])
+                content = run_cmd(cmd, user=user)
+            elif name == "systemd_unit_action":
+                user = args.get("user", True)
+                action = args["action"]
+                unit = args["unit"]
+                cmd = ["systemctl"]
+                if user:
+                    cmd.append("--user")
+                cmd.extend([action, unit])
+                content = run_cmd(cmd, user=user)
+            elif name == "systemd_failed_units":
+                sys_failed = run_cmd(["systemctl", "--failed", "--no-pager"])
+                usr_failed = run_cmd(["systemctl", "--user", "--failed", "--no-pager"], user=True)
+                content = f"=== SYSTEM FAILED UNITS ===\n{sys_failed}\n\n=== USER FAILED UNITS ===\n{usr_failed}"
+            elif name == "systemd_journal_logs":
+                user = args.get("user", True)
+                lines = min(int(args.get("lines", 50)), 300)
+                cmd = ["journalctl", "--no-pager", "-n", str(lines)]
+                if user:
+                    cmd.append("--user")
+                if args.get("unit"):
+                    cmd.extend(["-u", args["unit"]])
+                if args.get("priority"):
+                    cmd.extend(["-p", args["priority"]])
+                if args.get("grep"):
+                    cmd.extend(["-g", args["grep"]])
+                content = run_cmd(cmd, user=user)
+            elif name == "systemd_coredump_list":
+                cmd = ["coredumpctl", "list", "--no-pager"]
+                if args.get("match"):
+                    cmd.append(args["match"])
+                res = run_cmd(cmd)
+                lines = res.splitlines()
+                limit = int(args.get("limit", 20))
+                if len(lines) > limit + 1:
+                    content = "\n".join(lines[:limit+1]) + f"\n... ({len(lines)-limit-1} older crashes truncated)"
+                else:
+                    content = res
+            elif name == "systemd_coredump_info":
+                cmd = ["coredumpctl", "info", args["match"], "--no-pager"]
+                content = run_cmd(cmd)
+            else:
+                content = f"Unknown tool: {name}"
+
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": content}
+                    ]
+                }
+            })
+        else:
+            if req_id is not None:
+                write_message({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Method {method} not found"
+                    }
+                })
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,92 @@
+// Installed from community preset: /usr/share/fastfetch/presets/examples/13.jsonc
+// (catnap-inspired boxed layout). Row colors {#31}-{#36} follow the terminal
+// palette, so they pick up the Gruvbox Alacritty theme automatically.
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "small",
+        "padding": {
+            "top": 1
+        }
+    },
+    "display": {
+        "separator": " "
+    },
+    "modules": [
+        {
+            "key": "╭───────────╮",
+            "type": "custom"
+        },
+        {
+            "key": "│ {#31} user    {#keys}│",
+            "type": "title",
+            "format": "{user-name}"
+        },
+        {
+            "key": "│ {#32}󰇅 hname   {#keys}│",
+            "type": "title",
+            "format": "{host-name}"
+        },
+        {
+            "key": "│ {#33}󰅐 uptime  {#keys}│",
+            "type": "uptime"
+        },
+        {
+            "key": "│ {#34}{icon} distro  {#keys}│",
+            "type": "os"
+        },
+        {
+            "key": "│ {#35} kernel  {#keys}│",
+            "type": "kernel"
+        },
+        {
+            "key": "│ {#36}󰇄 desktop {#keys}│",
+            "type": "de"
+        },
+        {
+            "key": "│ {#31} term    {#keys}│",
+            "type": "terminal"
+        },
+        {
+            "key": "│ {#32} shell   {#keys}│",
+            "type": "shell"
+        },
+        {
+            "key": "│ {#33}󰍛 cpu     {#keys}│",
+            "type": "cpu",
+            "showPeCoreCount": true
+        },
+        {
+            "key": "│ {#34}󰉉 disk    {#keys}│",
+            "type": "disk",
+            "folders": "/"
+        },
+        {
+            "key": "│ {#35} memory  {#keys}│",
+            "type": "memory"
+        },
+        {
+            "key": "│ {#36}󰩟 network {#keys}│",
+            "type": "localip",
+            "format": "{ipv4} ({ifname})"
+        },
+        {
+            "key": "│ {#31}󰁹 batt    {#keys}│",
+            "type": "command",
+            "text": "cap=$(cat /sys/class/power_supply/BAT0/capacity); st=$(cat /sys/class/power_supply/BAT0/status); f=$((cap/10)); e=$((10-f)); bar=\"$(printf '▰%.0s' $(seq 1 $f 2>/dev/null))$(printf '▱%.0s' $(seq 1 $e 2>/dev/null))\"; if [ \"$cap\" -ge 50 ]; then c=32; elif [ \"$cap\" -ge 20 ]; then c=33; else c=31; fi; if [ \"$st\" = Discharging ]; then tag=\"Discharging\"; else tag=\"AC\"; fi; printf '\\033[%sm%s\\033[0m %s%% · %s\\n' \"$c\" \"$bar\" \"$cap\" \"$tag\""
+        },
+        {
+            "key": "├───────────┤",
+            "type": "custom"
+        },
+        {
+            "key": "│ {#39} colors  {#keys}│",
+            "type": "colors",
+            "symbol": "circle"
+        },
+        {
+            "key": "╰───────────╯",
+            "type": "custom"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+[Unit]
+Description=Auto Night Light Schedule Check (10PM - 6AM)
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+ExecStart=%h/.local/bin/auto-nightlight

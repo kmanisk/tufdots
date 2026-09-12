@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Save i3 session layout and programs using i3-resurrect
+export PATH="$HOME/.local/bin:$PATH"
+mkdir -p "$HOME/.i3/i3-resurrect"
+
+if [ "$1" = "--all" ]; then
+    workspaces=$(i3-msg -t get_workspaces 2>/dev/null | jq -r '.[].num')
+    if [ -z "$workspaces" ]; then
+        exit 0
+    fi
+    for ws in $workspaces; do
+        i3-resurrect save -w "$ws" --swallow=class,instance
+    done
+    command -v notify-send >/dev/null && notify-send -i document-save "i3 Session" "Saved all active workspaces ($workspaces)"
+else
+    curr_ws=$(i3-msg -t get_workspaces 2>/dev/null | jq -r '.[] | select(.focused==true).num')
+    if [ -n "$curr_ws" ]; then
+        i3-resurrect save -w "$curr_ws" --swallow=class,instance
+        command -v notify-send >/dev/null && notify-send -i document-save "i3 Session" "Saved workspace $curr_ws layout & programs"
+    fi
+fi

@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# High-Performance Wallpaper Switcher (Cache-First / Zero SSD Wear)
+# - Default: Instantly rotates from local cached wallpapers (0 network, 0 SSD wear)
+# - Feeds wallpaper directly to feh (no megabyte copies to wallpaper.png or git repos)
+# - Only downloads new wallpapers when explicitly requested (--new) or if cache is empty
+# ==============================================================================
+
+export PATH="$HOME/.local/bin:$PATH"
+export DISPLAY="${DISPLAY:-:0}"
+
+WALLPAPER_DIRS=("$HOME/.local/share/wallpapers" "$HOME/.cache/wallpapers")
+PRIMARY_STORE="${WALLPAPER_DIRS[0]}"
+TEMP_FILE="/tmp/random_wallpaper_download_$$.png" # /tmp is in RAM (tmpfs)
+
+# Ensure local wallpaper cache directories exist
+for d in "${WALLPAPER_DIRS[@]}"; do
+    mkdir -p "$d"
+done
+
+# Parse Arguments
+CATEGORY=""
+FETCH_NEW=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --new|--online|--download|-n)
+            FETCH_NEW=1
+            ;;
+        creepy|dark)
+            CATEGORY="creepy"
+            ;;
+        gaming|game)
+            CATEGORY="gaming"
+            ;;
+        random)
+            CATEGORY="random"
+            ;;
+        blxss|ambient)
+            CATEGORY="blxss"
+            ;;
+    esac
+done
+
+CATEGORIES=("blxss")
+if [[ -z "$CATEGORY" || "$CATEGORY" == "random" ]]; then
+    CATEGORY="${CATEGORIES[$RANDOM % ${#CATEGORIES[@]}]}"
+fi
+
+case "$CATEGORY" in
+    blxss)
+        DISPLAY_NAME="blxss ambient"
+        ;;
+    creepy)
+        DISPLAY_NAME="Creepy & Dark"
+        ;;
+    gaming)
+        DISPLAY_NAME="Gaming"
+        ;;
+    *)
+        DISPLAY_NAME="Random"
+        ;;
+esac
+
+# ------------------------------------------------------------------------------
+# 1. CACHE-FIRST ROTATION (Instant, Zero SSD Wear, Zero Network)
+# ------------------------------------------------------------------------------
+if [[ "$FETCH_NEW" -eq 0 ]]; then
+    # Search for cached images for the selected category
+    mapfile -t CACHED_FILES < <(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 -type f \( -name "${CATEGORY}_*.jpg" -o -name "${CATEGORY}_*.png" \) 2>/dev/null)
+
+    # Fallback to any cached image if category specific not found
+    if [[ ${#CACHED_FILES[@]} -eq 0 ]]; then
+        mapfile -t CACHED_FILES < <(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null)
+    fi
+
+    if [[ ${#CACHED_FILES[@]} -gt 0 ]]; then
+        # Read currently active wallpaper from ~/.fehbg to avoid picking the same image
+        CURRENT_WALL=""
+        if [[ -f "$HOME/.fehbg" ]]; then
+            CURRENT_WALL=$(grep -oE "'[^']+'" "$HOME/.fehbg" 2>/dev/null | tr -d "'" || echo "")
+        fi
+
+        # Filter out current wallpaper if multiple choices exist
+        CANDIDATES=()
+        for f in "${CACHED_FILES[@]}"; do
+            [[ "$f" != "$CURRENT_WALL" ]] && CANDIDATES+=("$f")
+        done
+        [[ ${#CANDIDATES[@]} -eq 0 ]] && CANDIDATES=("${CACHED_FILES[@]}")
+
+        # Pick random candidate
+        CHOSEN="${CANDIDATES[$RANDOM % ${#CANDIDATES[@]}]}"
+
+        # Apply directly via feh (writes ~50 bytes to ~/.fehbg, 0 disk copies)
+        feh --bg-fill "$CHOSEN"
+        command -v notify-send >/dev/null && notify-send -i preferences-desktop-wallpaper -t 2000 "Wallpaper Applied" "Cached (${DISPLAY_NAME}) • Instant Switch"
+        exit 0
+    fi
+    # If cache is completely empty, fall through to online download
+fi
+
+# ------------------------------------------------------------------------------
+# 2. ONLINE DOWNLOAD ENGINE (Only when --new requested or cache empty)
+# ------------------------------------------------------------------------------
+command -v notify-send >/dev/null && notify-send -t 2500 -i preferences-desktop-wallpaper "Wallpaper Switcher" "Fetching new ${DISPLAY_NAME} wallpaper..."
+
+case "$CATEGORY" in
+    creepy)
+        SUBREDDITS=("creepy" "ImaginaryMonsters" "DarkGothicArt" "creepyart" "DarkArt" "horror")
+        TAGS=("creepy" "dark+fantasy" "horror" "gothic" "monster" "dark")
+        ;;
+    gaming)
+        SUBREDDITS=("GamingWallpapers" "videogamephotography" "GamerPorn")
+        TAGS=("video+games" "gaming" "cyberpunk+2077" "elden+ring" "witcher" "dark+souls" "half-life")
+        ;;
+    *)
+        SUBREDDITS=("GamingWallpapers" "creepy" "DarkGothicArt" "videogamephotography")
+        TAGS=("gaming" "dark+fantasy" "cyberpunk+2077" "dark")
+        ;;
+esac
+
+WALLHAVEN_TAG="${TAGS[$RANDOM % ${#TAGS[@]}]}"
+SELECTED_SUB="${SUBREDDITS[$RANDOM % ${#SUBREDDITS[@]}]}"
+IMAGE_URL=""
+SOURCE=""
+
+# 2a. Try Reddit API first
+REDDIT_UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+REDDIT_JSON=$(curl -s -L --max-time 4 -A "$REDDIT_UA" "https://www.reddit.com/r/${SELECTED_SUB}/hot.json?limit=50" 2>/dev/null)
+
+if [[ -n "$REDDIT_JSON" && "$REDDIT_JSON" == *"\"data\""* && "$REDDIT_JSON" != *"Blocked"* ]]; then
+    IMAGE_URL=$(echo "$REDDIT_JSON" | jq -r '
+        [.data.children[].data | 
+        select(.post_hint == "image" or (.url | test("\\.(jpg|jpeg|png)$"))) | 
+        select(.preview.images[0].source.width >= 1920 or .preview == null) | 
+        .url] | 
+        if length > 0 then .[range(0; length)] else empty end' 2>/dev/null | shuf -n 1)
+
+    if [[ -n "$IMAGE_URL" && "$IMAGE_URL" =~ ^https?:// ]]; then
+        SOURCE="r/${SELECTED_SUB}"
+    fi
+fi
+
+# 2b. Wallhaven API Fallback (Ultra HD, Non-Anime: categories=100)
+if [[ -z "$IMAGE_URL" ]]; then
+    RANDOM_PAGE=$((RANDOM % 5 + 1))
+    WALLHAVEN_JSON=$(curl -s -L --max-time 6 "https://wallhaven.cc/api/v1/search?q=${WALLHAVEN_TAG}&categories=100&purity=100&atleast=1920x1080&ratios=16x9,16x10&page=${RANDOM_PAGE}" 2>/dev/null)
+    if [[ -n "$WALLHAVEN_JSON" ]]; then
+        IMAGE_URL=$(echo "$WALLHAVEN_JSON" | jq -r '.data[]?.path' 2>/dev/null | shuf -n 1)
+        if [[ -n "$IMAGE_URL" && "$IMAGE_URL" =~ ^https?:// ]]; then
+            SOURCE="Wallhaven (${WALLHAVEN_TAG//+/ })"
+        fi
+    fi
+fi
+
+# 2c. Download to RAM (/tmp) and persist into Primary Cache
+MAX_CACHE_FILES=30
+
+if [[ -n "$IMAGE_URL" ]]; then
+    if curl -s -L --max-time 15 "$IMAGE_URL" -o "$TEMP_FILE" && file "$TEMP_FILE" | grep -qiE 'image|bitmap'; then
+        DEST_FILE="$PRIMARY_STORE/${CATEGORY}_$(date +%s).jpg"
+        mv "$TEMP_FILE" "$DEST_FILE"
+
+        # Apply directly via feh
+        feh --bg-fill "$DEST_FILE"
+
+        # Prune cache to keep maximum $MAX_CACHE_FILES images (prevent disk bloat)
+        find "$PRIMARY_STORE" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) -printf '%T@ %p\n' 2>/dev/null | \
+            sort -rn | tail -n +$((MAX_CACHE_FILES + 1)) | cut -d' ' -f2- | xargs -r rm -f
+
+        command -v notify-send >/dev/null && notify-send -i preferences-desktop-wallpaper "New Wallpaper Downloaded!" "${DISPLAY_NAME}\nSource: ${SOURCE}"
+        exit 0
+    fi
+    rm -f "$TEMP_FILE"
+fi
+
+# Fallback: if download failed, pick any cached image
+FALLBACK_IMG=$(find "${WALLPAPER_DIRS[@]}" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | shuf -n 1)
+if [[ -n "$FALLBACK_IMG" && -f "$FALLBACK_IMG" ]]; then
+    feh --bg-fill "$FALLBACK_IMG"
+    command -v notify-send >/dev/null && notify-send -i preferences-desktop-wallpaper "Wallpaper Applied" "Loaded from offline cache (${DISPLAY_NAME})"
+    exit 0
+fi
+
+command -v notify-send >/dev/null && notify-send -u low -i dialog-warning "Wallpaper" "Could not load wallpaper."
+exit 1

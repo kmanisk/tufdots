@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Bluetooth Profile Switcher (Hands-Free HFP vs High-Fidelity A2DP)
+# ==============================================================================
+
+BT_CARD=$(pactl list cards short 2>/dev/null | grep bluez_card | awk '{print $2}' | head -n1)
+
+if [ -z "$BT_CARD" ]; then
+    notify-send -u low "Bluetooth Audio" "No Bluetooth audio device connected"
+    exit 1
+fi
+
+CURRENT=$(pactl list cards 2>/dev/null | awk -v card="$BT_CARD" '$0 ~ "Name: " card {f=1} f && /Active Profile:/ {print $3; exit}')
+
+set_handsfree() {
+    pactl set-card-profile "$BT_CARD" headset-head-unit 2>/dev/null || pactl set-card-profile "$BT_CARD" headset-head-unit-cvsd 2>/dev/null
+    sleep 0.2
+    BT_SRC=$(pactl list sources short 2>/dev/null | grep -E "bluez_input" | awk '{print $2}' | head -n1)
+    if [ -n "$BT_SRC" ]; then
+        pactl set-default-source "$BT_SRC" 2>/dev/null || true
+    fi
+    notify-send -t 2000 "Bluetooth Audio" "Hands-Free Mode Enabled\n(Headset Mic Active)"
+}
+
+set_hifi() {
+    pactl set-card-profile "$BT_CARD" a2dp-sink-sbc_xq 2>/dev/null || pactl set-card-profile "$BT_CARD" a2dp-sink-sbc 2>/dev/null || pactl set-card-profile "$BT_CARD" a2dp-sink 2>/dev/null
+    sleep 0.2
+    INT_MIC=$(pactl list sources short 2>/dev/null | grep -E "alsa_input.*analog-stereo" | awk '{print $2}' | head -n1)
+    if [ -n "$INT_MIC" ]; then
+        pactl set-default-source "$INT_MIC" 2>/dev/null || true
+    fi
+    notify-send -t 2000 "Bluetooth Audio" "High Fidelity Stereo (A2DP)\nHands-Free Off (Stereo Active)"
+}
+
+case "${1:-toggle}" in
+    handsfree|hfp|mic)
+        set_handsfree
+        ;;
+    hifi|a2dp|off|stereo)
+        set_hifi
+        ;;
+    toggle)
+        if [[ "$CURRENT" == *"headset"* ]]; then
+            set_hifi
+        else
+            set_handsfree
+        fi
+        ;;
+    status)
+        echo "Card: $BT_CARD"
+        echo "Profile: $CURRENT"
+        ;;
+    *)
+        echo "Usage: bt-profile [handsfree|hifi|off|toggle|status]"
+        exit 1
+        ;;
+esac

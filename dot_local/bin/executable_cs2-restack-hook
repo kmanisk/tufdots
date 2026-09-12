@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""
+i3wm CS2 Window Restack & Focus Hook
+====================================
+Listens to i3 workspace::focus events. When switching to a workspace containing
+CS2 (e.g. Workspace 5), toggles fullscreen off and on within <1ms.
+
+This forces i3 and X11 to rebuild the stacking order, raising CS2 to the top of
+the stacking layer and preventing background tiled windows (like Steam) from
+bleeding through.
+"""
+
+import os
+import sys
+import time
+import socket
+import struct
+import json
+import signal
+import subprocess
+
+def get_socketpath():
+    env_sock = os.environ.get("I3SOCK")
+    if env_sock and os.path.exists(env_sock):
+        return env_sock
+    try:
+        out = subprocess.check_output(["i3", "--get-socketpath"], timeout=1).decode().strip()
+        if os.path.exists(out):
+            return out
+    except Exception:
+        pass
+    for p in [f"/run/user/{os.getuid()}/i3/ipc-socket.1108"]:
+        if os.path.exists(p):
+            return p
+    return None
+
+def send_msg(sock, msg_type, payload=""):
+    data = payload.encode("utf-8")
+    header = struct.pack("=6sII", b"i3-ipc", len(data), msg_type)
+    sock.sendall(header + data)
+
+def recv_msg(sock):
+    header = sock.recv(14)
+    if not header or len(header) < 14:
+        return None, None
+    magic, length, msg_type = struct.unpack("=6sII", header)
+    payload = b""
+    while len(payload) < length:
+        chunk = sock.recv(length - len(payload))
+        if not chunk:
+            break
+        payload += chunk
+    try:
+        data = json.loads(payload.decode("utf-8"))
+    except Exception:
+        data = None
+    return msg_type, data
+
+running = True
+def sig_handler(signum, frame):
+    global running
+    running = False
+
+signal.signal(signal.SIGINT, sig_handler)
+signal.signal(signal.SIGTERM, sig_handler)
+
+def run_loop():
+    global running
+    sockpath = get_socketpath()
+    if not sockpath:
+        time.sleep(2)
+        return
+
+    try:
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(sockpath)
+    except Exception:
+        time.sleep(1)
+        return
+
+    try:
+        # Subscribe to workspace events
+        send_msg(s, 2, '["workspace"]')
+        recv_msg(s)
+
+        while running:
+            msg_type, event = recv_msg(s)
+            if event is None:
+                break
+            if isinstance(event, dict) and event.get("change") == "focus":
+                # When any workspace gains focus, restack CS2 if it resides on the focused workspace
+                cmd = '[class="(?i)^cs2$" workspace="__focused__"] fullscreen disable; [class="(?i)^cs2$" workspace="__focused__"] fullscreen enable; [class="(?i)^cs2$" workspace="__focused__"] focus'
+                send_msg(s, 0, cmd)
+                recv_msg(s)
+    except Exception:
+        pass
+    finally:
+        try:
+            s.close()
+        except Exception:
+            pass
+
+def main():
+    while running:
+        run_loop()
+        time.sleep(1)
+
+if __name__ == "__main__":
+    main()

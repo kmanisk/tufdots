@@ -1,0 +1,131 @@
+virtual_modifiers:
+  - CapsLock
+modmap:
+  - name: CapsLock tap=Escape, hold=RightCtrl
+    remap:
+      CapsLock:
+        held: RightCtrl
+        alone: Esc
+        alone_timeout_millis: 200
+
+keymap:
+  # --- Alacritty-specific overrides (must come BEFORE general CapsLock layer) ---
+  - name: Alacritty overrides
+    application:
+      only: ["Alacritty"]
+    remap:
+      Alt-c: C-S-c # Alt+C → Ctrl+Shift+C (copy in Alacritty)
+      CapsLock-DOT: C-S-v # CapsLock+. → Ctrl+Shift+V (paste in Alacritty)
+
+  # --- CapsLock layer ---
+  - name: CapsLock layer
+    remap:
+      # Navigation
+      CapsLock-h: Left
+      CapsLock-j: Down
+      CapsLock-k: Up
+      CapsLock-l: Right
+      CapsLock-o: C-Left
+      CapsLock-p: C-Right
+      # Brightness (CapsLock + [ and CapsLock + ')
+      CapsLock-LEFTBRACE: BrightnessUp
+      CapsLock-APOSTROPHE: BrightnessDown
+      # Actions
+      CapsLock-n: Enter
+      CapsLock-SEMICOLON: [End, Enter]
+      CapsLock-i: [C-a, BackSpace]
+      CapsLock-g: [C-a, C-c, Right]
+      CapsLock-y: C-z
+      CapsLock-SLASH: A-F4
+      CapsLock-m: BackSpace
+      CapsLock-u: C-BackSpace
+      CapsLock-d: Delete
+      CapsLock-f: C-f
+      CapsLock-DOT: C-v
+      CapsLock-COMMA: [C-a, C-c]
+      # F-key row
+      CapsLock-1: F1
+      CapsLock-2: F2
+      CapsLock-3: F3
+      CapsLock-4: F4
+      CapsLock-5: F5
+      CapsLock-6: F6
+      CapsLock-7: F7
+      CapsLock-8: F8
+      CapsLock-9: F9
+      CapsLock-0: F10
+      CapsLock-MINUS: F11
+      CapsLock-EQUAL: F12
+      # Fallback Brightness (] and \)
+      CapsLock-RIGHTBRACE: BrightnessUp
+      CapsLock-BACKSLASH: BrightnessDown
+      # Passthrough
+      CapsLock-a: a
+      CapsLock-b: b
+      CapsLock-c: c
+      CapsLock-e: e
+      CapsLock-q: q
+      CapsLock-s: s
+      CapsLock-t: t
+      CapsLock-v: v
+      CapsLock-w: w
+      CapsLock-x: x
+      CapsLock-z: z
+
+  # --- RControl mirror layer ---
+  - name: RCtrl layer
+    remap:
+      RIGHTCTRL-h: Left
+      RIGHTCTRL-j: Down
+      RIGHTCTRL-k: Up
+      RIGHTCTRL-l: Right
+      RIGHTCTRL-n: Enter
+      RIGHTCTRL-i: [C-a, BackSpace]
+      RIGHTCTRL-g: [C-a, C-c, Right]
+      RIGHTCTRL-y: C-z
+      RIGHTCTRL-SLASH: A-F4
+      RIGHTCTRL-o: C-Left
+      RIGHTCTRL-p: C-Right
+      RIGHTCTRL-m: BackSpace
+      RIGHTCTRL-u: C-BackSpace
+      RIGHTCTRL-d: Delete
+      RIGHTCTRL-f: C-f
+      RIGHTCTRL-DOT: C-v
+      RIGHTCTRL-COMMA: [C-a, C-c]
+      RIGHTCTRL-SEMICOLON: [End, Enter]
+      # Brightness
+      RIGHTCTRL-LEFTBRACE: BrightnessUp
+      RIGHTCTRL-APOSTROPHE: BrightnessDown
+      RIGHTCTRL-RIGHTBRACE: BrightnessUp
+      RIGHTCTRL-BACKSLASH: BrightnessDown
+      # F-keys
+      RIGHTCTRL-1: F1
+      RIGHTCTRL-2: F2
+      RIGHTCTRL-3: F3
+      RIGHTCTRL-4: F4
+      RIGHTCTRL-5: F5
+      RIGHTCTRL-6: F6
+      RIGHTCTRL-7: F7
+      RIGHTCTRL-8: F8
+      RIGHTCTRL-9: F9
+      RIGHTCTRL-0: F10
+      RIGHTCTRL-MINUS: F11
+      RIGHTCTRL-EQUAL: F12
+      # Passthrough
+      RIGHTCTRL-a: a
+      RIGHTCTRL-b: b
+      RIGHTCTRL-c: c
+      RIGHTCTRL-e: e
+      RIGHTCTRL-q: q
+      RIGHTCTRL-s: s
+      RIGHTCTRL-t: t
+      RIGHTCTRL-v: v
+      RIGHTCTRL-w: w
+      RIGHTCTRL-x: x
+      RIGHTCTRL-z: z
+
+  # --- Misc ---
+  - name: Misc
+    remap:
+      Alt-BackSpace: A-Left
+      PageUp: Home

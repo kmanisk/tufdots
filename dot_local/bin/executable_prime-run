@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# NVIDIA PRIME Render Offload Wrapper
+# Configures OpenGL, EGL, and Vulkan to bind to the dedicated NVIDIA GPU
+# ==============================================================================
+
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __VK_LAYER_NV_optimus=NVIDIA_only
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+
+exec "$@"

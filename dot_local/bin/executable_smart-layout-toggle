@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+"""
+smart-layout-toggle:
+Seamlessly toggles between Tiling (splith) and Tabbed mode (horizontal left-and-right tabs).
+- When in Tiling mode: converts to Tabbed. If 1 window, it becomes a single tab.
+  If 2+ windows, consolidates them all as horizontal side-by-side tabs.
+- When in Tabbed mode: converts to Tiling (splith side-by-side).
+- Tab navigation is handled cleanly via Alt+Shift+j (next tab) and Alt+Shift+k (prev tab).
+- Instant, hot-reloaded in place without switching workspaces or reopening windows.
+"""
+import json
+import subprocess
+import sys
+
+
+def i3_msg(*cmds):
+    cmd = "; ".join(cmds)
+    res = subprocess.run(["i3-msg", cmd], capture_output=True, text=True)
+    return res.stdout
+
+
+def get_tree():
+    res = subprocess.run(["i3-msg", "-t", "get_tree"], capture_output=True, text=True)
+    return json.loads(res.stdout)
+
+
+def find_focused(node):
+    if node.get("focused"):
+        return node
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        res = find_focused(child)
+        if res:
+            return res
+    return None
+
+
+def contains_id(node, target_id):
+    if node.get("id") == target_id:
+        return True
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        if contains_id(child, target_id):
+            return True
+    return False
+
+
+def find_workspace_node(node, focused_id):
+    if node.get("type") == "workspace":
+        if contains_id(node, focused_id):
+            return node
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        res = find_workspace_node(child, focused_id)
+        if res:
+            return res
+    return None
+
+
+def find_parent_container(root, target_id):
+    for child in root.get("nodes", []) + root.get("floating_nodes", []):
+        if child.get("id") == target_id:
+            return root
+        res = find_parent_container(child, target_id)
+        if res:
+            return res
+    return None
+
+
+def get_tiled_leaves(node):
+    leaves = []
+    # Only consider non-floating windows
+    if node.get("type") == "con" and node.get("window") is not None:
+        floating = node.get("floating", "")
+        if not floating or floating in ("auto_off", "user_off"):
+            return [node]
+    for child in node.get("nodes", []):
+        leaves.extend(get_tiled_leaves(child))
+    return leaves
+
+
+def is_workspace_tabbed(ws, leaves):
+    if not leaves:
+        return ws.get("layout") in ("tabbed", "stacked")
+    if len(leaves) == 1:
+        p = find_parent_container(ws, leaves[0]["id"])
+        return (p and p.get("layout") in ("tabbed", "stacked")) or (ws.get("layout") in ("tabbed", "stacked"))
+
+    parents = [find_parent_container(ws, leaf["id"]) for leaf in leaves]
+    parent_ids = {p["id"] for p in parents if p}
+    if len(parent_ids) == 1:
+        common_p = parents[0]
+        return common_p.get("layout") in ("tabbed", "stacked")
+    return False
+
+
+def main():
+    tree = get_tree()
+    focused = find_focused(tree)
+    if not focused:
+        sys.exit(0)
+
+    focused_id = focused["id"]
+    ws = find_workspace_node(tree, focused_id)
+    if not ws:
+        sys.exit(0)
+
+    leaves = get_tiled_leaves(ws)
+    n = len(leaves)
+
+    already_tabbed = is_workspace_tabbed(ws, leaves)
+
+    if already_tabbed:
+        # Check if currently stacked (top-down) from earlier -> convert to tabbed (horizontal)
+        p = find_parent_container(ws, leaves[0]["id"]) if n >= 1 else None
+        cur_layout = p.get("layout") if p else ws.get("layout")
+        if cur_layout == "stacked":
+            # Switch directly to tabbed (horizontal left-right tabs)
+            if p:
+                i3_msg(f'[con_id="{p["id"]}"] layout tabbed', f'[con_id="{focused_id}"] focus')
+            else:
+                i3_msg("layout tabbed")
+            sys.exit(0)
+
+        # ======================================================================
+        # CURRENTLY TABBED -> Switch to TILING (splith)
+        # ======================================================================
+        if n <= 1:
+            if n == 1:
+                cmds = [f'[con_id="{leaves[0]["id"]}"] layout splith']
+                if p and p.get("type") != "workspace":
+                    cmds.append(f'[con_id="{p["id"]}"] layout splith')
+                i3_msg(*cmds)
+            else:
+                i3_msg("layout splith")
+        else:
+            if p:
+                i3_msg(f'[con_id="{p["id"]}"] layout splith', f'[con_id="{focused_id}"] focus')
+            else:
+                i3_msg("layout splith")
+    else:
+        # ======================================================================
+        # CURRENTLY TILING -> Switch to TABBED (horizontal side-by-side tabs)
+        # ======================================================================
+        if n <= 1:
+            if n == 1:
+                i3_msg(f'[con_id="{leaves[0]["id"]}"] layout tabbed')
+            else:
+                i3_msg("layout tabbed")
+        else:
+            root_leaf = leaves[0]
+            cmds = [f'[con_id="{root_leaf["id"]}"] mark --add "_tab_root"']
+            for other in leaves[1:]:
+                cmds.append(f'[con_id="{other["id"]}"] move to mark "_tab_root"')
+            cmds.append(f'[con_id="{root_leaf["id"]}"] unmark "_tab_root"')
+            cmds.append(f'[con_id="{root_leaf["id"]}"] focus, focus parent, layout tabbed')
+            cmds.append(f'[con_id="{focused_id}"] focus')
+            i3_msg(*cmds)
+
+
+if __name__ == "__main__":
+    main()

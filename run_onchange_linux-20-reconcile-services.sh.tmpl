@@ -1,0 +1,124 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+# Services & Features Hash: {{ (index .machines (default "generic-linux" .machine)).features | toJson | sha256sum }}:{{ (index .machines (default "generic-linux" .machine)).providers | toJson | sha256sum }}
+
+{{ $machineKey := "" -}}
+{{ if hasKey . "machine" -}}
+{{   $machineKey = .machine -}}
+{{ else if eq .chezmoi.os "windows" -}}
+{{   $machineKey = "windows-workstation" -}}
+{{ else if eq .chezmoi.os "linux" -}}
+{{   $machineKey = "generic-linux" -}}
+{{ else -}}
+{{   fail "Unsupported operating system" -}}
+{{ end -}}
+{{ $m := index .machines $machineKey -}}
+{{ if not $m }}{{ fail (printf "Machine profile %q not found in .chezmoidata.toml" $machineKey) }}{{ end -}}
+
+set -euo pipefail
+
+DRY_RUN="${CHEZMOI_DRY_RUN:-0}"
+
+echo "=============================================================================="
+echo "==> Chezmoi: Reconciling System Daemons & Features"
+echo "==> Machine: {{ $machineKey }}"
+echo "=============================================================================="
+
+# 1. Core System Timers & Schedulers
+for core_svc in "ananicy-cpp.service" "fstrim.timer"; do
+    if systemctl list-unit-files "$core_svc" &>/dev/null; then
+        if ! systemctl is-active --quiet "$core_svc"; then
+            echo "    Activating core service: $core_svc..."
+            if [ "$DRY_RUN" -eq 0 ]; then
+                sudo systemctl enable --now "$core_svc" 2>/dev/null || true
+            fi
+        fi
+    fi
+done
+
+# 2. Bluetooth Service Reconciliation
+{{ if $m.features.bluetooth }}
+if systemctl list-unit-files "bluetooth.service" &>/dev/null; then
+    if ! systemctl is-active --quiet "bluetooth.service"; then
+        echo "    [Bluetooth: Enabled] Activating bluetooth.service..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo systemctl enable --now "bluetooth.service" 2>/dev/null || true
+        fi
+    fi
+fi
+{{ else }}
+if systemctl is-active --quiet "bluetooth.service"; then
+    echo "    [Bluetooth: Disabled] Retiring bluetooth.service..."
+    if [ "$DRY_RUN" -eq 0 ]; then
+        sudo systemctl disable --now "bluetooth.service" 2>/dev/null || true
+    fi
+fi
+{{ end }}
+
+# 3. ASUS Hardware Management Reconciliation
+{{ if $m.features.asus_ctl }}
+for asus_svc in "asusd.service" "supergfxd.service"; do
+    if systemctl list-unit-files "$asus_svc" &>/dev/null; then
+        if ! systemctl is-active --quiet "$asus_svc"; then
+            echo "    [ASUS: Enabled] Activating $asus_svc..."
+            if [ "$DRY_RUN" -eq 0 ]; then
+                sudo systemctl enable --now "$asus_svc" 2>/dev/null || true
+            fi
+        fi
+    fi
+done
+if [ "$DRY_RUN" -eq 0 ] && command -v asusctl >/dev/null 2>&1; then
+    asusctl battery limit 60 2>/dev/null || true
+    asusctl profile set Balanced 2>/dev/null || true
+fi
+{{ else }}
+for asus_svc in "asusd.service" "supergfxd.service"; do
+    if systemctl is-active --quiet "$asus_svc"; then
+        echo "    [ASUS: Disabled] Retiring $asus_svc..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo systemctl disable --now "$asus_svc" 2>/dev/null || true
+        fi
+    fi
+done
+{{ end }}
+
+# 4. Snapper Maintenance Reconciliation
+{{ if $m.features.snapper }}
+if systemctl list-unit-files "snapper-cleanup.timer" &>/dev/null; then
+    if ! systemctl is-active --quiet "snapper-cleanup.timer"; then
+        echo "    [Snapper: Enabled] Activating snapper-cleanup.timer..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            sudo systemctl enable --now "snapper-cleanup.timer" 2>/dev/null || true
+        fi
+    fi
+fi
+{{ else }}
+if systemctl is-active --quiet "snapper-cleanup.timer"; then
+    echo "    [Snapper: Disabled] Retiring snapper-cleanup.timer..."
+    if [ "$DRY_RUN" -eq 0 ]; then
+        sudo systemctl disable --now "snapper-cleanup.timer" 2>/dev/null || true
+    fi
+fi
+{{ end }}
+
+# 5. User Services: XRemap Reconciliation
+{{ if eq $m.providers.xremap "user-service" }}
+if systemctl --user list-unit-files "xremap.service" &>/dev/null; then
+    if ! systemctl --user is-active --quiet "xremap.service"; then
+        echo "    [XRemap: user-service] Activating user xremap.service..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            systemctl --user enable --now "xremap.service" 2>/dev/null || true
+        fi
+    fi
+fi
+{{ else }}
+if systemctl --user is-active --quiet "xremap.service" 2>/dev/null; then
+    echo "    [XRemap: Disabled] Retiring user xremap.service..."
+    if [ "$DRY_RUN" -eq 0 ]; then
+        systemctl --user disable --now "xremap.service" 2>/dev/null || true
+    fi
+fi
+{{ end }}
+
+echo "==> System & user daemons reconciliation complete."
+{{ end }}

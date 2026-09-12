@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Firefox Browser Launcher (discrete NVIDIA RTX 5050 WebRender via GLX PRIME offload)
+export MOZ_X11_EGL=0
+exec prime-run /usr/bin/firefox "$@"

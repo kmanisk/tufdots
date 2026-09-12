@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# auto-power-profile: Automatically switch asusctl profile based on AC power
+# Balanced on AC, Quiet on Battery
+# ==============================================================================
+
+is_ac_connected() {
+    for ps in /sys/class/power_supply/A*/online /sys/class/power_supply/ADP*/online; do
+        if [[ -f "$ps" && $(cat "$ps" 2>/dev/null) == "1" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+sync_profile() {
+    if is_ac_connected; then
+        asusctl profile set Balanced >/dev/null 2>&1
+    else
+        asusctl profile set Quiet >/dev/null 2>&1
+    fi
+}
+
+if [[ "$1" == "--daemon" ]]; then
+    # Ensure asusd preference defaults are configured
+    asusctl profile set Balanced -a >/dev/null 2>&1 || true
+    asusctl profile set Quiet -b >/dev/null 2>&1 || true
+
+    sync_profile
+
+    last_state=""
+    while true; do
+        if is_ac_connected; then
+            curr_state="ac"
+        else
+            curr_state="bat"
+        fi
+
+        if [[ "$curr_state" != "$last_state" ]]; then
+            sync_profile
+            last_state="$curr_state"
+        fi
+        sleep 3
+    done
+else
+    sync_profile
+fi

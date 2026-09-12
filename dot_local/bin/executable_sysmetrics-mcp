@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+
+def get_cpu_info():
+    try:
+        with open("/proc/stat", "r") as f:
+            first_line = f.readline()
+        loadavg = os.getloadavg()
+        return {"loadavg": loadavg, "stat": first_line.strip()}
+    except Exception as e:
+        return {"error": str(e)}
+
+def get_memory_info():
+    mem = {}
+    try:
+        with open("/proc/meminfo", "r") as f:
+            for line in f:
+                parts = line.split(":")
+                if len(parts) == 2:
+                    mem[parts[0].strip()] = parts[1].strip()
+    except Exception as e:
+        mem["error"] = str(e)
+    return mem
+
+def get_gpu_info():
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=utilization.gpu,utilization.memory,memory.total,memory.used,memory.free,temperature.gpu", "--format=csv,noheader,nounits"],
+            text=True
+        ).strip()
+        parts = [p.strip() for p in out.split(",")]
+        return {
+            "gpu_utilization_percent": parts[0],
+            "memory_utilization_percent": parts[1],
+            "vram_total_mb": parts[2],
+            "vram_used_mb": parts[3],
+            "vram_free_mb": parts[4],
+            "temperature_celsius": parts[5]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+def read_message():
+    line = sys.stdin.readline()
+    if not line:
+        return None
+    return json.loads(line)
+
+def write_message(msg):
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+def main():
+    while True:
+        req = read_message()
+        if req is None:
+            break
+        req_id = req.get("id")
+        method = req.get("method")
+        
+        if method == "initialize":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "sysmetrics-mcp",
+                        "version": "1.0.0"
+                    }
+                }
+            })
+        elif method == "notifications/initialized":
+            pass
+        elif method == "tools/list":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": [
+                        {
+                            "name": "get_cpu_metrics",
+                            "description": "Get real-time CPU load averages and core status",
+                            "inputSchema": {"type": "object", "properties": {}}
+                        },
+                        {
+                            "name": "get_memory_metrics",
+                            "description": "Get exact RAM and Swap allocation from /proc/meminfo",
+                            "inputSchema": {"type": "object", "properties": {}}
+                        },
+                        {
+                            "name": "get_gpu_metrics",
+                            "description": "Get NVIDIA RTX 5050 Mobile VRAM, utilization and thermals",
+                            "inputSchema": {"type": "object", "properties": {}}
+                        },
+                        {
+                            "name": "get_system_telemetry",
+                            "description": "Get combined telemetry (CPU, RAM, GPU thermals)",
+                            "inputSchema": {"type": "object", "properties": {}}
+                        }
+                    ]
+                }
+            })
+        elif method == "tools/call":
+            params = req.get("params", {})
+            name = params.get("name")
+            
+            data = {}
+            if name == "get_cpu_metrics":
+                data = get_cpu_info()
+            elif name == "get_memory_metrics":
+                data = get_memory_info()
+            elif name == "get_gpu_metrics":
+                data = get_gpu_info()
+            elif name == "get_system_telemetry":
+                data = {
+                    "cpu": get_cpu_info(),
+                    "gpu": get_gpu_info(),
+                    "memory": {
+                        k: v for k, v in get_memory_info().items()
+                        if k in ["MemTotal", "MemFree", "MemAvailable", "SwapTotal", "SwapFree"]
+                    }
+                }
+            else:
+                data = {"error": f"Unknown tool {name}"}
+
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": json.dumps(data, indent=2)}
+                    ]
+                }
+            })
+        else:
+            if req_id is not None:
+                write_message({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Method {method} not found"
+                    }
+                })
+
+if __name__ == "__main__":
+    main()

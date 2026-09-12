@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+# ==============================================================================
+# Bluetooth Auto-Trust & Instant Audio Routing Daemon
+# 1. Automatically marks all paired devices as 'Trusted' in BlueZ so they never
+#    trigger authorization prompts or 60s timeouts.
+# 2. Instantly routes audio to Bluetooth headphones/speakers on connect.
+# ==============================================================================
+
+import os
+import sys
+import time
+import subprocess
+import gi
+
+gi.require_version('Gio', '2.0')
+gi.require_version('GLib', '2.0')
+from gi.repository import Gio, GLib
+
+bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+
+def notify(title, msg, icon="audio-headphones"):
+    subprocess.Popen([
+        "notify-send",
+        "-h", "string:x-canonical-private-synchronous:bt-audio",
+        "-t", "2500",
+        "-i", icon,
+        title,
+        msg
+    ])
+
+def switch_audio_to_bluetooth(mac_clean, device_name):
+    # Allow Pipewire/Wireplumber half a second to initialize the audio sink node
+    time.sleep(0.6)
+    try:
+        sinks_out = subprocess.check_output(["pactl", "list", "sinks", "short"]).decode()
+        for line in sinks_out.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split("\t")
+            sink_name = parts[1]
+            if "bluez_output" in sink_name and mac_clean.lower() in sink_name.lower():
+                subprocess.run(["pactl", "set-default-sink", sink_name], check=True)
+                # Move all active sink inputs to this sink
+                inputs_out = subprocess.check_output(["pactl", "list", "sink-inputs", "short"]).decode()
+                for input_line in inputs_out.strip().split("\n"):
+                    if input_line:
+                        input_id = input_line.split("\t")[0]
+                        subprocess.run(["pactl", "move-sink-input", input_id, sink_name], check=False)
+                notify("Bluetooth Audio Connected", f"Audio switched to {device_name}", "audio-headphones")
+                return
+    except Exception as e:
+        print(f"Error routing audio: {e}", file=sys.stderr)
+
+def trust_device(object_path, dev_name):
+    try:
+        dev = Gio.DBusProxy.new_sync(
+            bus,
+            Gio.DBusProxyFlags.NONE,
+            None,
+            'org.bluez',
+            object_path,
+            'org.bluez.Device1',
+            None
+        )
+        trusted = dev.get_cached_property('Trusted')
+        if trusted is not None and not trusted.get_boolean():
+            dev.set_cached_property('Trusted', GLib.Variant('b', True))
+            # Also invoke bluetoothctl trust as a reliable fallback
+            mac = object_path.split("dev_")[-1].replace("_", ":")
+            subprocess.run(["bluetoothctl", "trust", mac], check=False, stdout=subprocess.DEVNULL)
+            print(f"[+] Automatically trusted device: {dev_name} ({object_path})")
+    except Exception as e:
+        print(f"[-] Failed to trust device {object_path}: {e}", file=sys.stderr)
+
+def auto_connect_trusted_audio():
+    """On boot, connect all paired+trusted Bluetooth audio devices that are in range."""
+    try:
+        om = Gio.DBusProxy.new_sync(
+            bus,
+            Gio.DBusProxyFlags.NONE,
+            None,
+            'org.bluez',
+            '/',
+            'org.freedesktop.DBus.ObjectManager',
+            None
+        )
+        objects = om.GetManagedObjects()
+        for path, ifaces in objects.items():
+            if 'org.bluez.Device1' in ifaces:
+                props = ifaces['org.bluez.Device1']
+                paired   = props.get('Paired', False)
+                trusted  = props.get('Trusted', False)
+                connected = props.get('Connected', False)
+                uuids    = props.get('UUIDs', [])
+                name     = props.get('Name', 'Unknown')
+                is_audio = any("110b" in u.lower() or "110a" in u.lower() for u in uuids)
+                if paired and trusted and not connected and is_audio:
+                    mac = path.split("dev_")[-1].replace("_", ":")
+                    print(f"[+] Boot auto-connect: {name} ({mac})")
+                    subprocess.Popen(["bluetoothctl", "connect", mac],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error in auto_connect_trusted_audio: {e}", file=sys.stderr)
+    return False  # GLib.timeout_add: do not repeat
+
+def check_all_devices():
+    try:
+        om = Gio.DBusProxy.new_sync(
+            bus,
+            Gio.DBusProxyFlags.NONE,
+            None,
+            'org.bluez',
+            '/',
+            'org.freedesktop.DBus.ObjectManager',
+            None
+        )
+        objects = om.GetManagedObjects()
+        for path, ifaces in objects.items():
+            if 'org.bluez.Device1' in ifaces:
+                props = ifaces['org.bluez.Device1']
+                name = props.get('Name', 'Unknown Device')
+                paired = props.get('Paired', False)
+                trusted = props.get('Trusted', False)
+                if paired and not trusted:
+                    trust_device(path, name)
+    except Exception as e:
+        print(f"Error checking devices: {e}", file=sys.stderr)
+
+
+def on_signal(connection, sender_name, object_path, interface_name, signal_name, parameters, user_data):
+    if interface_name == 'org.freedesktop.DBus.Properties' and signal_name == 'PropertiesChanged':
+        iface, changed, _ = parameters.unpack()
+        if iface == 'org.bluez.Device1':
+            dev_proxy = Gio.DBusProxy.new_sync(
+                bus,
+                Gio.DBusProxyFlags.NONE,
+                None,
+                'org.bluez',
+                object_path,
+                'org.bluez.Device1',
+                None
+            )
+            name_prop = dev_proxy.get_cached_property('Name')
+            dev_name = name_prop.get_string() if name_prop else "Bluetooth Device"
+            
+            # If device was paired, ensure it is trusted immediately
+            if 'Paired' in changed and changed['Paired']:
+                trust_device(object_path, dev_name)
+
+            # If device connected
+            if 'Connected' in changed and changed['Connected']:
+                trust_device(object_path, dev_name)
+                # Check if it has Audio Sink UUID
+                uuids_prop = dev_proxy.get_cached_property('UUIDs')
+                is_audio = False
+                if uuids_prop:
+                    for u in uuids_prop.unpack():
+                        if "110b" in u.lower() or "110a" in u.lower() or "111e" in u.lower():
+                            is_audio = True
+                            break
+                if is_audio:
+                    mac_clean = object_path.split("dev_")[-1]
+                    # Route audio in separate worker / thread or quick timeout
+                    GLib.timeout_add(100, lambda: (switch_audio_to_bluetooth(mac_clean, dev_name), False)[1])
+
+            elif 'Connected' in changed and not changed['Connected']:
+                # Disconnected
+                uuids_prop = dev_proxy.get_cached_property('UUIDs')
+                is_audio = False
+                if uuids_prop:
+                    for u in uuids_prop.unpack():
+                        if "110b" in u.lower() or "110a" in u.lower() or "111e" in u.lower():
+                            is_audio = True
+                            break
+                if is_audio:
+                    notify("Bluetooth Audio Disconnected", f"{dev_name} disconnected, audio on speakers", "audio-speakers")
+
+    elif interface_name == 'org.freedesktop.DBus.ObjectManager' and signal_name == 'InterfacesAdded':
+        obj_path, ifaces = parameters.unpack()
+        if 'org.bluez.Device1' in ifaces:
+            props = ifaces['org.bluez.Device1']
+            name = props.get('Name', 'Bluetooth Device')
+            paired = props.get('Paired', False)
+            if paired:
+                trust_device(obj_path, name)
+
+def main():
+    check_all_devices()
+    # After 5s, attempt to reconnect any trusted audio devices not yet connected
+    # (handles boot scenario where BlueZ starts before headset radio wakes up)
+    GLib.timeout_add(5000, auto_connect_trusted_audio)
+    bus.signal_subscribe(
+        'org.bluez',
+        None,
+        None,
+        None,
+        None,
+        Gio.DBusSignalFlags.NONE,
+        on_signal,
+        None
+    )
+    loop = GLib.MainLoop()
+    try:
+        loop.run()
+    except KeyboardInterrupt:
+        pass
+
+if __name__ == '__main__':
+    main()

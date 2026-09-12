@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# CS2 High-FPS Native Launcher (ASUS TUF F16 + RTX 5050 Laptop)
+# ==============================================================================
+# - Hardware: ASUS TUF F16 (i5-13450HX + RTX 5050)
+# - Rendering: Direct Native Vulkan on dedicated NVIDIA RTX 5050 (250+ FPS)
+# - Stretched 4:3: Zero-lag Hardware Panel Scaling via Intel Display Controller
+# - CPU Pinning: Physical P-cores 0-11 (Bypasses E-cores to eliminate micro-stutters)
+# - Audio: Low-latency PulseAudio streaming (30ms) & SBC-XQ Bluetooth codec
+export DISPLAY="${DISPLAY:-:0}"
+export SDL_VIDEO_DRIVER=x11
+export SDL_VIDEODRIVER=x11
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export __VK_LAYER_NV_optimus=NVIDIA_only
+
+# Ensure picom is killed if lingering
+killall -9 picom 2>/dev/null || pkill -9 -x picom 2>/dev/null || true
+
+# 1. Polybar, Display & Hook cleanup handler on exit
+cleanup() {
+    trap - EXIT INT TERM HUP
+    echo "==> Restoring native display resolution (1920x1200 @ 165Hz)..."
+    [ -n "$HOOK_PID" ] && kill "$HOOK_PID" 2>/dev/null || true
+    xrandr --output eDP-1 --set "scaling mode" "Full aspect" 2>/dev/null || true
+    xrandr --output eDP-1 --mode "1920x1200" --rate 165.00 2>/dev/null || xrandr --output eDP-1 --auto 2>/dev/null || true
+    sh "$HOME/.fehbg" 2>/dev/null || true
+    "$HOME/.local/bin/bar-apply" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM HUP
+
+# 2. Hide status bar
+polybar-msg cmd hide 2>/dev/null || true
+
+# 3. Set Intel display controller hardware scaling to Full (Zero-lag stretched 4:3)
+xrandr --output eDP-1 --set "scaling mode" "Full" 2>/dev/null || true
+
+# 4. Switch to 4:3 165Hz mode
+TARGET_RES="${CS2_RES:-1440x1080}"
+case "$TARGET_RES" in
+    1344|1344x1008)
+        xrandr --output eDP-1 --mode "1344x1008_165.00" --rate 164.89 2>/dev/null || true
+        ;;
+    1280|1280x960)
+        xrandr --output eDP-1 --mode "1280x960_165.00" --rate 164.80 2>/dev/null || true
+        ;;
+    1024|1024x768)
+        xrandr --output eDP-1 --mode "1024x768_165.00" --rate 164.78 2>/dev/null || true
+        ;;
+    native|1920|1920x1200)
+        xrandr --output eDP-1 --mode "1920x1200" --rate 165.00 2>/dev/null || true
+        ;;
+    1440|1440x1080|*)
+        xrandr --output eDP-1 --mode "1440x1080" --rate 164.85 2>/dev/null || xrandr --output eDP-1 --mode "1440x1080_165.00" 2>/dev/null || true
+        ;;
+esac
+
+# 5. Start i3 workspace restack hook to eliminate Steam bleed-through on workspace switches
+if ! pgrep -f "cs2-restack-hook" >/dev/null 2>&1; then
+    "$HOME/.local/bin/cs2-restack-hook" &
+    HOOK_PID=$!
+fi
+
+# 6. Fallback to local game binary if invoked without Steam %command% arguments
+if [ $# -eq 0 ] || [[ "$1" == -* ]]; then
+    if [ -f "$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh" ]; then
+        set -- "$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh" "$@"
+    fi
+fi
+
+# 7. Launch natively on dedicated NVIDIA RTX 5050 pinned to P-cores 0-11
+# Uncapped FPS (+fps_max 0 +fps_max_ui 0), skip intro (-novid), disable joystick/velocity overhead
+taskset -c 0-11 gamemoderun "$@" -vulkan -novelocity -nojoy -novid +fps_max 0 +fps_max_ui 0
+GAME_EXIT=$?
+
+exit ${GAME_EXIT:-0}

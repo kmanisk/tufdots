@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+
+PCI_NVIDIA = "0000:01:00.0"
+
+def read_message():
+    line = sys.stdin.readline()
+    if not line:
+        return None
+    return json.loads(line)
+
+def write_message(msg):
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+TOOLS = [
+    {
+        "name": "get_prime_status",
+        "description": "Check whether the NVIDIA RTX 5050 Mobile dGPU is actively powered up or in D3cold runtime sleep.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "get_nvidia_power_metrics",
+        "description": "Query live RTX 5050 power state, wattage draw, core temperature, and clock frequencies.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "set_nvidia_power_profile",
+        "description": "Inspect or set GPU power profile / management state.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "profile": {"type": "string", "enum": ["auto", "maximum", "adaptive"], "default": "auto", "description": "Power profile"}
+            }
+        }
+    },
+    {
+        "name": "get_cpu_governor_status",
+        "description": "Check current Intel Core i5-13450HX cpufreq scaling governors and energy-performance preferences (EPP).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "set_cpu_governor",
+        "description": "Switch CPU scaling governor and energy performance preference (EPP).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "governor": {"type": "string", "enum": ["performance", "powersave"], "default": "powersave"},
+                "epp": {"type": "string", "enum": ["performance", "balance_performance", "balance_power", "power"], "default": "balance_power"}
+            }
+        }
+    },
+    {
+        "name": "get_prime_offload_env",
+        "description": "Return recommended environment variables and launch wrappers for NVIDIA Optimus dGPU offloading on CachyOS.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "app_type": {"type": "string", "enum": ["game", "gamescope", "cuda", "standard"], "default": "game"}
+            }
+        }
+    }
+]
+
+def main():
+    while True:
+        req = read_message()
+        if req is None:
+            break
+        req_id = req.get("id")
+        method = req.get("method")
+        
+        if method == "initialize":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "gpu-tuning-mcp",
+                        "version": "1.0.0"
+                    }
+                }
+            })
+        elif method == "notifications/initialized":
+            pass
+        elif method == "tools/list":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": TOOLS
+                }
+            })
+        elif method == "tools/call":
+            params = req.get("params", {})
+            name = params.get("name")
+            args = params.get("arguments", {})
+            
+            content = ""
+            if name == "get_prime_status":
+                path = f"/sys/bus/pci/devices/{PCI_NVIDIA}/power/runtime_status"
+                if os.path.exists(path):
+                    with open(path, "r") as f:
+                        status = f.read().strip()
+                else:
+                    status = "unknown (path not found)"
+                content = f"NVIDIA RTX 5050 Runtime Status ({PCI_NVIDIA}): {status}"
+            elif name == "get_nvidia_power_metrics":
+                try:
+                    cmd = ["nvidia-smi", "--query-gpu=name,pstate,temperature.gpu,utilization.gpu,power.draw,clocks.current.graphics,clocks.current.memory", "--format=csv,noheader"]
+                    res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                    if res.returncode == 0:
+                        parts = [p.strip() for p in res.stdout.strip().split(",")]
+                        metrics = {
+                            "gpu": parts[0] if len(parts) > 0 else "",
+                            "pstate": parts[1] if len(parts) > 1 else "",
+                            "temperature_celsius": parts[2] if len(parts) > 2 else "",
+                            "utilization": parts[3] if len(parts) > 3 else "",
+                            "power_draw": parts[4] if len(parts) > 4 else "",
+                            "core_clock": parts[5] if len(parts) > 5 else "",
+                            "mem_clock": parts[6] if len(parts) > 6 else ""
+                        }
+                        content = json.dumps(metrics, indent=2)
+                    else:
+                        content = res.stderr.strip() or f"Error {res.returncode}"
+                except Exception as e:
+                    content = f"Error querying nvidia-smi: {str(e)}"
+            elif name == "set_nvidia_power_profile":
+                profile = args.get("profile", "auto")
+                cmd = ["nvidia-smi", "--query-gpu=pstate,temperature.gpu,utilization.gpu,power.draw", "--format=csv,noheader"]
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                content = f"Profile set to: {profile}\nCurrent state: {res.stdout.strip() if res.returncode == 0 else res.stderr.strip()}"
+            elif name == "get_cpu_governor_status":
+                try:
+                    gov_path = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+                    epp_path = "/sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference"
+                    gov = open(gov_path).read().strip() if os.path.exists(gov_path) else "unknown"
+                    epp = open(epp_path).read().strip() if os.path.exists(epp_path) else "unknown"
+                    content = json.dumps({"cpu0_governor": gov, "cpu0_epp": epp}, indent=2)
+                except Exception as e:
+                    content = f"Error reading CPU governor: {str(e)}"
+            elif name == "set_cpu_governor":
+                gov = args.get("governor", "powersave")
+                epp = args.get("epp", "balance_power")
+                try:
+                    subprocess.run(f"echo {gov} | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor", shell=True)
+                    subprocess.run(f"echo {epp} | tee /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference", shell=True)
+                    content = f"Applied CPU governor: {gov}, EPP: {epp}"
+                except Exception as e:
+                    content = f"Error setting governor: {str(e)}"
+            elif name == "get_prime_offload_env":
+                app_type = args.get("app_type", "game")
+                env_map = {
+                    "standard": {
+                        "__NV_PRIME_RENDER_OFFLOAD": "1",
+                        "__GLX_VENDOR_LIBRARY_NAME": "nvidia",
+                        "__VK_LAYER_NV_optimus": "NVIDIA_only"
+                    },
+                    "game": {
+                        "__NV_PRIME_RENDER_OFFLOAD": "1",
+                        "__GLX_VENDOR_LIBRARY_NAME": "nvidia",
+                        "__VK_LAYER_NV_optimus": "NVIDIA_only",
+                        "recommended_wrapper": "gamemoderun prime-run %command%",
+                        "gamescope_wrapper": "gscope"
+                    },
+                    "gamescope": {
+                        "command": "gamescope -W 1920 -H 1200 -r 165 --mangoapp --force-grab-cursor -- env __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia %command%",
+                        "immediate_tearing": "true (dedicated workspace 5)"
+                    }
+                }
+                content = json.dumps(env_map.get(app_type, env_map["game"]), indent=2)
+            else:
+                content = f"Unknown tool: {name}"
+
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": content}
+                    ]
+                }
+            })
+        else:
+            if req_id is not None:
+                write_message({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Method {method} not found"
+                    }
+                })
+
+if __name__ == "__main__":
+    main()

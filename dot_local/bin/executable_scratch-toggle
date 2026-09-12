@@ -1,0 +1,42 @@
+#!/bin/sh
+# scratch-toggle <term|notes>
+# Toggle a scratchpad dropdown by name. If its window doesn't exist
+# (closed/crashed), spawn it first -- the i3 for_window rule auto-hides it
+# into the scratchpad, then it is shown. Keys never go silently dead.
+#
+# Spawn commands live here (not in the i3 bindsym line) because i3's command
+# parser treats commas as command separators, which breaks
+# `alacritty --class Alacritty,<instance>` when passed through a binding.
+set -u
+
+mode="${1:?usage: scratch-toggle <term|notes>}"
+
+case "$mode" in
+    term)
+        instance="scratch-term"
+        spawn="alacritty --class Alacritty,scratch-term"
+        ;;
+    notes)
+        instance="scratch-notes"
+        spawn="alacritty --class Alacritty,scratch-notes -e nvim /home/manisk/notes.md"
+        ;;
+    *)
+        echo "unknown mode: $mode" >&2
+        exit 1
+        ;;
+esac
+
+tree_has() {
+    i3-msg -t get_tree 2>/dev/null | grep -qE "\"instance\": ?\"$instance\""
+}
+
+if ! tree_has; then
+    # shellcheck disable=SC2086
+    setsid sh -c "$spawn" </dev/null >/dev/null 2>&1 &
+    for _ in 1 2 3 4 5 6 7 8; do
+        tree_has && break
+        sleep 0.3
+    done
+fi
+
+i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null

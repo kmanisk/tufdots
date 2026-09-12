@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Toggle Bottom Bar (Polybar) - Alt+0. The ONLY writer of bar_state besides
+# initial setup. Flips the persisted state, then bar-apply enforces it.
+# --force: explicit user action, so the in-game guard is bypassed.
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+STATE_FILE="$HOME/.config/polybar/bar_state"
+mkdir -p "$HOME/.config/polybar"
+
+CURRENT_STATE=$(cat "$STATE_FILE" 2>/dev/null || echo "visible")
+
+if [[ "$CURRENT_STATE" == "hidden" ]]; then
+    echo "visible" > "$STATE_FILE"
+else
+    echo "hidden" > "$STATE_FILE"
+fi
+
+"$HOME/.local/bin/bar-apply" --force >/dev/null 2>&1

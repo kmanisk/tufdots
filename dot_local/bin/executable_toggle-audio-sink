@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Toggle Audio Output Sink between Laptop Speakers and Bluetooth Audio Device
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+
+CURRENT_SINK=$(pactl get-default-sink 2>/dev/null)
+BT_SINK=$(pactl list short sinks 2>/dev/null | awk '{print $2}' | grep -E '^bluez_output\.' | head -n 1)
+SPEAKER_SINK=$(pactl list short sinks 2>/dev/null | awk '{print $2}' | grep -E '^alsa_output\.' | head -n 1)
+
+if [[ -z "$SPEAKER_SINK" ]]; then
+    SPEAKER_SINK=$(pactl list short sinks 2>/dev/null | awk '{print $2}' | grep -v -E '^bluez_output\.' | head -n 1)
+fi
+
+move_streams() {
+    local target_sink="$1"
+    for stream in $(pactl list short sink-inputs 2>/dev/null | cut -f1); do
+        pactl move-sink-input "$stream" "$target_sink" 2>/dev/null || true
+    done
+}
+
+if [[ "$CURRENT_SINK" == "$BT_SINK"* ]] && [[ -n "$BT_SINK" ]]; then
+    # Currently on Bluetooth -> Switch to Laptop Speakers
+    if [[ -n "$SPEAKER_SINK" ]]; then
+        pactl set-default-sink "$SPEAKER_SINK"
+        move_streams "$SPEAKER_SINK"
+        notify-send -t 2000 -i audio-speakers "Audio Output Switched" "🔊 Laptop Speakers"
+    else
+        notify-send -u low -t 2000 -i dialog-warning "Audio Switcher" "No speaker output sink found"
+    fi
+else
+    # Currently on Speakers -> Switch to Bluetooth if connected
+    if [[ -n "$BT_SINK" ]]; then
+        pactl set-default-sink "$BT_SINK"
+        move_streams "$BT_SINK"
+        BT_DESC=$(pactl list sinks 2>/dev/null | grep -A 20 "$BT_SINK" | grep -m 1 "device.description" | cut -d'"' -f2)
+        BT_LABEL="${BT_DESC:-Bluetooth Audio}"
+        notify-send -t 2000 -i audio-headphones "Audio Output Switched" "🎧 ${BT_LABEL}"
+    else
+        notify-send -u low -t 2000 -i dialog-warning "Audio Switcher" "No Bluetooth audio device connected"
+    fi
+fi

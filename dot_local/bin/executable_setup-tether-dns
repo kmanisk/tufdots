@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# setup-tether-dns: Configure robust public DNS for USB Tethering & Wired Connections
+# Fixes Android local DNS relay dropouts, DoH blocks, and browser ERR_NAME_NOT_RESOLVED
+# ==============================================================================
+
+set -eo pipefail
+
+PRIMARY_IPV4_DNS="1.1.1.1 8.8.8.8"
+PRIMARY_IPV6_DNS="2606:4700:4700::1111 2001:4860:4860::8888"
+
+echo -e "\e[36m==================================================\e[0m"
+echo -e "\e[36m  USB Tethering & Wired Connection DNS Optimizer  \e[0m"
+echo -e "\e[36m==================================================\e[0m\n"
+
+# Ensure nmcli is available
+if ! command -v nmcli >/dev/null 2>&1; then
+    echo -e "\e[31mError: nmcli (NetworkManager) is not installed.\e[0m" >&2
+    exit 1
+fi
+
+# Find all 802-3-ethernet (wired / USB tethering) connections
+mapfile -t CONNECTIONS < <(nmcli -t -f UUID,TYPE,NAME con show | grep ":802-3-ethernet:" || true)
+
+if [[ ${#CONNECTIONS[@]} -eq 0 ]]; then
+    echo -e "\e[33mNo wired or tethered network profiles found.\e[0m"
+else
+    echo -e "\e[32mConfiguring DNS rules on wired/tethered profiles:\e[0m"
+    for item in "${CONNECTIONS[@]}"; do
+        uuid=$(echo "$item" | cut -d: -f1)
+        name=$(echo "$item" | cut -d: -f3-)
+
+        echo "  • Configuring profile: '$name' ($uuid)..."
+        nmcli connection modify "$uuid" \
+            ipv4.dns "$PRIMARY_IPV4_DNS" \
+            ipv6.dns "$PRIMARY_IPV6_DNS" \
+            ipv4.ignore-auto-dns no \
+            ipv6.ignore-auto-dns no 2>/dev/null || true
+
+        # If currently active, refresh connection
+        if nmcli -t -f UUID,DEVICE con show --active | grep -q "^$uuid:"; then
+            echo "    -> Profile is currently active. Reactivating with new DNS servers..."
+            nmcli connection up "$uuid" >/dev/null 2>&1 || true
+        fi
+    done
+fi
+
+# Flush systemd-resolved DNS caches
+if command -v resolvectl >/dev/null 2>&1; then
+    echo -e "\n\e[32mFlushing system DNS cache...\e[0m"
+    resolvectl flush-caches 2>/dev/null || true
+fi
+
+# Verify active DNS status
+echo -e "\n\e[36mCurrent DNS status for active connections:\e[0m"
+if command -v resolvectl >/dev/null 2>&1; then
+    resolvectl status 2>/dev/null | grep -E '(Link|Current DNS Server|DNS Servers)' | head -n 12 || true
+fi
+
+# Test resolution
+echo -e "\n\e[32mTesting DNS resolution over active interface:\e[0m"
+if command -v dig >/dev/null 2>&1; then
+    if ip_addr=$(dig +short google.com | head -n 1) && [[ -n "$ip_addr" ]]; then
+        echo -e "  ✓ google.com -> \e[32m$ip_addr\e[0m (Success!)"
+    else
+        echo -e "  \e[31m✗ DNS resolution test failed. Check cellular connection.\e[0m"
+    fi
+elif ping -c 1 google.com >/dev/null 2>&1; then
+    echo -e "  ✓ Internet connectivity verified!"
+fi
+
+echo -e "\n\e[32mDone! Your USB tethering will now reliably resolve DNS without dropouts.\e[0m\n"

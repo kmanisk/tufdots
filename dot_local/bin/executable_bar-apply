@@ -1,0 +1,61 @@
+#!/bin/sh
+# ==============================================================================
+# bar-apply [--force] - enforce ~/.config/polybar/bar_state. SINGLE authority
+# for bar visibility. INVARIANT: while state is "hidden", NOTHING may show the
+# bar. Only an explicit user toggle (toggle-bar) flips the state file.
+#   --force : explicit user action; skips the in-game guard.
+# ==============================================================================
+set -u
+export DISPLAY="${DISPLAY:-:0}"
+
+STATE_FILE="$HOME/.config/polybar/bar_state"
+FORCE=0
+[ "${1:-}" = "--force" ] && FORCE=1
+
+state="$(cat "$STATE_FILE" 2>/dev/null || echo "visible")"
+[ "$state" != "hidden" ] && state="visible"
+
+# 1. Revive if dead (launch one instance WITHOUT killing anything else)
+if ! pgrep -x polybar >/dev/null 2>&1; then
+    MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
+    [ -z "$MON" ] && MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"
+    if [ -n "$MON" ]; then
+        MONITOR="$MON" polybar --reload example </dev/null >/dev/null 2>&1 &
+    else
+        polybar --reload example </dev/null >/dev/null 2>&1 &
+    fi
+fi
+
+# 2. Wait for IPC (bar with script modules can take seconds on first start)
+i=0
+while [ $i -lt 25 ]; do
+    if polybar-msg cmd ping >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.2
+    i=$((i + 1))
+done
+
+# 3. In-game guard: never pop the bar over CS2/gamescope on automatic events.
+#    (Explicit --force user toggles still go through.)
+if [ "$FORCE" -eq 0 ] && { pgrep -x cs2 >/dev/null 2>&1 || pgrep -x gamescope >/dev/null 2>&1; }; then
+    polybar-msg cmd hide >/dev/null 2>&1 || true
+    exit 0
+fi
+
+# 4. Enforce state with retries (single IPC shot can miss a starting bar)
+if [ "$state" = "hidden" ]; then
+    i=0
+    while [ $i -lt 5 ]; do
+        polybar-msg cmd hide >/dev/null 2>&1 && break
+        sleep 0.3
+        i=$((i + 1))
+    done
+else
+    i=0
+    while [ $i -lt 5 ]; do
+        polybar-msg cmd show >/dev/null 2>&1 && break
+        sleep 0.3
+        i=$((i + 1))
+    done
+fi

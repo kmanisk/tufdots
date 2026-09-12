@@ -1,0 +1,23 @@
+{{- $machineKey := "" -}}
+{{- if hasKey . "machine" -}}
+{{-   $machineKey = .machine -}}
+{{- else if eq .chezmoi.os "windows" -}}
+{{-   $machineKey = "windows-workstation" -}}
+{{- else if eq .chezmoi.os "linux" -}}
+{{-   $machineKey = "generic-linux" -}}
+{{- else -}}
+{{-   fail "Unsupported operating system" -}}
+{{- end -}}
+{{- $m := index .machines $machineKey -}}
+{{- $secretStore := "basic" -}}
+{{- if and $m (hasKey $m "providers") (hasKey $m.providers "browser_secret_store") -}}
+{{-   $secretStore = $m.providers.browser_secret_store -}}
+{{- end -}}
+--ignore-gpu-blocklist
+--enable-gpu-rasterization
+--enable-zero-copy
+--enable-smooth-scrolling
+--enable-features=SmoothScrolling,CanvasOopRasterization,VaapiVideoDecodeLinuxGL,VaapiVideoDecoder
+--ozone-platform=x11
+--force-device-scale-factor=1.40
+--password-store={{ $secretStore }}

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Modern Rofi Power Menu with Automatic i3 Session Preservation
+# ==============================================================================
+export PATH="$HOME/.local/bin:$PATH"
+
+# Options with icons
+shutdown='⏻   Shutdown'
+reboot='   Restart'
+lock='󰌾   Lock Screen'
+suspend='󰤄   Suspend'
+logout='󰍃   Logout'
+
+# Prompt via Rofi
+chosen=$(printf "%s\n%s\n%s\n%s\n%s" "$shutdown" "$reboot" "$lock" "$suspend" "$logout" | rofi \
+    -dmenu \
+    -i \
+    -p "Power Menu" \
+    -theme ~/.config/rofi/powermenu.rasi \
+    -selected-row 0)
+
+case "$chosen" in
+    *"Shutdown"*)
+        ~/.local/bin/i3-session-save --all 2>/dev/null || :
+        systemctl poweroff
+        ;;
+    *"Restart"*)
+        ~/.local/bin/i3-session-save --all 2>/dev/null || :
+        systemctl reboot
+        ;;
+    *"Lock"*)
+        sleep 0.1 && i3lock --blur 5
+        ;;
+    *"Suspend"*)
+        ~/.local/bin/i3-session-save --all
+        systemctl suspend
+        ;;
+    *"Logout"*)
+        ~/.local/bin/i3-session-save --all
+        i3-msg exit
+        ;;
+esac

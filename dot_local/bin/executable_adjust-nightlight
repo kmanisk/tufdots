@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Adjust Night Light Color Temperature Up/Down with On-Screen Slider
+# Range: 2000K (Warm/Amber) - 6500K (Daylight Neutral)
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+
+DELTA="${1:-300}"
+STATE_FILE="/tmp/nightlight_state"
+TEMP_FILE="$HOME/.config/nightlight_temp"
+
+CURRENT_TEMP=4200
+if [[ -f "$TEMP_FILE" ]]; then
+    CURRENT_TEMP=$(cat "$TEMP_FILE" 2>/dev/null)
+elif [[ -f "/tmp/nightlight_temp" ]]; then
+    CURRENT_TEMP=$(cat "/tmp/nightlight_temp" 2>/dev/null)
+fi
+
+NEW_TEMP=$(( CURRENT_TEMP + DELTA ))
+
+# Clamp between 2000K and 6500K
+if (( NEW_TEMP > 6500 )); then
+    NEW_TEMP=6500
+fi
+if (( NEW_TEMP < 2000 )); then
+    NEW_TEMP=2000
+fi
+
+echo "$NEW_TEMP" > "$TEMP_FILE"
+echo "$NEW_TEMP" > "/tmp/nightlight_temp" 2>/dev/null || true
+
+# Calculate percentage (2000K = 0%, 6500K = 100%)
+PERCENT=$(( (NEW_TEMP - 2000) * 100 / 4500 ))
+
+if (( NEW_TEMP >= 6500 )); then
+    redshift -x -m randr >/dev/null 2>&1
+    xrandr --output eDP-1 --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    echo "off" > "$STATE_FILE"
+    echo "100" > /tmp/xobpipe 2>/dev/null || true
+    notify-send -h string:x-canonical-private-synchronous:nightlight -h int:value:100 -t 1000 -i preferences-desktop-display "Night Light" "6500K (Daylight)" 2>/dev/null || true
+else
+    redshift -r -P -m randr -O "$NEW_TEMP" >/dev/null 2>&1
+    echo "on" > "$STATE_FILE"
+    echo "$PERCENT" > /tmp/xobpipe 2>/dev/null || true
+    notify-send -h string:x-canonical-private-synchronous:nightlight -h int:value:"$PERCENT" -t 1000 -i preferences-desktop-display "Night Light" "${NEW_TEMP}K" 2>/dev/null || true
+fi

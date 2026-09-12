@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# cs2-netwatch — CS2 Network Diagnostic Monitor
+#
+# Simultaneously tracks per-sample deltas of:
+#   - Gateway RTT   (laptop ↔ USB ↔ phone)       — is the RNDIS/USB path OK?
+#   - Internet RTT  (phone ↔ LTE ↔ Internet)      — is the cellular path OK?
+#   - Jitter        (sample-to-sample Internet RTT variation)
+#   - rx_dropped    — kernel dropped before socket (ring-buffer overflow)
+#   - rx_missed     — driver ring-buffer overflow (NIC never saw the packet)
+#   - rx_errors     — hardware / CRC / framing errors
+#   - tx_dropped    — kernel couldn't send (relevant for full queues)
+#
+# rx_missed is the key counter for netdev_budget relevance:
+#   if rx_missed increments at a hitch → kernel ring pressure → budget tuning helps
+#   if rx_missed stays 0 at a hitch   → loss is upstream (phone/LTE/Valve)
+#
+# Output is simultaneously printed to terminal AND appended to a log file so
+# you can correlate timestamps with the CS2 console log after an event.
+#
+# Usage:
+#   cs2-netwatch                              # auto-detect everything
+#   cs2-netwatch enp0s20f0u5 10.195.55.198   # explicit interface + gateway
+#   cs2-netwatch enp0s20f0u5 10.195.55.198 1.1.1.1   # also explicit internet target
+#
+# Decision tree when CS2 hitches:
+#   GW spikes/drops + INET spikes/drops   → USB/RNDIS or phone-side problem
+#   GW stable      + INET spikes/drops    → LTE/carrier path (no Linux fix)
+#   GW stable      + INET stable          → CS2/UDP/Valve path
+#   Any of above   + rx_missed increments → kernel ring pressure also contributing
+# ==============================================================================
+
+set -uo pipefail
+
+# ---------- auto-detect defaults ----------
+IFACE="${1:-$(ip route 2>/dev/null | awk '/default/{print $5; exit}')}"
+GW="${2:-$(ip route 2>/dev/null | awk '/default/{print $3; exit}')}"
+INET="${3:-1.1.1.1}"
+INTERVAL=0.5   # seconds between samples
+
+LOGDIR="${HOME}/.local/share/cs2-netwatch"
+mkdir -p "$LOGDIR"
+LOGFILE="${LOGDIR}/$(date '+%Y%m%d_%H%M%S').log"
+
+# ---------- validate ----------
+if [[ -z "$IFACE" || -z "$GW" ]]; then
+    echo "ERROR: Could not auto-detect interface/gateway." >&2
+    echo "Run: ip route" >&2
+    exit 1
+fi
+
+# ---------- colours (terminal only) ----------
+RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
+CYN='\033[0;36m'; BLD='\033[1m';     RST='\033[0m'
+
+# ---------- helpers ----------
+get_rtt() {
+    local host="$1"
+    local result
+    result=$(ping -c 1 -W 1 -q "$host" 2>/dev/null | awk -F'/' '/rtt/{print $5}')
+    echo "${result:-LOSS}"
+}
+
+stat_read() {
+    cat "/sys/class/net/${IFACE}/statistics/${1}" 2>/dev/null || echo 0
+}
+
+colorize_rtt() {
+    local rtt="$1"
+    if [[ "$rtt" == "LOSS" ]]; then
+        printf '%b' "${RED}${BLD}  LOSS  ${RST}"
+        return
+    fi
+    local ms="${rtt%.*}"
+    if   (( ms < 30  )); then printf '%b' "${GRN}${rtt} ms${RST}"
+    elif (( ms < 80  )); then printf '%b' "${YEL}${rtt} ms${RST}"
+    else                       printf '%b' "${RED}${BLD}${rtt} ms${RST}"
+    fi
+}
+
+colorize_delta() {
+    local n="$1" label="$2"
+    if (( n > 0 )); then
+        printf '%b' "${RED}${BLD}+${n}${RST}"
+    else
+        printf '%b' "${GRN}0${RST}"
+    fi
+}
+
+# tee to both terminal and logfile, stripping ANSI codes for the log
+log_header() {
+    printf '%s\n' "$*" | tee -a "$LOGFILE"
+}
+
+log_line() {
+    # $1 = plain text (for log), rest = colour-formatted (for terminal)
+    local plain="$1"; shift
+    printf '%b\n' "$@"          # terminal (with colour)
+    printf '%s\n' "$plain" >> "$LOGFILE"  # log (plain)
+}
+
+# ---------- header ----------
+clear
+echo -e "${BLD}CS2 Network Diagnostic Monitor${RST}"
+echo -e "Interface : ${CYN}${IFACE}${RST}"
+echo -e "Gateway   : ${CYN}${GW}${RST}  (laptop ↔ USB ↔ phone)"
+echo -e "Internet  : ${CYN}${INET}${RST}  (phone ↔ LTE ↔ Internet)"
+echo -e "Log file  : ${CYN}${LOGFILE}${RST}"
+echo -e "Interval  : ${INTERVAL}s"
+echo ""
+echo -e "${BLD}Counter meanings:${RST}"
+echo -e "  rx_dropped  — kernel dropped before socket (ring/backlog full)"
+echo -e "  rx_missed   — NIC ring overflow (driver never got the packet)"
+echo -e "  rx_errors   — hardware errors (CRC, framing, etc.)"
+echo -e "  tx_dropped  — kernel couldn't enqueue outbound packet"
+echo ""
+echo -e "${BLD}Decision tree:${RST}"
+echo -e "  GW+INET both spike   → USB/RNDIS or phone problem"
+echo -e "  GW stable+INET spike → LTE/carrier path (no Linux fix)"
+echo -e "  Both stable+CS2 loss → CS2/UDP/Valve path"
+echo -e "  Any + rx_missed↑     → kernel ring pressure (netdev_budget relevant)"
+echo ""
+
+# log header (plain)
+{
+    echo "cs2-netwatch log — $(date)"
+    echo "Interface: $IFACE  Gateway: $GW  Internet: $INET"
+    echo ""
+} >> "$LOGFILE"
+
+# column header
+HDR="$(printf '%-8s  %-10s  %-10s  %-10s  %-10s  %-10s  %-10s  %-10s' \
+    "Time" "GW_ms" "INET_ms" "Jitter" "rx_drop" "rx_miss" "rx_err" "tx_drop")"
+printf '%b\n' "${BLD}${HDR}${RST}"
+echo "$HDR" >> "$LOGFILE"
+SEP="$(printf '─%.0s' {1..90})"
+echo "$SEP" | tee -a "$LOGFILE"
+
+# ---------- initial counters ----------
+prev_rx_dropped=$(stat_read rx_dropped)
+prev_rx_missed=$(stat_read rx_missed_errors)
+prev_rx_errors=$(stat_read rx_errors)
+prev_tx_dropped=$(stat_read tx_dropped)
+last_inet_rtt=""
+sample=0
+
+# ---------- main loop ----------
+while true; do
+    ts=$(date '+%H:%M:%S')
+
+    # Probe gateway and internet (sequential — simpler, avoids subshell races)
+    gw_rtt=$(get_rtt "$GW")
+    inet_rtt=$(get_rtt "$INET")
+
+    # Read counters
+    cur_rx_dropped=$(stat_read rx_dropped)
+    cur_rx_missed=$(stat_read rx_missed_errors)
+    cur_rx_errors=$(stat_read rx_errors)
+    cur_tx_dropped=$(stat_read tx_dropped)
+
+    d_dropped=$(( cur_rx_dropped - prev_rx_dropped ))
+    d_missed=$(( cur_rx_missed  - prev_rx_missed  ))
+    d_errors=$(( cur_rx_errors  - prev_rx_errors  ))
+    d_tx_drop=$(( cur_tx_dropped - prev_tx_dropped ))
+
+    prev_rx_dropped=$cur_rx_dropped
+    prev_rx_missed=$cur_rx_missed
+    prev_rx_errors=$cur_rx_errors
+    prev_tx_dropped=$cur_tx_dropped
+
+    # Jitter: |current - previous| Internet RTT
+    jitter_str="-"
+    if [[ "$last_inet_rtt" != "LOSS" && -n "$last_inet_rtt" && "$inet_rtt" != "LOSS" ]]; then
+        jitter_str=$(awk "BEGIN{d=${inet_rtt}-${last_inet_rtt}; printf \"%.1f ms\", (d<0)?-d:d}")
+    fi
+    last_inet_rtt="$inet_rtt"
+
+    # Plain line for log
+    plain="$(printf '%-8s  %-10s  %-10s  %-10s  %-10s  %-10s  %-10s  %-10s' \
+        "$ts" \
+        "${gw_rtt}" \
+        "${inet_rtt}" \
+        "${jitter_str}" \
+        "${d_dropped}" \
+        "${d_missed}" \
+        "${d_errors}" \
+        "${d_tx_drop}")"
+    echo "$plain" >> "$LOGFILE"
+
+    # Colour line for terminal
+    printf '%-8s  ' "$ts"
+    printf '%-18b  ' "$(colorize_rtt "$gw_rtt")"
+    printf '%-18b  ' "$(colorize_rtt "$inet_rtt")"
+    printf '%-12s  ' "${jitter_str}"
+    printf '%-18b  ' "$(colorize_delta "$d_dropped"  "rx_drop")"
+    printf '%-18b  ' "$(colorize_delta "$d_missed"   "rx_miss")"
+    printf '%-18b  ' "$(colorize_delta "$d_errors"   "rx_err")"
+    printf '%-18b\n' "$(colorize_delta "$d_tx_drop"  "tx_drop")"
+
+    sample=$(( sample + 1 ))
+
+    # Periodic separator every 60 samples (~30s at 0.5s interval)
+    if (( sample % 60 == 0 )); then
+        sumline="  [+${sample} samples | rx_dropped_total: ${cur_rx_dropped} | rx_missed_total: ${cur_rx_missed}]"
+        echo "$SEP" | tee -a "$LOGFILE"
+        echo "$sumline" | tee -a "$LOGFILE"
+        echo "$SEP" | tee -a "$LOGFILE"
+    fi
+
+    sleep "$INTERVAL"
+done
