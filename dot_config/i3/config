@@ -19,6 +19,9 @@ bindsym $mod+slash exec --no-startup-id ~/.local/bin/rofi-websearch
 bindsym Mod1+Shift+space exec --no-startup-id ~/.local/bin/rofi-websearch --floating
 bindsym $mod+d exec --no-startup-id ~/.local/bin/rofi-websearch --floating
 
+# Clipboard History (Clipmenu + Rofi): Win + y
+bindsym $mod+y exec --no-startup-id ~/.local/bin/rofi-clipboard
+
 # Browser (Windows + b) -> Default Brave on Intel iGPU (Workspace 2)
 # Split horizontal (Windows + Shift + b)
 bindsym $mod+b exec --no-startup-id brave-origin

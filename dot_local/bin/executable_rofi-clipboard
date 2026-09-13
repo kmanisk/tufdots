@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Clipboard History Selector using clipmenu + rofi
+export CM_LAUNCHER=rofi
+export CM_HISTLENGTH=20
+exec clipmenu -p "Clipboard" "$@"

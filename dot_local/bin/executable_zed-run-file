@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# zed-run-file - Native POSIX Multi-Language Runner for Zed Editor on Linux
+# Ported from Windows run-file.ps1 with full language & toolchain parity
+# ==============================================================================
+set -e
+
+if [ -z "${1:-}" ]; then
+    echo "Usage: $(basename "$0") <file>" >&2
+    exit 1
+fi
+
+FILE="$1"
+if [ ! -e "$FILE" ]; then
+    echo "Error: File '$FILE' does not exist." >&2
+    exit 1
+fi
+
+# Resolve absolute path & components
+FILE_ABS="$(realpath "$FILE")"
+DIR="$(dirname "$FILE_ABS")"
+BASENAME="$(basename "$FILE_ABS")"
+NAME="${BASENAME%.*}"
+EXT="${BASENAME##*.}"
+EXT="$(echo "$EXT" | tr '[:upper:]' '[:lower:]')"
+
+cd "$DIR"
+
+case "$EXT" in
+    # JavaScript / JSX / MJS / CJS
+    js|mjs|cjs|jsx)
+        if command -v bun >/dev/null 2>&1; then
+            exec bun "$FILE_ABS"
+        elif command -v node >/dev/null 2>&1; then
+            exec node "$FILE_ABS"
+        else
+            echo "Neither bun nor node found in PATH." >&2
+            exit 1
+        fi
+        ;;
+
+    # TypeScript / TSX
+    ts|mts|cts|tsx)
+        if command -v bun >/dev/null 2>&1; then
+            exec bun "$FILE_ABS"
+        elif command -v tsx >/dev/null 2>&1; then
+            exec tsx "$FILE_ABS"
+        elif command -v deno >/dev/null 2>&1; then
+            exec deno run -A "$FILE_ABS"
+        elif command -v ts-node >/dev/null 2>&1; then
+            exec ts-node "$FILE_ABS"
+        elif command -v npx >/dev/null 2>&1; then
+            exec npx tsx "$FILE_ABS"
+        else
+            echo "No TypeScript runner (bun, tsx, deno, ts-node, npx) found in PATH." >&2
+            exit 1
+        fi
+        ;;
+
+    # Python
+    py)
+        if command -v python3 >/dev/null 2>&1; then
+            exec python3 -u "$FILE_ABS"
+        elif command -v python >/dev/null 2>&1; then
+            exec python -u "$FILE_ABS"
+        else
+            echo "Python not found in PATH." >&2
+            exit 1
+        fi
+        ;;
+
+    # Rust
+    rs)
+        if [ -f "Cargo.toml" ] || [ -f "../Cargo.toml" ] || [ -f "../../Cargo.toml" ]; then
+            exec cargo run
+        else
+            OUT_BIN="/tmp/zed-bin-${NAME}-$$"
+            rustc "$FILE_ABS" -o "$OUT_BIN"
+            trap 'rm -f "$OUT_BIN"' EXIT
+            "$OUT_BIN"
+        fi
+        ;;
+
+    # C
+    c)
+        OUT_BIN="/tmp/zed-bin-${NAME}-$$"
+        if command -v clang >/dev/null 2>&1; then
+            clang -Wall -Wextra -O2 "$FILE_ABS" -o "$OUT_BIN"
+        elif command -v gcc >/dev/null 2>&1; then
+            gcc -Wall -Wextra -O2 "$FILE_ABS" -o "$OUT_BIN"
+        else
+            echo "Neither clang nor gcc found in PATH." >&2
+            exit 1
+        fi
+        trap 'rm -f "$OUT_BIN"' EXIT
+        "$OUT_BIN"
+        ;;
+
+    # C++
+    cpp|cc|cxx|c++)
+        OUT_BIN="/tmp/zed-bin-${NAME}-$$"
+        if command -v clang++ >/dev/null 2>&1; then
+            clang++ -std=c++20 -Wall -Wextra -O2 "$FILE_ABS" -o "$OUT_BIN"
+        elif command -v g++ >/dev/null 2>&1; then
+            g++ -std=c++20 -Wall -Wextra -O2 "$FILE_ABS" -o "$OUT_BIN"
+        else
+            echo "Neither clang++ nor g++ found in PATH." >&2
+            exit 1
+        fi
+        trap 'rm -f "$OUT_BIN"' EXIT
+        "$OUT_BIN"
+        ;;
+
+    # Go
+    go)
+        if [ -f "go.mod" ]; then
+            exec go run .
+        else
+            exec go run "$FILE_ABS"
+        fi
+        ;;
+
+    # Java
+    java)
+        if [ -f "pom.xml" ]; then
+            exec mvn compile exec:java
+        elif [ -f "build.gradle" ]; then
+            exec gradle run
+        else
+            exec java --enable-preview "$FILE_ABS"
+        fi
+        ;;
+
+    # C#
+    cs)
+        CSPROJ="$(find . -maxdepth 2 -name "*.csproj" -print -quit 2>/dev/null || true)"
+        if [ -n "$CSPROJ" ]; then
+            exec dotnet run
+        elif command -v dotnet-script >/dev/null 2>&1; then
+            exec dotnet-script "$FILE_ABS"
+        else
+            echo "No .csproj or dotnet-script runner found." >&2
+            exit 1
+        fi
+        ;;
+
+    # Lua
+    lua)
+        if command -v luajit >/dev/null 2>&1; then
+            exec luajit "$FILE_ABS"
+        elif command -v lua >/dev/null 2>&1; then
+            exec lua "$FILE_ABS"
+        else
+            echo "Neither luajit nor lua found in PATH." >&2
+            exit 1
+        fi
+        ;;
+
+    # Zig
+    zig)
+        exec zig run "$FILE_ABS"
+        ;;
+
+    # Nim
+    nim)
+        exec nim r -d:release "$FILE_ABS"
+        ;;
+
+    # Haskell
+    hs|lhs)
+        if command -v runhaskell >/dev/null 2>&1; then
+            exec runhaskell "$FILE_ABS"
+        else
+            OUT_BIN="/tmp/zed-bin-${NAME}-$$"
+            ghc -O2 "$FILE_ABS" -o "$OUT_BIN"
+            trap 'rm -f "$OUT_BIN"' EXIT
+            "$OUT_BIN"
+        fi
+        ;;
+
+    # Kotlin
+    kt|kts)
+        if [ "$EXT" = "kts" ]; then
+            exec kotlinc -script "$FILE_ABS"
+        else
+            exec kotlin "$FILE_ABS"
+        fi
+        ;;
+
+    # Ruby
+    rb)
+        exec ruby "$FILE_ABS"
+        ;;
+
+    # PHP
+    php)
+        exec php "$FILE_ABS"
+        ;;
+
+    # Dart
+    dart)
+        exec dart run "$FILE_ABS"
+        ;;
+
+    # Swift
+    swift)
+        exec swift "$FILE_ABS"
+        ;;
+
+    # R
+    r)
+        exec Rscript "$FILE_ABS"
+        ;;
+
+    # Shell
+    sh|bash)
+        exec bash "$FILE_ABS"
+        ;;
+    zsh)
+        exec zsh "$FILE_ABS"
+        ;;
+    fish)
+        exec fish "$FILE_ABS"
+        ;;
+
+    # HTML / HTM
+    html|htm)
+        if [ -f "package.json" ] && grep -q '"dev":' package.json 2>/dev/null; then
+            exec npm run dev
+        elif command -v live-server >/dev/null 2>&1; then
+            exec live-server --port=5500 --wait=150 --entry-file="$FILE_ABS" "$DIR"
+        elif command -v browser-sync >/dev/null 2>&1; then
+            exec browser-sync start --server --files "$DIR" --startPath "$BASENAME"
+        else
+            exec xdg-open "$FILE_ABS"
+        fi
+        ;;
+
+    *)
+        echo "No runner configured for .$EXT files - add a case in $(basename "$0")" >&2
+        exit 1
+        ;;
+esac

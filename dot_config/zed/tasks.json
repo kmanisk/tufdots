@@ -1,0 +1,32 @@
+[
+  {
+    "label": "run file",
+    "command": "zed-run-file",
+    "args": ["$ZED_FILE"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "live server",
+    "command": "live-server --port=5500 --wait=150 \"$ZED_WORKTREE_ROOT\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "npm dev",
+    "command": "npm run dev",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "open roadmap",
+    "command": "zed",
+    "args": ["~/coding/MasterRoadmap2026.md"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "never"
+  }
+]

@@ -1,0 +1,566 @@
+[
+  // =============================================================================
+  //                           Global / Workspace Keybindings
+  // =============================================================================
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "ctrl-shift-;": "workspace::NewTerminal",
+      "alt-e": "project_panel::ToggleFocus",
+      "alt-l": "workspace::ToggleLeftDock",
+      "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
+      "alt-p": "command_palette::Toggle",
+      "alt-f": "file_finder::Toggle",
+      "alt-o": "workspace::Open",
+      "alt-shift-x": "zed::Extensions",
+      "alt-w": "pane::CloseActiveItem",
+      "ctrl-k ctrl-s": "zed::OpenKeymap",
+      "ctrl-,": "zed::OpenSettings",
+      "alt-r": [
+        "task::Spawn",
+        {
+          "task_name": "run file"
+        }
+      ],
+
+      "shift-alt-g": "git_panel::ToggleFocus",
+      "alt-{": "vim::ResizePaneLeft",
+      "alt-}": "vim::ResizePaneRight",
+      "ctrl-alt-h": [
+        "workspace::MoveItemToPaneInDirection",
+        { "direction": "left" }
+      ],
+      "ctrl-alt-j": [
+        "workspace::MoveItemToPaneInDirection",
+        { "direction": "down" }
+      ],
+      "ctrl-alt-k": [
+        "workspace::MoveItemToPaneInDirection",
+        { "direction": "up" }
+      ],
+      "ctrl-alt-l": [
+        "workspace::MoveItemToPaneInDirection",
+        { "direction": "right" }
+      ]
+    }
+  },
+
+  // =============================================================================
+  //                     Pane || Workspace || Terminal || Search
+  // =============================================================================
+  {
+    "context": "Pane || Workspace || Terminal || ProjectSearchBar || BufferSearchBar || ProjectSearch",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "alt-w": "pane::CloseActiveItem",
+      "alt-j": "pane::ActivateNextItem",
+      "alt-k": "pane::ActivatePreviousItem"
+    }
+  },
+
+  // =============================================================================
+  //                           General Editor Keybindings
+  // =============================================================================
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "alt-shift-y": "zed::DecreaseBufferFontSize",
+      "alt-shift-u": "zed::IncreaseBufferFontSize",
+      "alt-y": "editor::Copy",
+      "alt-u": "editor::Paste",
+      "ctrl-alt-f": "editor::Fold",
+      "ctrl-alt-u": "editor::UnfoldLines",
+      "ctrl-/": "editor::ToggleComments",
+      "alt-l": "workspace::ToggleLeftDock",
+      "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
+      "ctrl-enter": "assistant::InlineAssist",
+      "alt-i": "editor::ShowCompletions",
+      "ctrl-space": "editor::ShowCompletions"
+    }
+  },
+
+  // =============================================================================
+  //                   Editor (Normal & Visual Modes - Vim)
+  // =============================================================================
+  {
+    "context": "Editor && (vim_mode == normal || vim_mode == visual) && !VimWaiting && !menu",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "space t h": "theme_selector::Toggle",
+      "space i a": "assistant::InlineAssist",
+      "alt-l": "workspace::ToggleLeftDock",
+      "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
+      "space r t": "task::Spawn",
+      "space r r": "task::Rerun",
+      "alt-e": "project_panel::ToggleFocus",
+      "space e": "project_panel::ToggleFocus",
+      "space g q": "workspace::ToggleRightDock",
+      "space o r": "projects::OpenRecent",
+      "space x": "zed::Extensions",
+      "space o k": "zed::OpenKeymap",
+      "space o s": "zed::OpenSettingsFile",
+      "space o g": "zed::OpenSettings",
+      "space o m": ["task::Spawn", {"task_name": "open roadmap"}],
+      "space n f": "workspace::NewFile",
+      "space t t": "workspace::NewTerminal",
+      "alt-v": "pane::SplitVertical",
+      "alt-h": "pane::SplitHorizontal",
+      "space g v": "pane::SplitVertical",
+      "space g h": "pane::SplitHorizontal",
+      "space z z": "workspace::ToggleCenteredLayout",
+      "space z f": "zed::ToggleFullScreen",
+      "f11": "zed::ToggleFullScreen",
+      "z a": "editor::ToggleFold",
+      "space h r": "editor::RevertSelectedHunks",
+      "space h d": "editor::ToggleHunkDiff",
+      "space h p": "editor::ToggleHunkDiff",
+      "space g h d": "editor::ToggleHunkDiff",
+      "space g h r": "editor::RevertSelectedHunks",
+      "space l g": "git_panel::ToggleFocus",
+      "space b": "editor::ToggleBreakpoint",
+      "space i h": "editor::ToggleInlayHints",
+      "space u w": "editor::ToggleSoftWrap",
+      "space m p": "markdown::OpenPreview",
+      "space m v": "markdown::OpenPreviewToTheSide",
+      "space f g": "pane::DeploySearch",
+      "space f f": "file_finder::Toggle",
+      "space o f": "workspace::Open",
+      "space o e": "editor::RevealInFileManager",
+      "space c p": "editor::CopyPath",
+      "space c n": "editor::CopyRelativePath",
+      "space f d": "editor::Format",
+      "space /": "editor::ToggleComments",
+      "space c s": "outline::Toggle",
+      // Harpoon-Style Buffer Slots (1 to 5)
+      "space 1": [
+        "pane::ActivateItem",
+        0
+      ],
+      "space 2": [
+        "pane::ActivateItem",
+        1
+      ],
+      "space 3": [
+        "pane::ActivateItem",
+        2
+      ],
+      "space 4": [
+        "pane::ActivateItem",
+        3
+      ],
+      "space 5": [
+        "pane::ActivateItem",
+        4
+      ],
+      // Quick Alternate File & Buffer Switcher
+      "space space": "pane::AlternateFile",
+      "space ,": "tab_switcher::Toggle",
+      "space r c": "pane::ReopenClosedItem",
+      "space l s": [
+        "task::Spawn",
+        {
+          "task_name": "live server"
+        }
+      ]
+    }
+  },
+
+  // =============================================================================
+  //                   Editor (Normal Mode Only - Vim)
+  // =============================================================================
+  {
+    "context": "Editor && vim_mode == normal && !VimWaiting && !menu",
+    "bindings": {
+      // Save & Close (Always formats on space w / ctrl-s)
+      "space w": [
+        "editor::Format",
+        "workspace::Save"
+      ],
+      "ctrl-s": [
+        "editor::Format",
+        "workspace::Save"
+      ],
+      "space W": "workspace::SaveWithoutFormat",
+      "space q": "pane::CloseActiveItem",
+      "ctrl-w": "pane::CloseActiveItem",
+      "space c t": "pane::CloseInactiveItems",
+      "space c l": "pane::CloseItemsToTheLeft",
+      "space n f": "workspace::NewFile",
+      "space f n": "workspace::NewFile",
+      "space n n": "editor::NewlineBelow",
+      "space n k": "editor::NewlineAbove",
+      "space enter": "editor::NewlineBelow",
+      "space s a": "editor::SelectAll",
+      "space y a": [
+        "editor::SelectAll",
+        "editor::Copy"
+      ],
+      "+": "vim::Increment",
+      "-": "vim::Decrement",
+      "ctrl-a": "vim::Increment",
+      "ctrl-x": "vim::Decrement",
+      "g p": [
+        "editor::NewlineBelow",
+        "editor::Paste"
+      ],
+      "U": "vim::Redo",
+      "shift-l": "editor::Hover",
+      "shift-j": "pane::ActivateNextItem",
+      "shift-k": "pane::ActivatePreviousItem",
+      "alt-j": "pane::ActivateNextItem",
+      "alt-k": "pane::ActivatePreviousItem",
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-l": "workspace::ActivatePaneRight",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-j": "workspace::ActivatePaneDown",
+      "space c a": "editor::ToggleCodeActions",
+      "space r v": "editor::Rename",
+      "g d": "editor::GoToDefinition",
+      "g D": "editor::GoToDefinitionSplit",
+      "g i": "editor::GoToImplementation",
+      "g I": "editor::GoToImplementationSplit",
+      "g t": "editor::GoToTypeDefinition",
+      "g T": "editor::GoToTypeDefinitionSplit",
+      "g r": "editor::FindAllReferences",
+      "g f": "editor::OpenSelectedFilename",
+      "g x": "editor::OpenUrl",
+      "g z": "editor::OpenUrl",
+      // Tasks & Code Runner
+      "space r t": "task::Spawn",
+      "space r r": "task::Rerun",
+      "space r f": [
+        "task::Spawn",
+        {
+          "task_name": "run file"
+        }
+      ],
+      "space l s": [
+        "task::Spawn",
+        {
+          "task_name": "live server"
+        }
+      ],
+      "space n d": [
+        "task::Spawn",
+        {
+          "task_name": "npm dev"
+        }
+      ],
+      "] d": "editor::GoToDiagnostic",
+      "[ d": "editor::GoToPreviousDiagnostic",
+      "space v p": "diagnostics::Deploy",
+      "] h": "editor::GoToHunk",
+      "[ h": "editor::GoToPreviousHunk",
+      "s": "vim::HelixJumpToWord",
+      "S": "vim::HelixJumpToWord",
+      "space j": "vim::JoinLines",
+      "g s": "vim::PushSneak",
+      "g S": "vim::PushSneakBackward",
+      "x": [
+        "workspace::SendKeystrokes",
+        "\" _ x"
+      ],
+      "shift-x": [
+        "workspace::SendKeystrokes",
+        "\" _ shift-x"
+      ]
+    }
+  },
+
+  // =============================================================================
+  //                   Empty Pane
+  // =============================================================================
+  {
+    "context": "EmptyPane",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "space o r": "projects::OpenRecent"
+    }
+  },
+
+  // =============================================================================
+  //                   Editor (Visual Mode - Vim)
+  // =============================================================================
+  {
+    "context": "Editor && vim_mode == visual && !VimWaiting && !menu",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "g c": "editor::ToggleComments",
+      "space /": "editor::ToggleComments",
+      "d": "editor::Delete",
+      "D": "editor::Delete",
+      "x": [
+        "workspace::SendKeystrokes",
+        "\" _ x"
+      ],
+      "shift-x": [
+        "workspace::SendKeystrokes",
+        "\" _ shift-x"
+      ],
+      "delete": "editor::Delete",
+      "backspace": "editor::Delete",
+      "space c a": "editor::ToggleCodeActions",
+      "space r v": "editor::Rename",
+      "s": "vim::HelixJumpToWord",
+      "S": "vim::PushAddSurrounds",
+      "g s": "vim::PushSneak",
+      "g S": "vim::PushSneakBackward",
+      "shift-j": "editor::MoveLineDown",
+      "shift-k": "editor::MoveLineUp",
+      "<": "editor::Outdent",
+      ">": "editor::Indent"
+    }
+  },
+
+  // =============================================================================
+  //                   Editor (Operator-Pending Mode - Vim)
+  // =============================================================================
+  {
+    "context": "Editor && vim_mode == operator",
+    "bindings": {
+      "g s": "vim::PushSneak",
+      "g S": "vim::PushSneakBackward",
+      "z": "vim::PushSneak",
+      "Z": "vim::PushSneakBackward"
+    }
+  },
+
+  // =============================================================================
+  //                   Editor (Insert Mode - Vim)
+  // =============================================================================
+  {
+    "context": "Editor && vim_mode == insert",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "j k": "vim::NormalBefore",
+      "alt-i": "editor::ShowCompletions",
+      "ctrl-space": "editor::ShowCompletions",
+      "alt-l": "workspace::ToggleLeftDock",
+      "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
+      "ctrl-p": "editor::Paste"
+    }
+  },
+
+  // =============================================================================
+  //                   Completion Menu (VS Code Parity)
+  // =============================================================================
+  {
+    "context": "Editor && showing_completions",
+    "bindings": {
+      "tab": "editor::ConfirmCompletion",
+      "enter": "editor::ConfirmCompletion",
+      "ctrl-n": "editor::ContextMenuNext",
+      "ctrl-p": "editor::ContextMenuPrevious"
+    }
+  },
+
+  // =============================================================================
+  //                   Terminal
+  // =============================================================================
+  {
+    "context": "Terminal && !menu",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "ctrl-shift-;": "workspace::NewTerminal",
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-l": "workspace::ActivatePaneRight",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-j": "workspace::ActivatePaneDown",
+      "alt-j": "pane::ActivateNextItem",
+      "alt-k": "pane::ActivatePreviousItem"
+    }
+  },
+
+  // =============================================================================
+  //                   Project Panel (File Tree)
+  // =============================================================================
+  {
+    "context": "ProjectPanel && not_editing",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "a": "project_panel::NewFile",
+      "A": "project_panel::NewDirectory",
+      "r": "project_panel::Rename",
+      "f2": "project_panel::Rename",
+      "d": "project_panel::Delete",
+      "delete": "project_panel::Delete",
+      "x": "project_panel::Cut",
+      "c": "project_panel::Copy",
+      "p": "project_panel::Paste",
+      "c p": "project_panel::CopyPath",
+      "c n": "project_panel::CopyRelativePath",
+      "y y": "project_panel::CopyPath",
+      "y f": "project_panel::Duplicate",
+      "l": "project_panel::OpenPermanent",
+      "enter": "project_panel::OpenPermanent",
+      "right": "project_panel::OpenPermanent",
+      "h": "project_panel::CollapseSelectedEntry",
+      "left": "project_panel::CollapseSelectedEntry",
+      "j": "menu::SelectNext",
+      "down": "menu::SelectNext",
+      "k": "menu::SelectPrevious",
+      "up": "menu::SelectPrevious",
+      "z a": "project_panel::CollapseAllEntries",
+      "o e": "project_panel::RevealInFileManager",
+      "escape": "workspace::ToggleRightDock",
+      "q": "workspace::ToggleRightDock",
+      "space e": "workspace::ToggleRightDock",
+      "alt-e": "workspace::ToggleRightDock",
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-l": "workspace::ActivatePaneRight",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-j": "workspace::ActivatePaneDown"
+    }
+  },
+
+  // =============================================================================
+  //                   Dock Navigation
+  // =============================================================================
+  {
+    "context": "Dock",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "ctrl-w h": "workspace::ActivatePaneLeft",
+      "ctrl-w l": "workspace::ActivatePaneRight",
+      "ctrl-w k": "workspace::ActivatePaneUp",
+      "ctrl-w j": "workspace::ActivatePaneDown"
+    }
+  },
+
+
+
+  // =============================================================================
+  //                   VimControl Keybindings
+  // =============================================================================
+  {
+    "context": "VimControl && !menu",
+    "bindings": {
+      "g s": "vim::PushSneak",
+      "g S": "vim::PushSneakBackward",
+      "g i": "editor::ToggleCodeActions",
+      "g d": "editor::OpenExcerpts"
+    }
+  },
+  {
+    "context": "Editor && VimControl && !VimWaiting && !menu",
+    "bindings": {
+      "g l": "vim::SelectNext",
+      "g L": "vim::SelectPrevious",
+      "g a": "editor::SelectAllMatches",
+      "g A": "editor::FindAllReferences",
+      "g f": "editor::OpenSelectedFilename",
+      "g x": "editor::OpenUrl",
+      "g z": "editor::OpenUrl",
+      "space p e": "diagnostics::Deploy"
+    }
+  },
+
+  // =============================================================================
+  //                   Assistant / AI Window Keybindings
+  // =============================================================================
+  {
+    "context": "AgentPanel || AssistantPanel",
+    "bindings": {
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "alt-shift-t": "agent::ToggleSearch",
+      "escape": "agent::DismissThreadSearch",
+      "alt-l": "workspace::ToggleLeftDock",
+      "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
+      "alt-w": "pane::CloseActiveItem",
+      "alt-j": "pane::ActivateNextItem",
+      "alt-k": "pane::ActivatePreviousItem",
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-l": "workspace::ActivatePaneRight",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-j": "workspace::ActivatePaneDown"
+    }
+  },
+
+  // =============================================================================
+  //                   Markdown Preview
+  // =============================================================================
+  {
+    "context": "MarkdownPreview",
+    "bindings": {
+      // Pane navigation
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-l": "workspace::ActivatePaneRight",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-j": "workspace::ActivatePaneDown",
+      // Scroll & Vim motions
+      "j": "markdown::ScrollDown",
+      "k": "markdown::ScrollUp",
+      "ctrl-d": "markdown::ScrollPageDown",
+      "ctrl-u": "markdown::ScrollPageUp",
+      "ctrl-f": "markdown::ScrollPageDown",
+      "ctrl-b": "markdown::ScrollPageUp",
+      "ctrl-e": "markdown::ScrollDown",
+      "ctrl-y": "markdown::ScrollUp",
+      "g g": "markdown::ScrollToTop",
+      "shift-g": "markdown::ScrollToBottom",
+      // Search in preview
+      "/": "buffer_search::Deploy",
+      "n": "search::SelectNextMatch",
+      "shift-n": "search::SelectPreviousMatch",
+      // Docks & panels
+      "ctrl-;": "workspace::ToggleBottomDock",
+      "ctrl-shift-;": "workspace::NewTerminal",
+      "alt-e": "project_panel::ToggleFocus",
+      "alt-l": "workspace::ToggleLeftDock",
+      "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
+      "alt-w": "pane::CloseActiveItem",
+      "alt-j": "pane::ActivateNextItem",
+      "alt-k": "pane::ActivatePreviousItem",
+      "shift-alt-g": "git_panel::ToggleFocus",
+      // Space leader — themes, settings, files
+      "space t h": "theme_selector::Toggle",
+      "space o s": "zed::OpenSettingsFile",
+      "space o g": "zed::OpenSettings",
+      "space o k": "zed::OpenKeymap",
+      "space o r": "projects::OpenRecent",
+      "space o m": ["task::Spawn", {"task_name": "open roadmap"}],
+      "space o f": "workspace::Open",
+      "space o e": "editor::RevealInFileManager",
+      "space f f": "file_finder::Toggle",
+      "space f g": "pane::DeploySearch",
+      "space x": "zed::Extensions",
+      // Space leader — splits & layout
+      "space g v": "pane::SplitVertical",
+      "space g h": "pane::SplitHorizontal",
+      "space z z": "workspace::ToggleCenteredLayout",
+      "space z f": "zed::ToggleFullScreen",
+      "f11": "zed::ToggleFullScreen",
+      "alt-v": "pane::SplitVertical",
+      "alt-h": "pane::SplitHorizontal",
+      // Space leader — panels
+      "space e": "project_panel::ToggleFocus",
+      "space g q": "workspace::ToggleRightDock",
+      "space l g": "git_panel::ToggleFocus",
+      // Space leader — markdown preview toggle (close/reopen)
+      "space m p": "markdown::OpenPreview",
+      "space m v": "markdown::OpenPreviewToTheSide",
+      // Space leader — terminal
+      "space t t": "workspace::NewTerminal",
+      // Space leader — buffer tabs (harpoon-style)
+      "space 1": ["pane::ActivateItem", 0],
+      "space 2": ["pane::ActivateItem", 1],
+      "space 3": ["pane::ActivateItem", 2],
+      "space 4": ["pane::ActivateItem", 3],
+      "space 5": ["pane::ActivateItem", 4],
+      "space space": "pane::AlternateFile",
+      "space ,": "tab_switcher::Toggle",
+      "space q": "pane::CloseActiveItem",
+      // Space leader — tasks
+      "space r t": "task::Spawn",
+      "space r r": "task::Rerun",
+      "space n f": "workspace::NewFile",
+      // Space leader — copy path
+      "space c p": "editor::CopyPath",
+      "space c n": "editor::CopyRelativePath",
+      // AI assist
+      "space i a": "assistant::InlineAssist"
+    }
+  }
+]

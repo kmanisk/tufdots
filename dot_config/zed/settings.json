@@ -1,0 +1,576 @@
+// Zed settings
+// Docs: https://zed.dev/docs/configuring-zed
+{
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 1. TYPOGRAPHY & FONTS (All Fonts in One Place)
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Editor (Buffer) Font
+    // "buffer_font_family": "CozetteVector",
+    // "buffer_font_family": "Departure Mono",
+    // "buffer_font_family": "Share Tech Mono",
+    "buffer_font_family": "Iosevka Nerd Font Mono",
+    "buffer_font_fallbacks": [
+        "FantasqueSansM Nerd Font",
+        "Aporetic Sans Mono",
+        "FantasqueSansM Nerd Font Mono"
+    ],
+    "buffer_font_size": 16.0, // <- Change this to adjust editor code size
+    // "buffer_font_size": 30.0, // <- Change this to adjust editor code size
+    "buffer_font_weight": 400, // Regular = 400, Medium = 500, SemiBold = 600, Bold = 700
+    "buffer_line_height": {
+        "custom": 1.43 // Line height spacing (1.35 - 1.4 sweet spot)
+        // "custom": 1.4 // Line height spacing (1.35 - 1.4 sweet spot)
+    },
+    "buffer_font_features": {
+        "liga": true, // Enable standard ligatures
+        "calt": true // Contextual alternates (coding ligatures: ->, =>, !=, ===)
+    },
+    // UI Font (Sidebars, Menus, Status Bar, Tabs)
+    "ui_font_family": "Cantarell",
+    "agent_ui_font_size": 16,
+    // "ui_font_family": "IntoneMono Nerd Font",
+    "ui_font_fallbacks": [
+        "Cantarell",
+        "system-ui"
+    ],
+    "ui_font_size": 16.0,
+    "ui_font_weight": 400,
+    // Terminal Font
+    "terminal": {
+        "shell": "system",
+        "font_family": "Iosevka Nerd Font Mono",
+        "font_fallbacks": [
+            "monospace"
+        ],
+        "font_size": 16.0,
+        "line_height": {
+            "custom": 1.0
+        },
+        "copy_on_select": true,
+        "default_width": 187
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 2. THEME & ICONS
+    // ─────────────────────────────────────────────────────────────────────────────
+    "icon_theme": "JetBrains Icons Dark",
+    "theme": {
+        "mode": "dark",
+        "light": "VSCode Light+",
+        "dark": "Lydia"
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 3. GENERAL & WINDOW
+    // ─────────────────────────────────────────────────────────────────────────────
+    "cli_default_open_behavior": "existing_window",
+    "instrumentation": {
+        "performance_profiler": {
+            "enabled": false
+        }
+    },
+    "show_wrap_guides": true,
+    "auto_update": false,
+    "base_keymap": "VSCode",
+    "when_closing_with_no_tabs": "keep_window_open",
+    "bottom_dock_layout": "contained",
+    "session": {
+        "trust_all_worktrees": true
+    },
+    "horizontal_scroll_margin": 1,
+    "vertical_scroll_margin": 99,
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 4. EDITOR BEHAVIOUR
+    // ─────────────────────────────────────────────────────────────────────────────
+    "preferred_line_length": 60,
+    "soft_wrap": "editor_width",
+    "hard_tabs": false,
+    "tab_size": 4,
+    "colorize_brackets": true,
+    "show_completions_on_input": true,
+    "show_completion_documentation": true,
+    "show_edit_predictions": true,
+    "show_signature_help_after_edits": false,
+    "auto_signature_help": true,
+    "mouse_wheel_zoom": true,
+    "hover_popover_enabled": true,
+    "inline_code_actions": false,
+    "selection_highlight": false,
+    "scroll_beyond_last_line": "vertical_scroll_margin",
+    "cursor_blink": false,
+    "cursor_shape": "bar",
+    "multi_cursor_modifier": "alt",
+    "markdown_preview": {
+        "limit_content_width": false
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 5. GUTTER & LINE NUMBERS
+    // ─────────────────────────────────────────────────────────────────────────────
+    "gutter": {
+        "line_numbers": true,
+        "folds": false,
+        "code_actions": false,
+        "runnables": false,
+        "breakpoints": false,
+        "bookmarks": false,
+        "min_line_number_digits": 0
+    },
+    "relative_line_numbers": "enabled",
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 6. MINIMAP & SCROLLBAR
+    // ─────────────────────────────────────────────────────────────────────────────
+    "minimap": {
+        "show": "never"
+    },
+    "scrollbar": {
+        "show": "never",
+        "axes": {
+            "horizontal": false,
+            "vertical": false
+        }
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 7. INDENT GUIDES & INLAY HINTS
+    // ─────────────────────────────────────────────────────────────────────────────
+    "indent_guides": {
+        "enabled": true,
+        "coloring": "fixed"
+    },
+    "inlay_hints": {
+        "enabled": false
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 8. TABS, TOOLBAR & STATUS BAR
+    // ─────────────────────────────────────────────────────────────────────────────
+    "preview_tabs": {
+        "enabled": false
+    },
+    "tabs": {
+        "git_status": true
+    },
+    "tab_bar": {
+        "show_nav_history_buttons": false,
+        "show_tab_bar_buttons": false,
+        "show": true // add to hide or remove tabs
+    },
+    "toolbar": {
+        "breadcrumbs": false,
+        "quick_actions": false
+    },
+    "sticky_scroll": {
+        "enabled": true
+    },
+    "status_bar": {
+        "experimental.show": false,
+        "active_language_button": false,
+        "cursor_position_button": false,
+        "line_endings_button": false
+    },
+    "centered_layout": {
+        "left_padding": 0.15,
+        "right_padding": 0.15
+    },
+    "title_bar": {
+        "show_sign_in": false,
+        "show_project_items": false,
+        "show_branch_name": false,
+        "show_user_menu": false,
+        "show_worktree_name": false,
+        "show_branch_status_icon": false
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 9. GIT (VERSION CONTROL)
+    // ─────────────────────────────────────────────────────────────────────────────
+    "git": {
+        "git_gutter": "hide",
+        "inline_blame": {
+            "enabled": false
+        }
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 10. VIM MODE & WHICH-KEY
+    // ─────────────────────────────────────────────────────────────────────────────
+    "vim_mode": true,
+    "vim": {
+        "use_system_clipboard": "on_yank"
+    },
+    "which_key": {
+        "enabled": true
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 11. AUTOSAVE
+    // ─────────────────────────────────────────────────────────────────────────────
+    "autosave": {
+        "after_delay": {
+            "milliseconds": 500
+        }
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 12. CODE FORMATTER
+    // ─────────────────────────────────────────────────────────────────────────────
+    "format_on_save": "on",
+    "remove_trailing_whitespace_on_save": true,
+    "ensure_final_newline_on_save": true,
+    "formatter": "language_server",
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 13. PER-LANGUAGE OVERRIDES
+    // ─────────────────────────────────────────────────────────────────────────────
+    "languages": {
+        "Rust": {
+            "formatter": "language_server",
+            "tab_size": 4,
+            "hard_tabs": true
+        },
+        "Python": {
+            "formatter": "language_server",
+            "tab_size": 4,
+            "hard_tabs": true
+        },
+        "Go": {
+            "formatter": "language_server",
+            "tab_size": 4,
+            "hard_tabs": true
+        },
+        "C": {
+            "formatter": "language_server",
+            "tab_size": 4,
+            "hard_tabs": true
+        },
+        "C++": {
+            "formatter": "language_server",
+            "tab_size": 4,
+            "hard_tabs": true
+        },
+        "Lua": {
+            "formatter": "language_server",
+            "tab_size": 4,
+            "hard_tabs": true
+        },
+        "HTML": {
+            "language_servers": [
+                "vscode-html-language-server",
+                "emmet-language-server",
+                "!vtsls",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "CSS": {
+            "language_servers": [
+                "css-language-server",
+                "emmet-language-server",
+                "tailwindcss-language-server",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "SCSS": {
+            "language_servers": [
+                "css-language-server",
+                "emmet-language-server",
+                "tailwindcss-language-server",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "JavaScript": {
+            "language_servers": [
+                "vtsls",
+                "emmet-language-server",
+                "tailwindcss-language-server",
+                "eslint",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "TypeScript": {
+            "language_servers": [
+                "vtsls",
+                "emmet-language-server",
+                "tailwindcss-language-server",
+                "eslint",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "TSX": {
+            "language_servers": [
+                "vtsls",
+                "emmet-language-server",
+                "tailwindcss-language-server",
+                "eslint",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "JSON": {
+            "language_servers": [
+                "json-language-server",
+                "..."
+            ],
+            "prettier": {
+                "allowed": true
+            },
+            "format_on_save": "on",
+            "tab_size": 2,
+            "hard_tabs": false
+        },
+        "Java": {
+            "formatter": "language_server",
+            "tab_size": 2,
+            "hard_tabs": false
+        }
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 14. LSP (LANGUAGE SERVER PROTOCOL) CONFIG
+    // ─────────────────────────────────────────────────────────────────────────────
+    "lsp": {
+        "emmet-language-server": {
+            "initialization_options": {
+                "showExpandedAbbreviation": "always",
+                "showAbbreviationSuggestions": true,
+                "showSuggestionsAsSnippets": true
+            }
+        },
+        "tailwindcss-language-server": {
+            "settings": {
+                "includeLanguages": {
+                    "html": "html",
+                    "javascript": "javascriptreact",
+                    "typescript": "typescriptreact"
+                }
+            }
+        },
+        "vtsls": {
+            "settings": {
+                "typescript": {
+                    "suggest": {
+                        "completeFunctionCalls": true
+                    },
+                    "preferences": {
+                        "includePackageJsonAutoImports": "auto"
+                    }
+                },
+                "javascript": {
+                    "suggest": {
+                        "completeFunctionCalls": true
+                    }
+                }
+            }
+        },
+        "rust-analyzer": {
+            "initialization_options": {
+                "check": {
+                    "command": "clippy"
+                }
+            }
+        },
+        "lua-language-server": {
+            "settings": {
+                "Lua": {
+                    "diagnostics": {
+                        "globals": [
+                            "vim"
+                        ]
+                    }
+                }
+            }
+        },
+        "gopls": {
+            "initialization_options": {
+                "analyses": {
+                    "unusedparams": true
+                },
+                "staticcheck": true
+            }
+        }
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 15. AI MODELS (GOOGLE GEMINI 3.7 FLASH)
+    // ─────────────────────────────────────────────────────────────────────────────
+    "language_models": {
+        "google": {
+            "available_models": [
+                {
+                    "name": "gemini-3.7-flash",
+                    "display_name": "Gemini 3.7 Flash",
+                    "max_tokens": 1000000
+                },
+                {
+                    "name": "gemini-3.5-flash-lite",
+                    "display_name": "Gemini 3.5 Flash-Lite",
+                    "max_tokens": 1000000
+                }
+            ]
+        }
+    },
+    "agent": {
+        "default_profile": "ask",
+        "default_model": {
+            "effort": "medium",
+            "enable_thinking": true,
+            "provider": "google",
+            "model": "gemini-3.6-flash"
+        },
+        "inline_assistant_model": {
+            "provider": "google",
+            "model": "gemini-3.5-flash"
+        },
+        "favorite_models": []
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 16. PANEL DOCK LAYOUT
+    // ─────────────────────────────────────────────────────────────────────────────
+    "project_panel": {
+        "auto_fold_dirs": false,
+        "button": true,
+        "dock": "right",
+        "git_status": true,
+        "hide_root": true,
+        "scrollbar": {
+            "show": "never"
+        },
+        "indent_guides": {
+            "show": "never"
+        }
+    },
+    "outline_panel": {
+        "dock": "right",
+        "scrollbar": {
+            "show": "never"
+        },
+        "indent_guides": {
+            "show": "never"
+        }
+    },
+    "collaboration_panel": {
+        "button": false,
+        "dock": "left"
+    },
+    "notification_panel": {
+        "dock": "left"
+    },
+    "chat_panel": {
+        "dock": "left"
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 17. FILE SCAN EXCLUSIONS
+    // ─────────────────────────────────────────────────────────────────────────────
+    "file_scan_exclusions": [
+        "**/.git",
+        "**/.svn",
+        "**/.hg",
+        "**/CVS",
+        "**/.DS_Store",
+        "**/Thumbs.db",
+        "**/.classpath",
+        "**/.settings",
+        "**/out",
+        "**/dist",
+        "**/.husky",
+        "**/.turbo",
+        "**/.vscode-test",
+        "**/.vscode",
+        "**/.next",
+        "**/.storybook",
+        "**/.tap",
+        "**/.nyc_output",
+        "**/report",
+        "**/node_modules",
+        "**/*.class",
+        "**/*.exe",
+        "**/*.pdb"
+    ],
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 18. TELEMETRY
+    // ─────────────────────────────────────────────────────────────────────────────
+    "telemetry": {
+        "diagnostics": false,
+        "metrics": false
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 19. COMPLETE CODING & TERMINAL FONT PRESETS (UNCOMMENT TO USE)
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ── [BLOCK A: Size 24.0 | Line-Height 1.40] (Modern Crisp / Tall / Academic) ─
+    // "buffer_font_family": "Aporetic Sans Mono",         // Academic Vintage Vector Sans Mono
+    // "buffer_font_family": "Aporetic Serif Mono",        // Academic Vintage Book Serif Mono
+    // "buffer_font_family": "Iosevka Nerd Font Mono",     // Ultra Tall Condensed CRT Coding
+    // "buffer_font_family": "Iosevka Nerd Font",          // Iosevka with wider symbols
+    // "buffer_font_family": "JetBrains Mono",             // Modern High-Legibility JetBrains
+    // "buffer_font_family": "JetBrainsMono NL",           // JetBrains Mono No Ligatures
+    // "buffer_font_family": "Cascadia Mono",              // Microsoft Windows Terminal Cascadia
+    // "buffer_font_family": "Consolas",                   // Classic Microsoft Clean Mono
+    // "buffer_font_family": "psudoFont Liga Mono",        // Custom Ligature Coding Mono
+    // "buffer_font_size": 24.0,
+    // "buffer_line_height": { "custom": 1.40 },
+    // ── [BLOCK B: Size 23.0 | Line-Height 1.35] (Mainframe / Cyberpunk / Script) ─
+    // "buffer_font_family": "3270 Nerd Font",             // IBM 3270 Mainframe Green Terminal
+    // "buffer_font_family": "Share Tech Mono",            // Cyberpunk / Matrix HUD Display
+    // "buffer_font_family": "Agave Nerd Font Mono",       // Retro Geometric CRT Terminal
+    // "buffer_font_family": "FantasqueSansM Nerd Font Mono", // 70s Typewriter / TTY Console
+    // "buffer_font_family": "Hurmit Nerd Font Mono",      // Hermit Clean Geometry Mono
+    // "buffer_font_family": "IntoneMono Nerd Font Mono",  // Intel One High-Clarity Mono
+    // "buffer_font_family": "Victor Mono Nerd Font",      // Slanted Cursive Italic Script Mono
+    // "buffer_font_family": "DaddyTimeMono Nerd Font Mono", // Casual Retro Monospace
+    // "buffer_font_size": 23.0,
+    // "buffer_line_height": { "custom": 1.35 },
+    // ── [BLOCK C: Size 22.0 | Line-Height 1.30] (Early Mac / 90s Pixel / Hacker) ─
+    // "buffer_font_family": "Departure Mono",             // Early Macintosh / DEC VT Hybrid
+    // "buffer_font_family": "ProggyClean Nerd Font",      // Classic 90s C/C++ Developer Console
+    // "buffer_font_family": "ProFontIIx Nerd Font",       // 1980s Mac / Atari ST Console
+    // "buffer_font_family": "Monocraft Nerd Font",        // Chunky 8-Bit Pixel Console
+    // "buffer_font_family": "Comic Mono",                 // Casual Legible Monospace
+    // "buffer_font_family": "Pixel Code",                 // Pixel Art Vector Coding Font
+    // "buffer_font_family": "OCR-A BT",                   // Classic Optical Character Recognition
+    // "buffer_font_family": "OCR-B 10 BT",                // European Standard OCR Monospace
+    // "buffer_font_size": 22.0,
+    // "buffer_line_height": { "custom": 1.30 },
+    // ── [BLOCK D: Size 22.0 | Line-Height 1.25] (Linux TTY / X11 Console) ───────
+    // "buffer_font_family": "Terminess Nerd Font",        // Pure Linux TTY Console (Terminus)
+    // "buffer_font_family": "GohuFont 14 Nerd Font Mono", // Authentic X11 Unix Bitmap Console 14px
+    // "buffer_font_family": "GohuFont 11 Nerd Font Mono", // Ultra Compact X11 Bitmap Console 11px
+    // "buffer_font_size": 22.0,
+    // "buffer_line_height": { "custom": 1.25 },
+    // ── [BLOCK E: Size 24.0 | Line-Height 1.35] (6x13 DOS / IRC Bitmap Pixel) ───
+    // "buffer_font_family": "CozetteVector",              // 6x13 DOS / IRC Bitmap Pixel Vector
+    // "buffer_font_family": "CozetteCrossedSevenVector",  // Cozette with Crossed 7 & Z
+    // "buffer_font_size": 24.0,
+    // "buffer_line_height": { "custom": 1.35 },
+    // ── [BLOCK F: Size 26.0 | Line-Height 1.20] (DEC VT320 Scanlines) ───────────
+    // "buffer_font_family": "VT323",                      // Phosphor Green CRT Terminal
+    // "buffer_font_size": 16.0,
+    // "buffer_line_height": { "custom": 1.20 },
+    // ── [BLOCK G: Size 21.0 | Line-Height 1.30] (Vintage Windows / Typewriter) ──
+    // "buffer_font_family": "Lucida Console",             // Windows 95/NT System Console
+    // "buffer_font_family": "Courier New",                // Mechanical Typewriter Standard
+    // "buffer_font_size": 21.0,
+    // "buffer_line_height": { "custom": 1.30 }
+}
