@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
-Smart i3 session restore with duplicate prevention and automatic placeholder cleanup.
-Prevents empty ghost placeholder boxes when restore is triggered multiple times.
+i3-session-restore: Robust, race-free i3 session restore with duplicate prevention.
+- Sequential layout & program dispatch per workspace (no cross-workspace contamination).
+- Deduplicates instances (never spawns duplicate terminals or Steam UIs).
+- Respects Steam lifecycle (never restores Steam if killed before/at shutdown).
+- Silent on startup (no intrusive desktop notification).
+- Graceful background placeholder cleanup (gives apps time to swallow without leaving ghost boxes).
+- Always lands focused on Workspace 2 (browser default).
 """
 import sys
 import json
 import time
+import shutil
 import subprocess
 from pathlib import Path
 
 SAVE_DIR = Path.home() / ".i3" / "i3-resurrect"
+STEAM_KILLED_FLAG = SAVE_DIR / "steam_was_killed"
+STEAM_KILLED_TMP = Path("/tmp/steam_killed_by_user")
 
 def get_tree():
     try:
-        return json.loads(subprocess.check_output(["i3-msg", "-t", "get_tree"]))
+        return json.loads(subprocess.check_output(["i3-msg", "-t", "get_tree"], stderr=subprocess.DEVNULL))
     except Exception:
         return {}
 
@@ -22,7 +30,7 @@ def get_workspace_windows(tree):
     ws_map = {}
     def walk(node, cur_ws=None):
         if node.get("type") == "workspace":
-            cur_ws = node.get("name")
+            cur_ws = str(node.get("num") or node.get("name"))
             if cur_ws not in ws_map:
                 ws_map[cur_ws] = []
         if node.get("window") and cur_ws:
@@ -32,11 +40,24 @@ def get_workspace_windows(tree):
                 "window": node.get("window"),
                 "class": props.get("class", "").lower(),
                 "instance": props.get("instance", "").lower(),
+                "title": props.get("title", "").lower(),
             })
         for child in node.get("nodes", []) + node.get("floating_nodes", []):
             walk(child, cur_ws)
     walk(tree)
     return ws_map
+
+def is_steam_running():
+    try:
+        subprocess.check_output(["pgrep", "-x", "steam"], stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
+
+def was_steam_killed():
+    if STEAM_KILLED_TMP.exists() or STEAM_KILLED_FLAG.exists():
+        return True
+    return False
 
 def clean_unfilled_placeholders(workspace_name=None):
     """Kill any placeholder containers that failed to swallow a window."""
@@ -45,15 +66,16 @@ def clean_unfilled_placeholders(workspace_name=None):
     def walk(node, cur_ws=None):
         nonlocal killed
         if node.get("type") == "workspace":
-            cur_ws = node.get("name")
+            cur_ws = str(node.get("num") or node.get("name"))
         if node.get("swallows") and not node.get("window") and node.get("type") == "con":
             swallows = node.get("swallows", [])
-            # Skip docks / polybar
-            if not any("dock" in s for s in swallows):
+            # Never kill docks / polybar
+            if not any("dock" in str(s).lower() for s in swallows):
                 if workspace_name is None or str(cur_ws) == str(workspace_name):
                     con_id = node.get("id")
                     try:
-                        subprocess.call(["i3-msg", f'[con_id="{con_id}"] kill'])
+                        subprocess.call(["i3-msg", f'[con_id="{con_id}"] kill'],
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         killed += 1
                     except Exception:
                         pass
@@ -63,17 +85,17 @@ def clean_unfilled_placeholders(workspace_name=None):
     return killed
 
 def is_workspace_already_populated(ws_num, ws_windows):
-    """Check if all programs saved for this workspace are already open on it."""
+    """Check if programs saved for this workspace are already open on it."""
     prog_file = SAVE_DIR / f"workspace_{ws_num}_programs.json"
     if not prog_file.exists():
         return False
-    
+
     try:
         with open(prog_file) as f:
             saved_progs = json.load(f)
     except Exception:
         return False
-    
+
     if not saved_progs:
         return False
 
@@ -82,10 +104,11 @@ def is_workspace_already_populated(ws_num, ws_windows):
         return False
 
     cmd_to_class = {
-        "ghostty": "ghostty",
         "alacritty": "alacritty",
+        "ghostty": "ghostty",
         "brave": "brave-origin",
         "brave-origin": "brave-origin",
+        "firefox": "firefox",
         "steam": "steam",
         "zed": "zed",
     }
@@ -98,7 +121,11 @@ def is_workspace_already_populated(ws_num, ws_windows):
             base_cmd = Path(cmd.split()[0]).name.lower()
         else:
             continue
-        
+
+        # If Steam was killed, don't count Steam as an expected program
+        if "steam" in base_cmd and was_steam_killed():
+            continue
+
         expected_class = cmd_to_class.get(base_cmd, base_cmd)
         found = any(expected_class in w["class"] or expected_class in w["instance"] for w in current_wins)
         if not found:
@@ -106,12 +133,67 @@ def is_workspace_already_populated(ws_num, ws_windows):
 
     return True
 
-def restore_workspace(ws_num, ws_windows):
-    if is_workspace_already_populated(ws_num, ws_windows):
-        return False
-    
-    subprocess.call(["i3-resurrect", "restore", "-w", str(ws_num)])
-    return True
+def restore_single_workspace(ws_num, ws_windows):
+    """Restore layout and programs for a single workspace in clean sequence."""
+    layout_file = SAVE_DIR / f"workspace_{ws_num}_layout.json"
+    prog_file = SAVE_DIR / f"workspace_{ws_num}_programs.json"
+
+    # 1. Switch to the target workspace first
+    subprocess.call(["i3-msg", f"workspace number {ws_num}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # 2. Append layout if present
+    if layout_file.exists():
+        subprocess.call(["i3-resurrect", "restore", "-w", str(ws_num), "--layout-only"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # 3. Launch saved programs
+    if not prog_file.exists():
+        return
+
+    try:
+        with open(prog_file) as f:
+            saved_progs = json.load(f)
+    except Exception:
+        return
+
+    current_wins = ws_windows.get(str(ws_num), [])
+
+    for entry in saved_progs:
+        cmd = entry.get("command", [])
+        working_dir = entry.get("working_directory", str(Path.home()))
+        if not Path(working_dir).exists():
+            working_dir = str(Path.home())
+
+        if isinstance(cmd, list):
+            cmd_str = " ".join(f'"{arg}"' for arg in cmd if arg != "")
+            base_cmd = Path(cmd[0]).name.lower() if cmd else ""
+        else:
+            cmd_str = str(cmd)
+            base_cmd = Path(cmd.split()[0]).name.lower() if cmd else ""
+
+        # Steam safety: if Steam was killed or is not supposed to restore, skip!
+        if "steam" in base_cmd:
+            if was_steam_killed():
+                continue
+            if is_steam_running():
+                # Steam is already running in background/tray; do NOT launch a second instance!
+                continue
+
+        # Duplicate terminal prevention: if Alacritty is already open on this workspace, do not spawn another
+        if "alacritty" in base_cmd:
+            has_term = any("alacritty" in w["class"] for w in current_wins)
+            if has_term:
+                continue
+
+        # Duplicate browser prevention: if Brave/browser is already open on ws 2, do not spawn another
+        if base_cmd in ("brave", "brave-origin", "firefox", "librewolf"):
+            has_browser = any(b in w["class"] for w in current_wins for b in ("brave", "firefox", "librewolf"))
+            if has_browser:
+                continue
+
+        # Execute command explicitly on this workspace
+        exec_cmd = f'workspace number {ws_num}; exec "cd \\"{working_dir}\\" && {cmd_str}"'
+        subprocess.call(["i3-msg", exec_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def notify(summary, body, icon="view-restore"):
     try:
@@ -120,16 +202,19 @@ def notify(summary, body, icon="view-restore"):
         pass
 
 def main():
-    if not SAVE_DIR.exists():
-        notify("i3 Session", "No saved sessions found", "dialog-warning")
+    args = sys.argv[1:]
+    show_notifications = "--notify" in args
+    is_all_restore = "--all" in args
+
+    if not SAVE_DIR.exists() and not is_all_restore:
+        if show_notifications:
+            notify("i3 Session", "No saved sessions found", "dialog-warning")
         sys.exit(1)
 
-    args = sys.argv[1:]
     tree = get_tree()
     ws_windows = get_workspace_windows(tree)
 
-    # Parse post-focus target (defaulting to ws 2 on --all)
-    post_focus = "2" if "--all" in args else None
+    post_focus = "2" if is_all_restore else None
     if "--post-focus" in args:
         try:
             idx = args.index("--post-focus")
@@ -137,44 +222,80 @@ def main():
         except (IndexError, ValueError):
             pass
 
-    if "--all" in args:
+    if is_all_restore:
         layout_files = sorted(SAVE_DIR.glob("workspace_*_layout.json"))
-        if not layout_files:
-            notify("i3 Session", "No saved sessions found", "dialog-warning")
-            sys.exit(0)
-
-        # Identify all workspaces that need restoration
         to_restore = []
+
         for f in layout_files:
             ws_num = f.stem.replace("workspace_", "").replace("_layout", "")
             if not is_workspace_already_populated(ws_num, ws_windows):
                 to_restore.append(ws_num)
 
-        restored_count = len(to_restore)
-        if to_restore:
-            from concurrent.futures import ThreadPoolExecutor
-            # Restore all workspaces concurrently in parallel background threads
-            with ThreadPoolExecutor(max_workers=min(8, len(to_restore))) as executor:
-                list(executor.map(lambda ws: subprocess.call(["i3-resurrect", "restore", "-w", str(ws)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL), to_restore))
+        # Restore workspaces sequentially to eliminate race conditions
+        for ws in to_restore:
+            restore_single_workspace(ws, ws_windows)
 
-            # Fast grace period for client windows to map and swallow
-            time.sleep(0.4)
-            clean_unfilled_placeholders()
-            notify("i3 Session", f"Restored {restored_count} workspace(s) in parallel")
-        else:
-            notify("i3 Session", "All workspaces already open")
+        # Fallback handling for cold/clean boot:
+        # Re-fetch tree to verify populated workspaces
+        tree_after = get_tree()
+        ws_wins_after = get_workspace_windows(tree_after)
 
-        # Focus target workspace (browser on ws 2 by default)
-        if post_focus:
-            subprocess.call(["i3-msg", f"workspace number {post_focus}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # 1. Ensure ws1 has a terminal
+        ws1_wins = ws_wins_after.get("1", [])
+        has_ws1_term = any("alacritty" in w["class"] for w in ws1_wins)
+        if not has_ws1_term and not any(ws == "1" for ws in to_restore):
+            subprocess.call(["i3-msg", "workspace number 1; exec alacritty"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # 2. Ensure ws2 has a browser
+        ws2_wins = ws_wins_after.get("2", [])
+        has_ws2_browser = any("brave" in w["class"] for w in ws2_wins)
+        if not has_ws2_browser and not any(ws == "2" for ws in to_restore):
+            subprocess.call(["i3-msg", "workspace number 2; exec brave-origin"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # 3. Always focus target workspace (ws2 default)
+        target_ws = post_focus or "2"
+        subprocess.call(["i3-msg", f"workspace number {target_ws}"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # 4. Asynchronous graceful placeholder cleanup in background (sleep 2.5s)
+        # Prevents ghost placeholder boxes while giving apps time to swallow
+        cleanup_cmd = (
+            "python3 -c '"
+            "import time, sys\n"
+            "time.sleep(2.5)\n"
+            "from pathlib import Path\n"
+            "sys.path.insert(0, str(Path.home() / \".local/bin\"))\n"
+            "import subprocess, json\n"
+            "try:\n"
+            "    tree = json.loads(subprocess.check_output([\"i3-msg\", \"-t\", \"get_tree\"]))\n"
+            "    def kill_empty(node):\n"
+            "        if node.get(\"swallows\") and not node.get(\"window\") and node.get(\"type\") == \"con\":\n"
+            "            s = node.get(\"swallows\", [])\n"
+            "            if not any(\"dock\" in str(x).lower() for x in s):\n"
+            "                cid = node.get(\"id\")\n"
+            "                subprocess.call([\"i3-msg\", f\"[con_id=\\\"{cid}\\\"] kill\"])\n"
+            "        for c in node.get(\"nodes\", []) + node.get(\"floating_nodes\", []):\n"
+            "            kill_empty(c)\n"
+            "    kill_empty(tree)\n"
+            "except Exception:\n"
+            "    pass\n"
+            "' &"
+        )
+        subprocess.Popen(cleanup_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        if show_notifications:
+            notify("i3 Session", f"Restored {len(to_restore)} workspace(s)")
+
     else:
-        # Restore focused workspace only
+        # Restore focused workspace only (manual keybinding)
         focused_ws = None
         try:
             workspaces = json.loads(subprocess.check_output(["i3-msg", "-t", "get_workspaces"]))
             for ws in workspaces:
                 if ws.get("focused"):
-                    focused_ws = ws.get("num")
+                    focused_ws = str(ws.get("num"))
                     break
         except Exception:
             pass
@@ -184,10 +305,10 @@ def main():
             if not layout_file.exists():
                 notify("i3 Session", f"No saved session for workspace {focused_ws}", "dialog-warning")
             elif is_workspace_already_populated(focused_ws, ws_windows):
-                notify("i3 Session", f"Workspace {focused_ws} is already open", "dialog-information")
+                notify("i3 Session", f"Workspace {focused_ws} is already populated", "dialog-information")
             else:
-                subprocess.call(["i3-resurrect", "restore", "-w", str(focused_ws)])
-                time.sleep(1.2)
+                restore_single_workspace(focused_ws, ws_windows)
+                time.sleep(1.0)
                 clean_unfilled_placeholders(focused_ws)
                 notify("i3 Session", f"Restored workspace {focused_ws}")
 

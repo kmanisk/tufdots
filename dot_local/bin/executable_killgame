@@ -7,6 +7,7 @@ echo "==> Terminating hung game processes and compositors..."
 # 1. Kill CS2, Gamescope, and Steam processes
 killall -9 -v cs2 gamescope gamescopereaper steam steamwebhelper 2>/dev/null || true
 pkill -9 -e -f "gamescope|cs2|steam" 2>/dev/null || true
+touch /tmp/steam_killed_by_user 2>/dev/null || true
 
 # 2. Restore display resolution and Polybar (bar-apply: hidden stays hidden)
 export DISPLAY="${DISPLAY:-:0}"

@@ -60,5 +60,5 @@ fi
 # 4. ws2 tabbed default lives in the i3 config (for_window rule);
 #    nothing to do here besides landing focused below.
 
-# 5. ws3 is the default workspace: end boot focused there.
-i3-msg "workspace number 3" >/dev/null 2>&1
+# 5. End boot focused on workspace 2 (browser default)
+i3-msg "workspace number 2" >/dev/null 2>&1

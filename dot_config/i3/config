@@ -263,7 +263,9 @@ client.background       #282828
 ########################################################################
 ########################################################################
 
-exec --no-startup-id ~/.local/bin/boot-workspaces
+# Note: Boot layout & fallbacks (ws1 terminal, ws2 browser, focus ws2) are handled
+# cleanly & instantaneously by i3-session-restore (line 407).
+# exec --no-startup-id ~/.local/bin/boot-workspaces
 ########################################################################
 ########################################################################
 ####
@@ -362,8 +364,8 @@ bindsym Mod1+Shift+Tab exec --no-startup-id ~/.local/bin/random-wallpaper blxss4
 bindsym Mod1+Control+w exec --no-startup-id ~/.local/bin/wallpaper-menu
 # Toggle Bottom Bar (Polybar) (Alt + 0)
 bindsym Mod1+0 exec --no-startup-id ~/.local/bin/toggle-bar
-# Kill Steam (Alt + Shift + Q) — works from any workspace
-bindsym Mod1+Shift+q exec --no-startup-id "pkill -f steam"
+# Kill Steam (Alt + Shift + Q) — works from any workspace, marks Steam as killed for session save
+bindsym Mod1+Shift+q exec --no-startup-id "touch /tmp/steam_killed_by_user && pkill -f steam"
 
 ########################################################################
 ########################################################################
