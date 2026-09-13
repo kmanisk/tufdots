@@ -56,6 +56,8 @@ done
 # 1. First prompt: user types query
 # Control+Return (custom-1) triggers suggestions; Enter triggers instant search
 QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "󰖟 Search" \
+    -kb-accept-custom "" \
+    -kb-accept-alt "" \
     -kb-custom-1 "Control+Return" \
     -kb-custom-2 "Shift+Return" \
     -theme "$THEME")
@@ -86,8 +88,18 @@ case "$QUERY" in
 esac
 
 if [ -n "$PREFIX" ]; then
-    QUERY=$(rofi -dmenu -i -p "Enter query" -filter "$PREFIX" -theme "$THEME")
+    QUERY=$(rofi -dmenu -i -p "Enter query" -filter "$PREFIX" \
+        -kb-accept-custom "" \
+        -kb-accept-alt "" \
+        -kb-custom-1 "Control+Return" \
+        -kb-custom-2 "Shift+Return" \
+        -theme "$THEME")
+    PREFIX_EXIT_CODE=$?
+    [ $PREFIX_EXIT_CODE -eq 1 ] && exit 0
     [ -z "$QUERY" ] && exit 0
+    if [ $PREFIX_EXIT_CODE -eq 10 ] || [ $PREFIX_EXIT_CODE -eq 11 ]; then
+        WANT_SUGGESTIONS=1
+    fi
 fi
 
 # Trim whitespace
