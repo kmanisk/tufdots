@@ -388,7 +388,7 @@ exec --no-startup-id blueman-applet
 # Alacritty scratch terminal - spawns once on login straight into scratchpad
 exec --no-startup-id alacritty --class Alacritty,scratch-term
 # Notes scratchpad - nvim with notes.md, spawns once on login straight into scratchpad
-exec --no-startup-id alacritty --class Alacritty,scratch-notes -e nvim /home/manisk/notes.md
+exec --no-startup-id sh -c 'exec alacritty --class Alacritty,scratch-notes -e nvim "$HOME/notes.md"'
 # Autotiling: automatically switch horizontal/vertical splits based on focused window dimensions
 exec_always --no-startup-id sh -c 'pkill -x autotiling; sleep 0.2; exec autotiling'
 # CS2 Window Restack Hook: RETIRED (tiled game tabs can't bleed through;

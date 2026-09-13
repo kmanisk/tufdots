@@ -51,15 +51,7 @@ echo "==> Chezmoi: Reconciling System Packages"
 echo "==> Machine: {{ $machineKey }} (Hardware: {{ $m.hardware_profile }})"
 echo "=============================================================================="
 
-# 1. Feature-Aware Snapshot Check
-{{ if $m.features.snapper }}
-if [ "$DRY_RUN" -eq 0 ] && command -v snapper >/dev/null 2>&1 && sudo snapper list-configs 2>/dev/null | grep -qw root; then
-    echo "--> Creating pre-package-reconciliation Snapper snapshot (snapper feature enabled)..."
-    sudo snapper -c root create -d "chezmoi package reconciliation" -t pre || echo "Notice: Snapper pre-snapshot skipped."
-fi
-{{ end }}
-
-# 2. Package Manager Provider Resolution
+# 1. Package Manager Provider Resolution
 PREF_PM="{{ $m.providers.package_manager }}"
 declare -a PKG_INSTALL_CMD=()
 declare -a AUR_INSTALL_CMD=()
@@ -143,16 +135,19 @@ for file in "${LISTS[@]}"; do
     fi
 done
 
+# Filter out already satisfied packages using pacman -T
+declare -a MISSING_PKGS=()
 if [ ${#PKGS[@]} -gt 0 ]; then
-    echo "==> Reconciling ${#PKGS[@]} official packages via: ${PKG_INSTALL_CMD[*]}"
-    if [ "$DRY_RUN" -eq 1 ]; then
-        echo "    [DRY-RUN] Would execute: ${PKG_INSTALL_CMD[*]} ${PKGS[*]}"
+    if command -v pacman >/dev/null 2>&1; then
+        while IFS= read -r pkg; do
+            [ -n "$pkg" ] && MISSING_PKGS+=("$pkg")
+        done < <(pacman -T "${PKGS[@]}" 2>/dev/null || true)
     else
-        "${PKG_INSTALL_CMD[@]}" "${PKGS[@]}"
+        MISSING_PKGS=("${PKGS[@]}")
     fi
 fi
 
-# 4. Reconcile Explicit AUR Packages
+# 3. Reconcile Explicit AUR Packages
 AUR_LIST="{{ .chezmoi.sourceDir }}/packages/aur-explicit.txt"
 declare -a AUR_PKGS=()
 if [ -f "$AUR_LIST" ]; then
@@ -164,23 +159,57 @@ if [ -f "$AUR_LIST" ]; then
     done < "$AUR_LIST"
 fi
 
+declare -a MISSING_AUR=()
 if [ ${#AUR_PKGS[@]} -gt 0 ]; then
+    if command -v pacman >/dev/null 2>&1; then
+        while IFS= read -r pkg; do
+            [ -n "$pkg" ] && MISSING_AUR+=("$pkg")
+        done < <(pacman -T "${AUR_PKGS[@]}" 2>/dev/null || true)
+    else
+        MISSING_AUR=("${AUR_PKGS[@]}")
+    fi
+fi
+
+# 4. Feature-Aware Snapshot Check (only triggered when packages need installation)
+{{ if $m.features.snapper }}
+if [ "$DRY_RUN" -eq 0 ] && [ $(( ${#MISSING_PKGS[@]} + ${#MISSING_AUR[@]} )) -gt 0 ] && command -v snapper >/dev/null 2>&1 && sudo snapper list-configs 2>/dev/null | grep -qw root; then
+    echo "--> Creating pre-package-reconciliation Snapper snapshot (snapper feature enabled)..."
+    sudo snapper -c root create -d "chezmoi package reconciliation" -t pre || echo "Notice: Snapper pre-snapshot skipped."
+fi
+{{ end }}
+
+# 5. Install Missing Official Packages
+if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
+    echo "==> Reconciling ${#MISSING_PKGS[@]} missing official packages via: ${PKG_INSTALL_CMD[*]}"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "    [DRY-RUN] Would execute: ${PKG_INSTALL_CMD[*]} ${MISSING_PKGS[*]}"
+    else
+        "${PKG_INSTALL_CMD[@]}" "${MISSING_PKGS[@]}"
+    fi
+else
+    echo "  [PASS] All ${#PKGS[@]} declared official packages are already installed."
+fi
+
+# 6. Install Missing AUR Packages
+if [ ${#MISSING_AUR[@]} -gt 0 ]; then
     if [ ${#AUR_INSTALL_CMD[@]} -gt 0 ]; then
-        echo "==> Reconciling ${#AUR_PKGS[@]} AUR packages via: ${AUR_INSTALL_CMD[*]}"
+        echo "==> Reconciling ${#MISSING_AUR[@]} missing AUR packages via: ${AUR_INSTALL_CMD[*]}"
         if [ "$DRY_RUN" -eq 1 ]; then
-            echo "    [DRY-RUN] Would execute: ${AUR_INSTALL_CMD[*]} ${AUR_PKGS[*]}"
+            echo "    [DRY-RUN] Would execute: ${AUR_INSTALL_CMD[*]} ${MISSING_AUR[*]}"
         else
-            "${AUR_INSTALL_CMD[@]}" "${AUR_PKGS[@]}"
+            "${AUR_INSTALL_CMD[@]}" "${MISSING_AUR[@]}"
         fi
     else
         echo "==============================================================================" >&2
-        echo "ERROR: Machine profile requires AUR packages: ${AUR_PKGS[*]}" >&2
+        echo "ERROR: Machine profile requires AUR packages: ${MISSING_AUR[*]}" >&2
         echo "However, the active package manager provider is '$PREF_PM' with no AUR helper available." >&2
         echo "Package closure cannot be satisfied with official pacman alone." >&2
         echo "FAILING CLEARLY: Install an AUR helper (paru/yay) or remove AUR requirements." >&2
         echo "==============================================================================" >&2
         exit 1
     fi
+else
+    echo "  [PASS] All ${#AUR_PKGS[@]} declared AUR packages are already installed."
 fi
 
 echo "==> Package reconciliation completed successfully."

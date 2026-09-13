@@ -27,10 +27,23 @@ test_scripts() {
     fi
 }
 
+validate_i3() {
+    if command -v i3 >/dev/null 2>&1; then
+        echo "==> Validating i3 configuration syntax..."
+        if i3 -C >/dev/null 2>&1; then
+            echo "  [PASS] i3 config syntax is valid."
+        else
+            echo "  [FAIL] i3 config syntax error detected!"
+            i3 -C
+            return 1
+        fi
+    fi
+}
+
 check_dependencies() {
     echo "==> Checking essential system tools..."
     local missing=()
-    for tool in jq fzf i3 pamixer feh polybar dunst rofi xrandr brightnessctl; do
+    for tool in jq fzf i3 pamixer feh polybar dunst rofi xrandr brightnessctl age; do
         if ! command -v "$tool" >/dev/null 2>&1; then
             missing+=("$tool")
         fi
@@ -39,13 +52,23 @@ check_dependencies() {
         echo "  [PASS] All essential desktop utilities are installed."
     else
         echo "  [WARN] Missing tools: ${missing[*]}"
-        echo "         Run 'chezmoi apply' or install via paru/pacman."
+        echo "         Install via: paru -S --needed ${missing[*]}"
+    fi
+}
+
+reload_desktop() {
+    if pgrep -x i3 >/dev/null 2>&1; then
+        echo "==> Reloading active i3wm session..."
+        i3-msg reload >/dev/null 2>&1 || true
+        "$HOME/.local/bin/bar-apply" >/dev/null 2>&1 || true
+        echo "  [PASS] i3 and Polybar reloaded with new configs."
     fi
 }
 
 case "${1:-apply}" in
     test|check)
         test_scripts
+        validate_i3
         check_dependencies
         ;;
     status|diff)
@@ -59,13 +82,16 @@ case "${1:-apply}" in
         echo "==> Applying dotfile changes..."
         chezmoi apply
         test_scripts
+        validate_i3
+        reload_desktop
         echo "==> Deployment complete."
         ;;
     push)
         shift || true
         msg="${*:-sync: update dotfiles}"
-        echo "==> Testing scripts before push..."
+        echo "==> Running pre-flight checks before push..."
         test_scripts
+        validate_i3
         echo "==> Committing and pushing to tufx11 ($msg)..."
         git -C "$CHEZMOI_DIR" add -A
         if git -C "$CHEZMOI_DIR" diff --cached --quiet; then
@@ -81,18 +107,20 @@ case "${1:-apply}" in
         git -C "$CHEZMOI_DIR" pull --rebase origin master
         chezmoi apply
         test_scripts
+        validate_i3
+        reload_desktop
         ;;
     help|-h|--help)
         cat << 'HELP'
 dotsync - Fast deployment & sync utility for tufx11
 
 Usage:
-  dotsync            Apply pending dotfile updates and verify scripts
+  dotsync            Apply pending dotfile updates, verify, and reload i3wm
   dotsync diff       Show git diff between system and repo
   dotsync status     Show modified managed files
-  dotsync push [msg] Commit and push changes to github.com/kmanisk/tufx11
-  dotsync pull       Pull remote updates and apply locally
-  dotsync test       Verify shell syntax & dependencies across ~/.local/bin/
+  dotsync push [msg] Run pre-flight tests, commit, and push to tufx11
+  dotsync pull       Pull remote updates, apply, and reload i3wm
+  dotsync test       Verify shell syntax, i3 config & dependencies
 HELP
         ;;
     *)

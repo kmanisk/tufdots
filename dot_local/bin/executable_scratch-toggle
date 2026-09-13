@@ -22,7 +22,7 @@ case "$mode" in
         ;;
     notes)
         instance="scratch-notes"
-        spawn="alacritty --class Alacritty,scratch-notes -e nvim /home/manisk/notes.md"
+        spawn="alacritty --class Alacritty,scratch-notes -e nvim $HOME/notes.md"
         ;;
     spotify)
         instance="spotify"
