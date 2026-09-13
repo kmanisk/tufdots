@@ -1,0 +1,83 @@
+/**
+ * Sleek Floating Web Search Theme for Rofi
+ */
+configuration {
+    show-icons: false;
+}
+
+* {
+    background:          #181a1f;
+    background-alt:      #21252b;
+    foreground:          #abb2bf;
+    selected:            #61afef;
+    selected-text:       #181a1f;
+    border-col:          #3b4048;
+    font:                "CommitMono Nerd Font 12";
+}
+
+window {
+    background-color:    @background;
+    text-color:          @foreground;
+    border:              2px;
+    border-color:        @border-col;
+    border-radius:       8px;
+    width:               640px;
+    location:            center;
+    anchor:              center;
+    padding:             14px;
+}
+
+mainbox {
+    background-color:    transparent;
+    children:            [ inputbar, listview ];
+    spacing:             10px;
+}
+
+inputbar {
+    background-color:    @background-alt;
+    border-radius:       6px;
+    padding:             8px 12px;
+    children:            [ prompt, entry ];
+    spacing:             8px;
+}
+
+prompt {
+    background-color:    transparent;
+    text-color:          @selected;
+    font:                "CommitMono Nerd Font Bold 12";
+}
+
+entry {
+    background-color:    transparent;
+    text-color:          @foreground;
+    placeholder:         "Type search query or bang...";
+    placeholder-color:   #5c6370;
+}
+
+listview {
+    background-color:    transparent;
+    columns:             1;
+    lines:               8;
+    spacing:             4px;
+    cycle:               true;
+    dynamic:             true;
+    layout:              vertical;
+}
+
+element {
+    background-color:    transparent;
+    text-color:          @foreground;
+    border-radius:       4px;
+    padding:             6px 10px;
+}
+
+element selected {
+    background-color:    @selected;
+    text-color:          @selected-text;
+}
+
+element-text {
+    background-color:    inherit;
+    text-color:          inherit;
+    font:                inherit;
+}

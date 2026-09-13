@@ -44,12 +44,21 @@ fetch_suggestions() {
     esac
 }
 
+THEME="$HOME/.config/rofi/tsoding.rasi"
+for arg in "$@"; do
+    case "$arg" in
+        --floating|-f)
+            THEME="$HOME/.config/rofi/websearch-floating.rasi"
+            ;;
+    esac
+done
+
 # 1. First prompt: user types query
 # Control+Return (custom-1) triggers suggestions; Enter triggers instant search
 QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "󰖟 Search" \
     -kb-custom-1 "Control+Return" \
     -kb-custom-2 "Shift+Return" \
-    -theme ~/.config/rofi/tsoding.rasi)
+    -theme "$THEME")
 EXIT_CODE=$?
 
 # User hit Escape
@@ -77,7 +86,7 @@ case "$QUERY" in
 esac
 
 if [ -n "$PREFIX" ]; then
-    QUERY=$(rofi -dmenu -i -p "Enter query" -filter "$PREFIX" -theme ~/.config/rofi/tsoding.rasi)
+    QUERY=$(rofi -dmenu -i -p "Enter query" -filter "$PREFIX" -theme "$THEME")
     [ -z "$QUERY" ] && exit 0
 fi
 
@@ -159,7 +168,7 @@ if [ "$WANT_SUGGESTIONS" -eq 1 ]; then
         # Present suggestions as horizontal chips right next to prompt
         CHOICE=$(printf "%s\n%s" "$RAW_QUERY" "$SUGGESTIONS" | rofi -dmenu -i \
             -p "💡 $ENGINE" \
-            -theme ~/.config/rofi/tsoding.rasi)
+            -theme "$THEME")
         if [ -n "$CHOICE" ]; then
             RAW_QUERY="$CHOICE"
         else

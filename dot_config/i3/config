@@ -15,6 +15,9 @@ bindsym Mod1+space exec "pkill rofi || rofi -show drun"
 bindsym Shift+space exec --no-startup-id ~/.local/bin/rofi-websearch
 bindsym Mod1+s exec --no-startup-id ~/.local/bin/rofi-websearch
 bindsym $mod+slash exec --no-startup-id ~/.local/bin/rofi-websearch
+# Floating Web Search (Centered Modal for Testing / Comparison): Alt+Shift+Space & Win+d
+bindsym Mod1+Shift+space exec --no-startup-id ~/.local/bin/rofi-websearch --floating
+bindsym $mod+d exec --no-startup-id ~/.local/bin/rofi-websearch --floating
 
 # Browser (Windows + b) -> Default Brave on Intel iGPU (Workspace 2)
 # Split horizontal (Windows + Shift + b)
