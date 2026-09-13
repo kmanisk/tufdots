@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Night Light Toggle for i3wm (using Redshift + Dunst OSD)
+# Supports: toggle-nightlight [on|off|toggle] [--silent]
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+STATE_FILE="/tmp/nightlight_state"
+TEMP_FILE="$HOME/.config/nightlight_temp"
+
+CURRENT_TEMP=4200
+if [[ -f "$TEMP_FILE" ]]; then
+    CURRENT_TEMP=$(cat "$TEMP_FILE" 2>/dev/null)
+elif [[ -f "/tmp/nightlight_temp" ]]; then
+    CURRENT_TEMP=$(cat "/tmp/nightlight_temp" 2>/dev/null)
+fi
+
+ACTION="${1:-toggle}"
+SILENT=0
+for arg in "$@"; do
+    if [[ "$arg" == "--silent" ]]; then
+        SILENT=1
+    elif [[ "$arg" == "on" || "$arg" == "off" || "$arg" == "toggle" ]]; then
+        ACTION="$arg"
+    fi
+done
+
+turn_on() {
+    pkill -9 redshift >/dev/null 2>&1
+    redshift -r -P -m randr -O "$CURRENT_TEMP" >/dev/null 2>&1
+    echo "on" > "$STATE_FILE"
+    PERCENT=$(( (CURRENT_TEMP - 2000) * 100 / 4500 ))
+    if (( SILENT == 0 )); then
+        dunstify -a "Night Light" -u low -i preferences-desktop-display \
+            -h string:x-dunst-stack-tag:nightlight -h int:value:"$PERCENT" \
+            "Night Light: ON (${CURRENT_TEMP}K)"
+    fi
+}
+
+turn_off() {
+    pkill -9 redshift >/dev/null 2>&1
+    redshift -x -m randr >/dev/null 2>&1
+    xrandr --output eDP-1 --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    echo "off" > "$STATE_FILE"
+    if (( SILENT == 0 )); then
+        dunstify -a "Night Light" -u low -i preferences-desktop-display \
+            -h string:x-dunst-stack-tag:nightlight -h int:value:0 \
+            "Night Light: OFF (6500K)"
+    fi
+}
+
+case "$ACTION" in
+    on)
+        turn_on
+        ;;
+    off)
+        turn_off
+        ;;
+    toggle|*)
+        if [[ -f "$STATE_FILE" ]] && [[ "$(cat "$STATE_FILE")" == "on" ]]; then
+            turn_off
+        else
+            turn_on
+        fi
+        ;;
+esac
