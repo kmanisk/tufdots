@@ -130,6 +130,13 @@
       "space o e": "editor::RevealInFileManager",
       "space c p": "editor::CopyPath",
       "space c n": "editor::CopyRelativePath",
+      "space y y": "editor::CopyPath",
+      "space y f": [
+        "editor::SelectAll",
+        "editor::Copy"
+      ],
+      "space d d": "pane::CloseActiveItem",
+      "space d f": "pane::CloseActiveItem",
       "space f d": "editor::Format",
       "space /": "editor::ToggleComments",
       "space c s": "outline::Toggle",
@@ -184,6 +191,8 @@
       ],
       "space W": "workspace::SaveWithoutFormat",
       "space q": "pane::CloseActiveItem",
+      "space d d": "pane::CloseActiveItem",
+      "space d f": "pane::CloseActiveItem",
       "ctrl-w": "pane::CloseActiveItem",
       "space c t": "pane::CloseInactiveItems",
       "space c l": "pane::CloseItemsToTheLeft",
@@ -339,7 +348,8 @@
       "ctrl-space": "editor::ShowCompletions",
       "alt-l": "workspace::ToggleLeftDock",
       "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
-      "ctrl-p": "editor::Paste"
+      "ctrl-p": "editor::Paste",
+      "space w": ["editor::Format", "workspace::Save"]
     }
   },
 
@@ -385,6 +395,8 @@
       "r": "project_panel::Rename",
       "f2": "project_panel::Rename",
       "d": "project_panel::Delete",
+      "d d": "project_panel::Delete",
+      "d f": "project_panel::Delete",
       "delete": "project_panel::Delete",
       "x": "project_panel::Cut",
       "c": "project_panel::Copy",
@@ -552,6 +564,8 @@
       "space space": "pane::AlternateFile",
       "space ,": "tab_switcher::Toggle",
       "space q": "pane::CloseActiveItem",
+      "space d d": "pane::CloseActiveItem",
+      "space d f": "pane::CloseActiveItem",
       // Space leader — tasks
       "space r t": "task::Spawn",
       "space r r": "task::Rerun",
@@ -559,6 +573,7 @@
       // Space leader — copy path
       "space c p": "editor::CopyPath",
       "space c n": "editor::CopyRelativePath",
+      "space y y": "editor::CopyPath",
       // AI assist
       "space i a": "assistant::InlineAssist"
     }
