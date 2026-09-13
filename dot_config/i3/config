@@ -11,7 +11,8 @@ bindsym $mod+Return exec $term
 
 # App Launcher (Rofi)
 bindsym Mod1+space exec "pkill rofi || rofi -show drun"
-# Web Search with bangs (Google, YouTube, ArchWiki, GitHub, Amazon) (Alt+s / Win+/)
+# Web Search with bangs (Google, YouTube, ArchWiki, GitHub, Amazon) (Shift+space / Alt+s / Win+/)
+bindsym Shift+space exec --no-startup-id ~/.local/bin/rofi-websearch
 bindsym Mod1+s exec --no-startup-id ~/.local/bin/rofi-websearch
 bindsym $mod+slash exec --no-startup-id ~/.local/bin/rofi-websearch
 
