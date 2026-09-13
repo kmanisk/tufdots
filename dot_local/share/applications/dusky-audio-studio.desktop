@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Dusky Audio Studio
+GenericName=Audio DSP & Voice Studio
+Comment=Microphone RNNoise suppression, voice character filters, and equalizer studio
+Exec=dusky-audio-studio --gui
+Icon=audio-card
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;AudioVideoEditing;
+Keywords=audio;microphone;noise;filter;equalizer;voice;
