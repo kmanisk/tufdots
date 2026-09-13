@@ -208,8 +208,8 @@ bindsym $mod+Shift+period move container to workspace next; workspace next
 bindsym $mod+Tab workspace back_and_forth
 
 # Scratchpad dropdowns - i3-msg scratchpad show toggles; windows pre-spawn on login
-bindsym Control+space exec --no-startup-id i3-msg "[instance=\"scratch-term\"] scratchpad show"
-bindsym $mod+n exec --no-startup-id i3-msg "[instance=\"scratch-notes\"] scratchpad show"
+bindsym Control+space exec --no-startup-id ~/.local/bin/scratch-toggle term
+bindsym $mod+n exec --no-startup-id ~/.local/bin/scratch-toggle notes
 
 # ==============================================================================
 # SESSION & CONFIG RELOAD (with i3-resurrect session manager)

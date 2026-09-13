@@ -70,6 +70,9 @@ done
 if [ "$DRY_RUN" -eq 0 ] && command -v asusctl >/dev/null 2>&1; then
     asusctl battery limit 60 2>/dev/null || true
     asusctl profile set Balanced 2>/dev/null || true
+    asusctl fan-curve --mod-profile Balanced --fan cpu --data "45c:5%,55c:15%,65c:30%,72c:50%,78c:65%,84c:78%,90c:88%,96c:100%" 2>/dev/null || true
+    asusctl fan-curve --mod-profile Balanced --fan gpu --data "45c:5%,55c:15%,65c:30%,72c:50%,78c:65%,84c:78%,90c:88%,96c:100%" 2>/dev/null || true
+    asusctl fan-curve --mod-profile Balanced --enable-fan-curves true 2>/dev/null || true
 fi
 {{ else }}
 for asus_svc in "asusd.service" "supergfxd.service"; do
