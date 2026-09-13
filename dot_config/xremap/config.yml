@@ -56,9 +56,9 @@ keymap:
       CapsLock-0: F10
       CapsLock-MINUS: F11
       CapsLock-EQUAL: F12
-      # Fallback Brightness (] and \)
-      CapsLock-RIGHTBRACE: BrightnessUp
-      CapsLock-BACKSLASH: BrightnessDown
+      # Volume (] for up, \ for down)
+      CapsLock-RIGHTBRACE: VolumeUp
+      CapsLock-BACKSLASH: VolumeDown
       # Passthrough
       CapsLock-a: a
       CapsLock-b: b
@@ -96,8 +96,9 @@ keymap:
       # Brightness
       RIGHTCTRL-LEFTBRACE: BrightnessUp
       RIGHTCTRL-APOSTROPHE: BrightnessDown
-      RIGHTCTRL-RIGHTBRACE: BrightnessUp
-      RIGHTCTRL-BACKSLASH: BrightnessDown
+      # Volume (] for up, \ for down)
+      RIGHTCTRL-RIGHTBRACE: VolumeUp
+      RIGHTCTRL-BACKSLASH: VolumeDown
       # F-keys
       RIGHTCTRL-1: F1
       RIGHTCTRL-2: F2
