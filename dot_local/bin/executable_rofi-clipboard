@@ -16,6 +16,7 @@ mkdir -p "$(dirname "$DB_PATH")"
 chosen=$(cliphist -db-path "$DB_PATH" list 2>/dev/null | rofi -dmenu \
     -p "📋 Clipboard" \
     -mesg "Enter: Copy to Clipboard | Shift+Del: Delete Entry" \
+    -kb-delete-entry "" \
     -kb-custom-1 "Shift+Delete" \
     -l 20 \
     -width 65 \

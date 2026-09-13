@@ -245,10 +245,14 @@ bindsym $mod+Escape exec --no-startup-id ~/.local/bin/powermenu
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
 
 # Shortcuts & Cheatsheet:
-# Win + ? (Win + Shift + slash) -> Interactive Rofi Quick-Finder Modal
-# Win + Ctrl + ?                -> Open full formatted Cheatsheet in Zed Markdown
+# Win + ? (Win + Shift + slash) or Win + F1 -> Interactive Rofi Quick-Finder Modal
+# Win + Ctrl + ? or Win + Shift + F1        -> Open full formatted Cheatsheet in Zed Markdown
+bindsym $mod+Shift+slash exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
 bindsym $mod+question exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
+bindsym $mod+F1 exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
+bindsym $mod+Control+Shift+slash exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
 bindsym $mod+Control+question exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
+bindsym $mod+Shift+F1 exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
 
 
 #
