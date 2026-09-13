@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# rofi-websearch: Instant, zero-daemon bang-based web search for Rofi
+# ==============================================================================
+export PATH="$HOME/.local/bin:$PATH"
+
+HINTS=$(cat <<'HINT_EOF'
+!yt <query>     YouTube
+!aw <query>     ArchWiki
+!gh <query>     GitHub
+!w <query>      Wikipedia
+!a <query>      Amazon
+!rd <query>     Reddit
+!so <query>     StackOverflow
+!pdb <query>    ProtonDB
+!ddg <query>    DuckDuckGo
+<query>         Google (Default)
+HINT_EOF
+)
+
+# Launch Rofi prompt
+QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "󰖟 Search" -theme ~/.config/rofi/tsoding.rasi)
+
+# Exit if cancelled
+[ -z "$QUERY" ] && exit 0
+
+# If user clicked/selected a hint line without typing a query, prompt with that engine prefix
+case "$QUERY" in
+    *"YouTube"*)        PREFIX="!yt " ;;
+    *"ArchWiki"*)       PREFIX="!aw " ;;
+    *"GitHub"*)         PREFIX="!gh " ;;
+    *"Wikipedia"*)      PREFIX="!w " ;;
+    *"Amazon"*)         PREFIX="!a " ;;
+    *"Reddit"*)         PREFIX="!rd " ;;
+    *"StackOverflow"*)  PREFIX="!so " ;;
+    *"ProtonDB"*)       PREFIX="!pdb " ;;
+    *"DuckDuckGo"*)     PREFIX="!ddg " ;;
+    *"Google"*)         PREFIX="" ;;
+    *)                  PREFIX="" ;;
+esac
+
+if [ -n "$PREFIX" ]; then
+    QUERY=$(rofi -dmenu -i -p "Enter query" -filter "$PREFIX" -theme ~/.config/rofi/tsoding.rasi)
+    [ -z "$QUERY" ] && exit 0
+fi
+
+# Trim leading/trailing whitespace
+QUERY="$(echo "$QUERY" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+# Check for Direct URL
+if [[ "$QUERY" =~ ^https?:// ]] || [[ "$QUERY" =~ ^www\. ]]; then
+    [[ "$QUERY" =~ ^www\. ]] && QUERY="https://$QUERY"
+    xdg-open "$QUERY" >/dev/null 2>&1 &
+    i3-msg "workspace number 2" >/dev/null 2>&1 || true
+    exit 0
+fi
+
+# Parse engine and strip bang/prefix
+ENGINE="google"
+RAW_QUERY=""
+
+case "$QUERY" in
+    \!yt\ *|yt:\ *|yt\ *|youtube\ *)
+        ENGINE="youtube"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!yt|yt:|yt|youtube)[[:space:]]+//')"
+        ;;
+    \!aw\ *|aw:\ *|aw\ *|arch\ *|\!arch\ *)
+        ENGINE="archwiki"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!aw|aw:|aw|!arch|arch)[[:space:]]+//')"
+        ;;
+    \!gh\ *|gh:\ *|gh\ *|git\ *|github\ *)
+        ENGINE="github"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!gh|gh:|gh|git|github)[[:space:]]+//')"
+        ;;
+    \!w\ *|w:\ *|w\ *|wiki\ *|\!wiki\ *)
+        ENGINE="wikipedia"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!w|w:|w|!wiki|wiki)[[:space:]]+//')"
+        ;;
+    \!a\ *|a:\ *|a\ *|amz:\ *|amz\ *|amazon\ *|\!amz\ *)
+        ENGINE="amazon"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!a|a:|a|amz:|amz|!amz|amazon)[[:space:]]+//')"
+        ;;
+    \!rd\ *|rd:\ *|rd\ *|r/\ *|\!r\ *|r:\ *|reddit\ *)
+        ENGINE="reddit"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!rd|rd:|rd|r\/|!r|r:|reddit)[[:space:]]+//')"
+        ;;
+    \!ddg\ *|ddg:\ *|ddg\ *|duck\ *)
+        ENGINE="duckduckgo"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!ddg|ddg:|ddg|duck)[[:space:]]+//')"
+        ;;
+    \!so\ *|so:\ *|so\ *|stackoverflow\ *)
+        ENGINE="stackoverflow"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!so|so:|so|stackoverflow)[[:space:]]+//')"
+        ;;
+    \!pdb\ *|pdb:\ *|pdb\ *|proton\ *|protondb\ *)
+        ENGINE="protondb"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!pdb|pdb:|pdb|proton|protondb)[[:space:]]+//')"
+        ;;
+    \!g\ *|g:\ *|g\ *|google\ *)
+        ENGINE="google"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!g|g:|g|google)[[:space:]]+//')"
+        ;;
+    *)
+        ENGINE="google"
+        RAW_QUERY="$QUERY"
+        ;;
+esac
+
+[ -z "$RAW_QUERY" ] && exit 0
+
+# Fast URL encoding via jq
+ENCODED_QUERY=$(echo -n "$RAW_QUERY" | jq -sRr @uri)
+
+# Build target URL
+case "$ENGINE" in
+    youtube)
+        URL="https://www.youtube.com/results?search_query=${ENCODED_QUERY}"
+        ;;
+    archwiki)
+        URL="https://wiki.archlinux.org/index.php?search=${ENCODED_QUERY}"
+        ;;
+    github)
+        URL="https://github.com/search?q=${ENCODED_QUERY}"
+        ;;
+    wikipedia)
+        URL="https://en.wikipedia.org/wiki/Special:Search?search=${ENCODED_QUERY}"
+        ;;
+    amazon)
+        URL="https://www.amazon.com/s?k=${ENCODED_QUERY}"
+        ;;
+    reddit)
+        URL="https://www.reddit.com/search/?q=${ENCODED_QUERY}"
+        ;;
+    duckduckgo)
+        URL="https://duckduckgo.com/?q=${ENCODED_QUERY}"
+        ;;
+    stackoverflow)
+        URL="https://stackoverflow.com/search?q=${ENCODED_QUERY}"
+        ;;
+    protondb)
+        URL="https://www.protondb.com/search?q=${ENCODED_QUERY}"
+        ;;
+    google|*)
+        URL="https://www.google.com/search?q=${ENCODED_QUERY}"
+        ;;
+esac
+
+# Launch in browser and jump to workspace 2
+xdg-open "$URL" >/dev/null 2>&1 &
+i3-msg "workspace number 2" >/dev/null 2>&1 || true
