@@ -43,6 +43,12 @@ else
     echo "==> ~/.config/chezmoi/chezmoi.toml already exists, leaving it alone"
 fi
 
+if [[ "${1:-}" == "--apply" ]] || [[ "${1:-}" == "-a" ]]; then
+    echo "==> Step 2/2: Auto-applying dotfiles via chezmoi..."
+    exec chezmoi init --apply "$REPO_URL"
+fi
+
 echo ""
 echo "Step 1 done. Now run step 2/2:"
 echo "  chezmoi init --apply $REPO_URL"
+echo "(Or pass '--apply' to install.sh for fully unattended 1-step deployment)"

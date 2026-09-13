@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# dotsync - Fast Deployment & Sync Utility for tufx11 (ASUS TUF + i3/X11)
+# ==============================================================================
+set -euo pipefail
+
+CHEZMOI_DIR="${CHEZMOI_DIR:-$HOME/.local/share/chezmoi}"
+REMOTE_REPO="https://github.com/kmanisk/tufx11.git"
+
+test_scripts() {
+    echo "==> Verifying scripts in ~/.local/bin/..."
+    local failed=0
+    for script in "$HOME/.local/bin"/*; do
+        [ -f "$script" ] && [ -x "$script" ] || continue
+        if head -n 1 "$script" | grep -qE '^#!(/bin/sh|/usr/bin/env bash|/bin/bash)'; then
+            if ! bash -n "$script" 2>/dev/null; then
+                echo "  [FAIL] Syntax error: $(basename "$script")"
+                failed=$((failed + 1))
+            fi
+        fi
+    done
+    if [ "$failed" -eq 0 ]; then
+        echo "  [PASS] All shell scripts passed syntax validation."
+    else
+        echo "  [WARN] $failed script(s) failed syntax validation."
+        return 1
+    fi
+}
+
+check_dependencies() {
+    echo "==> Checking essential system tools..."
+    local missing=()
+    for tool in jq fzf i3 pamixer feh polybar dunst rofi xrandr brightnessctl; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            missing+=("$tool")
+        fi
+    done
+    if [ ${#missing[@]} -eq 0 ]; then
+        echo "  [PASS] All essential desktop utilities are installed."
+    else
+        echo "  [WARN] Missing tools: ${missing[*]}"
+        echo "         Run 'chezmoi apply' or install via paru/pacman."
+    fi
+}
+
+case "${1:-apply}" in
+    test|check)
+        test_scripts
+        check_dependencies
+        ;;
+    status|diff)
+        echo "==> Chezmoi Status:"
+        chezmoi status
+        echo ""
+        echo "==> Chezmoi Diff:"
+        chezmoi diff
+        ;;
+    apply)
+        echo "==> Applying dotfile changes..."
+        chezmoi apply
+        test_scripts
+        echo "==> Deployment complete."
+        ;;
+    push)
+        shift || true
+        msg="${*:-sync: update dotfiles}"
+        echo "==> Testing scripts before push..."
+        test_scripts
+        echo "==> Committing and pushing to tufx11 ($msg)..."
+        git -C "$CHEZMOI_DIR" add -A
+        if git -C "$CHEZMOI_DIR" diff --cached --quiet; then
+            echo "  No changes to commit in $CHEZMOI_DIR."
+        else
+            git -C "$CHEZMOI_DIR" commit -m "$msg"
+            git -C "$CHEZMOI_DIR" push origin master
+            echo "  [PASS] Pushed cleanly to tufx11/master."
+        fi
+        ;;
+    pull)
+        echo "==> Pulling latest tufx11 updates..."
+        git -C "$CHEZMOI_DIR" pull --rebase origin master
+        chezmoi apply
+        test_scripts
+        ;;
+    help|-h|--help)
+        cat << 'HELP'
+dotsync - Fast deployment & sync utility for tufx11
+
+Usage:
+  dotsync            Apply pending dotfile updates and verify scripts
+  dotsync diff       Show git diff between system and repo
+  dotsync status     Show modified managed files
+  dotsync push [msg] Commit and push changes to github.com/kmanisk/tufx11
+  dotsync pull       Pull remote updates and apply locally
+  dotsync test       Verify shell syntax & dependencies across ~/.local/bin/
+HELP
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Run 'dotsync --help' for usage."
+        exit 1
+        ;;
+esac
