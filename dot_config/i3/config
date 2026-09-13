@@ -60,19 +60,9 @@ bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/screenshot-region
 bindsym Mod1+Shift+o exec --no-startup-id ~/.local/bin/toggle-audio-sink
 bindsym Mod1+Shift+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 bindsym $mod+Control+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
-bindsym Mod1+Shift+n exec --no-startup-id ~/.local/bin/toggle-nightlight
-
-# Alt + Shift + { (increase / cooler) & Alt + Shift + " (decrease / warmer)
-bindsym Mod1+Shift+braceleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Mod1+Shift+bracketleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Mod1+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -250
-bindsym Mod1+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -250
-
-# Ctrl + Shift + { & Ctrl + Shift + "
-bindsym Control+Shift+braceleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Control+Shift+bracketleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Control+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -250
-bindsym Control+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+# Favorite URLs & Bookmarks Menu (Alt + u / Alt + Shift + b)
+bindsym Mod1+u exec --no-startup-id ~/.local/bin/rofi-favorites
+bindsym Mod1+Shift+b exec --no-startup-id ~/.local/bin/rofi-favorites
 
 # Screen Lock (Windows + Ctrl + l)
 bindsym $mod+Control+l exec "sleep 0.1 && i3lock --blur 5"
@@ -346,10 +336,10 @@ mouse_warping none
 ########################################################################
 
 
-bindsym XF86AudioRaiseVolume exec "pamixer -ui 3 && pamixer --get-volume > /tmp/xobpipe"
-bindsym XF86AudioLowerVolume exec "pamixer -ud 3 && pamixer --get-volume > /tmp/xobpipe"
+bindsym XF86AudioRaiseVolume exec --no-startup-id ~/.local/bin/volume-notify up
+bindsym XF86AudioLowerVolume exec --no-startup-id ~/.local/bin/volume-notify down
 # mute sound
-bindsym XF86AudioMute exec "amixer sset Master toggle | sed -En '/\[on\]/ s/.*\[([0-9]+)%\].*/\1/ p; /\[off\]/ s/.*/0/p' | head -1 > /tmp/xobpipe"
+bindsym XF86AudioMute exec --no-startup-id ~/.local/bin/volume-notify mute
 
 # Screen Brightness (Hardware keys & xremap)
 bindsym XF86MonBrightnessUp exec --no-startup-id ~/.local/bin/change-brightness +5%
@@ -392,7 +382,6 @@ exec_always --no-startup-id sh -c 'sleep 0.5 && ~/.fehbg'
 
 exec --no-startup-id dunst
 # exec --no-startup-id picom -b # Disabled globally
-exec --no-startup-id ~/.local/bin/auto-nightlight
 exec --no-startup-id blueman-applet
 # Alacritty scratch terminal - spawns once on login straight into scratchpad
 exec --no-startup-id alacritty --class Alacritty,scratch-term
@@ -415,5 +404,4 @@ exec_always --no-startup-id xrdb -merge ~/.Xresources
 exec_always --no-startup-id ~/.local/bin/auto-power-profile
 exec --no-startup-id ~/.local/bin/auto-power-profile --daemon
 
-exec_always mkfifo /tmp/xobpipe && tail -f /tmp/xobpipe | xob -t 2170 & disown
 #exec ~/.i3/launch.sh
