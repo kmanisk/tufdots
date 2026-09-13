@@ -1,0 +1,12 @@
+[Unit]
+Description=Automated Night Light Rule (10pm - 6am)
+Documentation=man:toggle-nightlight(1)
+
+[Service]
+Type=oneshot
+Environment="DISPLAY=:0"
+Environment="PATH=/home/manisk/.local/bin:/usr/local/bin:/usr/bin"
+ExecStart=/home/manisk/.local/bin/nightlight-check-rule
+
+[Install]
+WantedBy=default.target

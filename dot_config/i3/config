@@ -244,6 +244,12 @@ bindsym Mod1+Control+8 exec --no-startup-id ~/.local/bin/i3-session-restore
 bindsym $mod+Escape exec --no-startup-id ~/.local/bin/powermenu
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
 
+# Shortcuts & Cheatsheet:
+# Win + ? (Win + Shift + slash) -> Interactive Rofi Quick-Finder Modal
+# Win + Ctrl + ?                -> Open full formatted Cheatsheet in Zed Markdown
+bindsym $mod+question exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
+bindsym $mod+Control+question exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
+
 
 #
 # Status Bar:

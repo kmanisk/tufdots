@@ -1,0 +1,14 @@
+[Unit]
+Description=Trigger Night Light Rule Check (10pm - 6am Schedule)
+
+[Timer]
+# Fire at exactly 22:00 (10 PM) and 06:00 (6 AM)
+OnCalendar=*-*-* 22:00:00
+OnCalendar=*-*-* 06:00:00
+# Also evaluate at login / wake
+OnBootSec=15s
+OnStartupSec=15s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

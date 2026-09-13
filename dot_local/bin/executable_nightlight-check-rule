@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# nightlight-check-rule: Enforces Night Light schedule (10:00 PM to 6:00 AM)
+# Zero CPU polling - triggered on schedule by systemd timer or manual call
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Current hour in 24-hour integer format (0 - 23)
+HOUR=$(date +%-H)
+
+# Schedule: 10pm (22:00) to 6am (05:59) -> Active if HOUR >= 22 or HOUR < 6
+if (( HOUR >= 22 || HOUR < 6 )); then
+    # Within 10pm - 6am window: ensure Night Light is ON
+    ~/.local/bin/toggle-nightlight on --silent
+else
+    # Outside 10pm - 6am window: ensure Night Light is OFF
+    ~/.local/bin/toggle-nightlight off --silent
+fi
