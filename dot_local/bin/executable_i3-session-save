@@ -34,7 +34,7 @@ prog_path = Path(sys.argv[1])
 layout_path = Path(sys.argv[2])
 steam_alive = (sys.argv[3] == '1')
 
-# Prune Steam and scratchpad apps from programs
+# Prune Steam, scratchpad apps, and normalize application commands
 if prog_path.exists():
     try:
         with open(prog_path) as f:
@@ -47,6 +47,18 @@ if prog_path.exists():
                 continue
             if 'scratch-term' in cmd_str or 'scratch-notes' in cmd_str:
                 continue
+
+            # Command normalization & ephemeral socket stripping
+            if 'zed' in cmd_str:
+                p['command'] = ['zed']
+            elif 'brave' in cmd_str:
+                p['command'] = ['brave-origin']
+            elif 'alacritty' in cmd_str:
+                p['command'] = ['alacritty']
+            elif isinstance(cmd, list):
+                # Filter out any /tmp/ or ephemeral socket arguments
+                p['command'] = [arg for arg in cmd if not ('/tmp/' in arg or 'socket' in arg)]
+
             clean_progs.append(p)
         with open(prog_path, 'w') as f:
             json.dump(clean_progs, f, indent=2)

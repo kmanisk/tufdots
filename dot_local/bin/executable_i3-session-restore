@@ -2,12 +2,14 @@
 """
 i3-session-restore: Robust, race-free i3 session restore with duplicate prevention.
 - Sequential layout & program dispatch per workspace (no cross-workspace contamination).
-- Deduplicates instances (never spawns duplicate terminals or Steam UIs).
+- Deduplicates instances (never spawns duplicate terminals, browsers, or Zed editors).
+- Normalizes application commands (cleans stale sockets and ephemeral paths).
 - Respects Steam lifecycle (never restores Steam if killed before/at shutdown).
 - Silent on startup (no intrusive desktop notification).
-- Graceful background placeholder cleanup (gives apps time to swallow without leaving ghost boxes).
+- Active placeholder monitoring & automatic pruning of dead swallow boxes.
 - Always lands focused on Workspace 2 (browser default).
 """
+import os
 import sys
 import json
 import time
@@ -59,6 +61,21 @@ def was_steam_killed():
         return True
     return False
 
+def is_unfilled_placeholder(node):
+    """Accurately identifies an i3 placeholder container that has not swallowed a window."""
+    swallows = node.get("swallows")
+    if not swallows or not isinstance(swallows, list) or len(swallows) == 0:
+        return False
+    # Never kill docks / polybar
+    if any("dock" in str(s).lower() for s in swallows):
+        return False
+    # In i3wm, a real swallowed window has window_properties with class/instance.
+    # An unfilled placeholder has no 'class' property in window_properties.
+    wp = node.get("window_properties")
+    if wp and wp.get("class"):
+        return False
+    return True
+
 def clean_unfilled_placeholders(workspace_name=None):
     """Kill any placeholder containers that failed to swallow a window."""
     tree = get_tree()
@@ -67,22 +84,56 @@ def clean_unfilled_placeholders(workspace_name=None):
         nonlocal killed
         if node.get("type") == "workspace":
             cur_ws = str(node.get("num") or node.get("name"))
-        if node.get("swallows") and not node.get("window") and node.get("type") == "con":
-            swallows = node.get("swallows", [])
-            # Never kill docks / polybar
-            if not any("dock" in str(s).lower() for s in swallows):
-                if workspace_name is None or str(cur_ws) == str(workspace_name):
-                    con_id = node.get("id")
-                    try:
-                        subprocess.call(["i3-msg", f'[con_id="{con_id}"] kill'],
-                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        killed += 1
-                    except Exception:
-                        pass
+        if is_unfilled_placeholder(node):
+            if workspace_name is None or str(cur_ws) == str(workspace_name):
+                con_id = node.get("id")
+                try:
+                    subprocess.call(["i3-msg", f'[con_id="{con_id}"] kill'],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    killed += 1
+                except Exception:
+                    pass
         for child in node.get("nodes", []) + node.get("floating_nodes", []):
             walk(child, cur_ws)
     walk(tree)
     return killed
+
+def spawn_background_placeholder_watcher(target_workspaces=None, timeout=6.0):
+    """Spawn a detached background monitor to ensure all placeholders swallow or get pruned."""
+    try:
+        pid = os.fork()
+        if pid > 0:
+            return
+        os.setsid()
+    except Exception:
+        return
+
+    start = time.time()
+    while time.time() - start < timeout:
+        time.sleep(0.4)
+        tree = get_tree()
+        unfilled = []
+        def walk(node, cur_ws=None):
+            if node.get("type") == "workspace":
+                cur_ws = str(node.get("num") or node.get("name"))
+            if is_unfilled_placeholder(node):
+                if target_workspaces is None or str(cur_ws) in target_workspaces:
+                    unfilled.append(node.get("id"))
+            for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                walk(child, cur_ws)
+        walk(tree)
+        if not unfilled:
+            # All placeholders successfully swallowed
+            sys.exit(0)
+
+    # Timeout reached (6 seconds): prune any dead unfilled placeholders so ghost boxes vanish
+    for cid in unfilled:
+        try:
+            subprocess.call(["i3-msg", f'[con_id="{cid}"] kill'],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+    sys.exit(0)
 
 def is_workspace_already_populated(ws_num, ws_windows):
     """Check if programs saved for this workspace are already open on it."""
@@ -111,6 +162,7 @@ def is_workspace_already_populated(ws_num, ws_windows):
         "firefox": "firefox",
         "steam": "steam",
         "zed": "zed",
+        "zed-editor": "zed",
     }
 
     for prog in saved_progs:
@@ -165,34 +217,58 @@ def restore_single_workspace(ws_num, ws_windows):
             working_dir = str(Path.home())
 
         if isinstance(cmd, list):
-            cmd_str = " ".join(f'"{arg}"' for arg in cmd if arg != "")
-            base_cmd = Path(cmd[0]).name.lower() if cmd else ""
+            cmd_args = [str(arg) for arg in cmd if arg != "" and not ("/tmp/" in arg and "socket" in arg)]
+            base_cmd = Path(cmd_args[0]).name.lower() if cmd_args else ""
         else:
-            cmd_str = str(cmd)
-            base_cmd = Path(cmd.split()[0]).name.lower() if cmd else ""
+            cmd_args = str(cmd).split()
+            base_cmd = Path(cmd_args[0]).name.lower() if cmd_args else ""
+
+        # Normalize Zed to 'zed'
+        if "zed" in base_cmd:
+            cmd_args = ["zed"]
+            base_cmd = "zed"
+
+        # Normalize Brave to 'brave-origin'
+        if "brave" in base_cmd:
+            cmd_args = ["brave-origin"]
+            base_cmd = "brave-origin"
+
+        # Normalize Alacritty
+        if "alacritty" in base_cmd:
+            cmd_args = ["alacritty"]
+            base_cmd = "alacritty"
 
         # Steam safety: if Steam was killed or is not supposed to restore, skip!
         if "steam" in base_cmd:
             if was_steam_killed():
                 continue
             if is_steam_running():
-                # Steam is already running in background/tray; do NOT launch a second instance!
                 continue
 
-        # Duplicate terminal prevention: if Alacritty is already open on this workspace, do not spawn another
+        # Duplicate terminal prevention
         if "alacritty" in base_cmd:
             has_term = any("alacritty" in w["class"] for w in current_wins)
             if has_term:
                 continue
 
-        # Duplicate browser prevention: if Brave/browser is already open on ws 2, do not spawn another
+        # Duplicate browser prevention
         if base_cmd in ("brave", "brave-origin", "firefox", "librewolf"):
             has_browser = any(b in w["class"] for w in current_wins for b in ("brave", "firefox", "librewolf"))
             if has_browser:
                 continue
 
-        # Execute command explicitly on this workspace
-        exec_cmd = f'workspace number {ws_num}; exec "cd \\"{working_dir}\\" && {cmd_str}"'
+        # Duplicate Zed prevention
+        if "zed" in base_cmd:
+            has_zed = any("zed" in w["class"] for w in current_wins)
+            if has_zed:
+                continue
+
+        cmd_joined = " ".join(cmd_args)
+        if working_dir and working_dir != str(Path.home()) and Path(working_dir).is_dir():
+            exec_cmd = f'workspace number {ws_num}; exec --no-startup-id sh -c "cd {json.dumps(working_dir)} && exec {cmd_joined}"'
+        else:
+            exec_cmd = f'workspace number {ws_num}; exec --no-startup-id {cmd_joined}'
+
         subprocess.call(["i3-msg", exec_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def notify(summary, body, icon="view-restore"):
@@ -244,14 +320,14 @@ def main():
         ws1_wins = ws_wins_after.get("1", [])
         has_ws1_term = any("alacritty" in w["class"] for w in ws1_wins)
         if not has_ws1_term and not any(ws == "1" for ws in to_restore):
-            subprocess.call(["i3-msg", "workspace number 1; exec alacritty"],
+            subprocess.call(["i3-msg", "workspace number 1; exec --no-startup-id alacritty"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # 2. Ensure ws2 has a browser
         ws2_wins = ws_wins_after.get("2", [])
         has_ws2_browser = any("brave" in w["class"] for w in ws2_wins)
         if not has_ws2_browser and not any(ws == "2" for ws in to_restore):
-            subprocess.call(["i3-msg", "workspace number 2; exec brave-origin"],
+            subprocess.call(["i3-msg", "workspace number 2; exec --no-startup-id brave-origin"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # 3. Always focus target workspace (ws2 default)
@@ -259,31 +335,9 @@ def main():
         subprocess.call(["i3-msg", f"workspace number {target_ws}"],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        # 4. Asynchronous graceful placeholder cleanup in background (sleep 2.5s)
+        # 4. Asynchronous placeholder monitoring & timeout cleanup (detached background watcher)
         # Prevents ghost placeholder boxes while giving apps time to swallow
-        cleanup_cmd = (
-            "python3 -c '"
-            "import time, sys\n"
-            "time.sleep(2.5)\n"
-            "from pathlib import Path\n"
-            "sys.path.insert(0, str(Path.home() / \".local/bin\"))\n"
-            "import subprocess, json\n"
-            "try:\n"
-            "    tree = json.loads(subprocess.check_output([\"i3-msg\", \"-t\", \"get_tree\"]))\n"
-            "    def kill_empty(node):\n"
-            "        if node.get(\"swallows\") and not node.get(\"window\") and node.get(\"type\") == \"con\":\n"
-            "            s = node.get(\"swallows\", [])\n"
-            "            if not any(\"dock\" in str(x).lower() for x in s):\n"
-            "                cid = node.get(\"id\")\n"
-            "                subprocess.call([\"i3-msg\", f\"[con_id=\\\"{cid}\\\"] kill\"])\n"
-            "        for c in node.get(\"nodes\", []) + node.get(\"floating_nodes\", []):\n"
-            "            kill_empty(c)\n"
-            "    kill_empty(tree)\n"
-            "except Exception:\n"
-            "    pass\n"
-            "' &"
-        )
-        subprocess.Popen(cleanup_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        spawn_background_placeholder_watcher(target_workspaces=to_restore if to_restore else None, timeout=6.0)
 
         if show_notifications:
             notify("i3 Session", f"Restored {len(to_restore)} workspace(s)")
