@@ -14,23 +14,23 @@ window {
     border:              2px;
     border-color:        @border-focus;
     border-radius:       12px;
-    width:               1100px;
-    height:              720px;
+    width:               1200px;
+    height:              860px;
     location:            center;
     anchor:              center;
-    padding:             18px;
+    padding:             20px;
 }
 
 mainbox {
     background-color:    transparent;
     children:            [ inputbar, message, listview ];
-    spacing:             12px;
+    spacing:             14px;
 }
 
 inputbar {
     background-color:    @background-alt;
     border-radius:       8px;
-    padding:             10px 14px;
+    padding:             12px 16px;
     children:            [ prompt, entry ];
     spacing:             10px;
 }
@@ -38,12 +38,13 @@ inputbar {
 prompt {
     background-color:    transparent;
     text-color:          @accent-bright;
-    font:                "Iosevka Nerd Font Bold 13";
+    font:                "Iosevka Nerd Font Bold 15";
 }
 
 entry {
     background-color:    transparent;
     text-color:          @foreground;
+    font:                "Iosevka Nerd Font 15";
     placeholder:         "Filter shortcuts (e.g. workspace, split, zed, audio, rofi)...";
     placeholder-color:   @foreground-alt;
 }
@@ -56,14 +57,14 @@ message {
 textbox {
     background-color:    transparent;
     text-color:          @accent;
-    font:                "Iosevka Nerd Font Italic 12";
+    font:                "Iosevka Nerd Font Italic 13";
 }
 
 listview {
     background-color:    transparent;
     columns:             1;
-    lines:               16;
-    spacing:             4px;
+    lines:               18;
+    spacing:             5px;
     cycle:               true;
     dynamic:             true;
     layout:              vertical;
@@ -74,7 +75,7 @@ element {
     background-color:    transparent;
     text-color:          @foreground;
     border-radius:       6px;
-    padding:             8px 12px;
+    padding:             9px 14px;
     children:            [ element-text ];
 }
 
@@ -86,6 +87,6 @@ element selected {
 element-text {
     background-color:    inherit;
     text-color:          inherit;
-    font:                "Iosevka Nerd Font Mono 13";
+    font:                "Iosevka Nerd Font Mono 15";
     highlight:           bold italic;
 }

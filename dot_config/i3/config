@@ -259,12 +259,14 @@ bindsym $mod+Shift+F1 exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
 #
 exec_always --no-startup-id ~/.config/polybar/launch.sh
 
-# class                 border  backgr. text    indicator child_border
-client.focused          #d79921 #282828 #ebdbb2 #d79921   #d79921
-client.focused_inactive #3c3836 #282828 #a89984 #3c3836   #3c3836
-client.unfocused        #1d2021 #282828 #928374 #1d2021   #1d2021
-client.urgent           #fb4934 #cc241d #ebdbb2 #fb4934   #fb4934
-client.placeholder      #282828 #282828 #ebdbb2 #282828   #282828
+# class                 border   backgr.  text     indicator  child_border
+# indicator = the split direction indicator (line on edge of focused window)
+# child_border = inner border around focused container
+client.focused          #d79921  #282828  #ebdbb2  #8ec07c    #d79921
+client.focused_inactive #3c3836  #282828  #a89984  #504945    #3c3836
+client.unfocused        #1d2021  #282828  #928374  #1d2021    #1d2021
+client.urgent           #fb4934  #cc241d  #ebdbb2  #fb4934    #fb4934
+client.placeholder      #282828  #282828  #ebdbb2  #282828    #282828
 client.background       #282828
 
 ########################################################################

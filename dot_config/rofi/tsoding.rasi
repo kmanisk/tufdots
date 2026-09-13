@@ -7,7 +7,7 @@
     background-color: @background;
     border-color:     @border-col;
     text-color:       @foreground;
-    font:             "Iosevka Nerd Font Mono 13";
+    font:             "Iosevka Nerd Font Mono 14";
 }
 
 window {
@@ -34,7 +34,7 @@ listview {
 prompt {
     padding:          0px 8px 0px 0px;
     text-color:       @accent-bright;
-    font:             "Iosevka Nerd Font Mono Bold 13";
+    font:             "Iosevka Nerd Font Mono Bold 14";
 }
 
 entry {

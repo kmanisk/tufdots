@@ -2,7 +2,7 @@
     verbosity = crit
     font = Iosevka Nerd Font 13
     padding = 1
-    frame_color = "#989898"
+    frame_color = "#d79921"
     frame_width = 2
 
     # allow a small subset of html markup:
@@ -150,20 +150,24 @@
     context = mod4+shift+i
 
 [urgency_low]
-    # IMPORTANT: colors have to be defined in quotation marks.
-    # Otherwise the '#' and following  would be interpreted as a comment.
-    background = "#222222"
-    foreground = "#888888"
-    timeout = 10
+    # Gruvbox dark muted / subtle
+    background = "#282828"
+    foreground = "#a89984"
+    frame_color = "#504945"
+    timeout = 8
 
 [urgency_normal]
-    background = "#002B36"
-    foreground = "#ffffff"
+    # Gruvbox dark default
+    background = "#282828"
+    foreground = "#ebdbb2"
+    frame_color = "#d79921"
     timeout = 10
 
 [urgency_critical]
-    background = "#900000"
-    foreground = "#ffffff"
+    # Gruvbox red accent
+    background = "#282828"
+    foreground = "#fb4934"
+    frame_color = "#cc241d"
     timeout = 0
 
 

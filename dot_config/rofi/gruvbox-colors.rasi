@@ -46,5 +46,5 @@
     urgent:              @gruvbox-red-dark;
     urgent-bright:       @gruvbox-red-light;
 
-    font:                "Iosevka Nerd Font 13";
+    font:                "Iosevka Nerd Font 14";
 }
