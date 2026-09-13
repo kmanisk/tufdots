@@ -1,4 +1,5 @@
 [global]
+    verbosity = crit
     font = Iosevka Nerd Font 13
     padding = 1
     frame_color = "#989898"

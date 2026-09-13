@@ -6,7 +6,7 @@ After=graphical-session.target
 ExecStart=/usr/bin/xremap --watch %h/.config/xremap/config.yml
 Restart=always
 RestartSec=2
-StandardOutput=journal
+StandardOutput=null
 StandardError=journal
 
 [Install]

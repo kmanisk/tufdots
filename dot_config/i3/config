@@ -393,7 +393,7 @@ exec_always --no-startup-id ~/.local/bin/setup-display
 
 exec_always --no-startup-id sh -c 'sleep 0.5 && ~/.fehbg'
 
-exec --no-startup-id dunst
+exec_always --no-startup-id sh -c 'pkill -x dunst; sleep 0.1; exec dunst -config ~/.config/dunst/dunstrc --verbosity crit'
 # exec --no-startup-id picom -b # Disabled globally
 exec --no-startup-id blueman-applet
 # Alacritty scratch terminal - spawns once on login straight into scratchpad
