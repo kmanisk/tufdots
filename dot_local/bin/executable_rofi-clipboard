@@ -1,5 +1,40 @@
 #!/usr/bin/env bash
-# Clipboard History Selector using clipmenu + rofi
-export CM_LAUNCHER=rofi
-export CM_HISTLENGTH=20
-exec clipmenu -p "Clipboard" "$@"
+# ==============================================================================
+# rofi-clipboard: Interactive Clipboard Selector backed by BoltDB (cliphist)
+# Survives full system reboots. Dual-asserts selection to xsel + xclip.
+# Shortcuts inside Rofi:
+#   Enter       -> Restore item to active clipboard
+#   Shift+Del   -> Delete selected item from database
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+DB_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/cliphist/db"
+mkdir -p "$(dirname "$DB_PATH")"
+
+# Present list via Rofi with custom keybinding for delete (Shift+Delete = exit code 10)
+chosen=$(cliphist -db-path "$DB_PATH" list 2>/dev/null | rofi -dmenu \
+    -p "📋 Clipboard" \
+    -mesg "Enter: Copy to Clipboard | Shift+Del: Delete Entry" \
+    -kb-custom-1 "Shift+Delete" \
+    -l 20 \
+    -width 65 \
+    "$@")
+exit_code=$?
+
+# If empty or canceled, exit
+[ -z "$chosen" ] && exit 0
+
+# Shift+Delete triggered -> delete entry from database
+if [ "$exit_code" -eq 10 ]; then
+    cliphist -db-path "$DB_PATH" delete <<< "$chosen" 2>/dev/null
+    command -v dunstify >/dev/null 2>&1 && dunstify -a "Clipboard" -u low -i edit-delete "Deleted clipboard entry"
+    exit 0
+fi
+
+# Enter pressed -> decode item and restore to both xsel and xclip
+data=$(cliphist -db-path "$DB_PATH" decode <<< "$chosen" 2>/dev/null)
+if [ -n "$data" ]; then
+    printf '%s' "$data" | xsel -b -i 2>/dev/null
+    printf '%s' "$data" | xclip -selection clipboard 2>/dev/null
+fi
