@@ -226,8 +226,13 @@ def main():
             rofi_lines.append(f"[Zed Editor] {'Alt + j / k':22} ➔  Next / Prev Tab")
             
         rofi_input = "\n".join(rofi_lines)
-        subprocess.run(["rofi", "-dmenu", "-i", "-p", "⌨️ Shortcuts", "-l", "20", "-width", "65"],
-                       input=rofi_input, text=True)
+        theme_path = Path.home() / ".config/rofi/cheatsheet.rasi"
+        cmd = ["rofi", "-dmenu", "-i", "-p", "⌨️ Keybinds Cheatsheet"]
+        if theme_path.exists():
+            cmd += ["-theme", str(theme_path)]
+        else:
+            cmd += ["-l", "20", "-width", "65"]
+        subprocess.run(cmd, input=rofi_input, text=True)
         return
 
     if "-z" in args or "--zed" in args:
