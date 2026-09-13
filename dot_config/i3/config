@@ -396,8 +396,8 @@ exec_always --no-startup-id sh -c 'pkill -x autotiling; sleep 0.2; exec autotili
 #exec_always --no-startup-id sh -c 'pkill -f cs2-restack-hook; sleep 0.2; exec ~/.local/bin/cs2-restack-hook'
 # Polybar gaming-workspace guard: hide bar on ws4, restore elsewhere (via bar-apply)
 exec_always --no-startup-id sh -c 'pkill -f "polybar-ws-hid[e]"; sleep 0.2; exec ~/.local/bin/polybar-ws-hide'
-# Auto-restore previous workspace session on login / startup
-exec --no-startup-id sh -c 'sleep 1.2 && ~/.local/bin/i3-session-restore --all'
+# Auto-restore previous workspace session on login / startup (parallel & focus ws2)
+exec --no-startup-id sh -c 'sleep 0.2 && ~/.local/bin/i3-session-restore --all --post-focus 2'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface gtk-theme 'cachyos-nord'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface text-scaling-factor 1.2

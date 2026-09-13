@@ -10,12 +10,17 @@ export PATH="$HOME/.local/bin:$PATH"
 STATE_FILE="$HOME/.config/polybar/bar_state"
 mkdir -p "$HOME/.config/polybar"
 
-CURRENT_STATE=$(cat "$STATE_FILE" 2>/dev/null || echo "visible")
+CURRENT_STATE=$(cat "$STATE_FILE" 2>/dev/null || echo "false")
 
-if [[ "$CURRENT_STATE" == "hidden" ]]; then
-    echo "visible" > "$STATE_FILE"
-else
-    echo "hidden" > "$STATE_FILE"
-fi
-
-"$HOME/.local/bin/bar-apply" --force >/dev/null 2>&1
+case "$CURRENT_STATE" in
+    false|hidden|0|off)
+        echo "true" > "$STATE_FILE"
+        "$HOME/.config/polybar/launch.sh" >/dev/null 2>&1 &
+        ;;
+    *)
+        echo "false" > "$STATE_FILE"
+        polybar-msg cmd quit 2>/dev/null || true
+        pkill -x polybar 2>/dev/null || true
+        rm -f /run/user/$(id -u)/polybar/ipc.*.sock 2>/dev/null
+        ;;
+esac

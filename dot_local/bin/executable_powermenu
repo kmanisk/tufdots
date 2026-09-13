@@ -32,7 +32,6 @@ case "$chosen" in
         sleep 0.1 && i3lock --blur 5
         ;;
     *"Suspend"*)
-        ~/.local/bin/i3-session-save --all
         systemctl suspend
         ;;
     *"Logout"*)

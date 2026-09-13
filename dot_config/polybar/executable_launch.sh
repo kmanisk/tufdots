@@ -1,6 +1,17 @@
 #!/usr/bin/env sh
 
 STATE_FILE="$HOME/.config/polybar/bar_state"
+state=$(cat "$STATE_FILE" 2>/dev/null || echo "false")
+
+case "$state" in
+    false|hidden|0|off)
+        # Bar is disabled / hidden: kill if running and exit immediately without spawning
+        polybar-msg cmd quit 2>/dev/null || true
+        pkill -x polybar 2>/dev/null || true
+        rm -f /run/user/$(id -u)/polybar/ipc.*.sock 2>/dev/null
+        exit 0
+        ;;
+esac
 
 # Terminate already running bar instances cleanly
 polybar-msg cmd quit 2>/dev/null || killall -q polybar

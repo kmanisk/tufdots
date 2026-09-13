@@ -128,27 +128,45 @@ def main():
     tree = get_tree()
     ws_windows = get_workspace_windows(tree)
 
+    # Parse post-focus target (defaulting to ws 2 on --all)
+    post_focus = "2" if "--all" in args else None
+    if "--post-focus" in args:
+        try:
+            idx = args.index("--post-focus")
+            post_focus = str(args[idx + 1])
+        except (IndexError, ValueError):
+            pass
+
     if "--all" in args:
         layout_files = sorted(SAVE_DIR.glob("workspace_*_layout.json"))
         if not layout_files:
             notify("i3 Session", "No saved sessions found", "dialog-warning")
-            sys.exit(1)
-        
-        restored_count = 0
+            sys.exit(0)
+
+        # Identify all workspaces that need restoration
+        to_restore = []
         for f in layout_files:
             ws_num = f.stem.replace("workspace_", "").replace("_layout", "")
-            if restore_workspace(ws_num, ws_windows):
-                restored_count += 1
-                time.sleep(0.4)
+            if not is_workspace_already_populated(ws_num, ws_windows):
+                to_restore.append(ws_num)
 
-        # Cleanup any placeholders that failed to swallow
-        time.sleep(1.2)
-        clean_unfilled_placeholders()
+        restored_count = len(to_restore)
+        if to_restore:
+            from concurrent.futures import ThreadPoolExecutor
+            # Restore all workspaces concurrently in parallel background threads
+            with ThreadPoolExecutor(max_workers=min(8, len(to_restore))) as executor:
+                list(executor.map(lambda ws: subprocess.call(["i3-resurrect", "restore", "-w", str(ws)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL), to_restore))
 
-        if restored_count > 0:
-            notify("i3 Session", f"Restored {restored_count} workspace session(s)")
+            # Fast grace period for client windows to map and swallow
+            time.sleep(0.4)
+            clean_unfilled_placeholders()
+            notify("i3 Session", f"Restored {restored_count} workspace(s) in parallel")
         else:
-            notify("i3 Session", "All workspaces are already open (no duplicates created)")
+            notify("i3 Session", "All workspaces already open")
+
+        # Focus target workspace (browser on ws 2 by default)
+        if post_focus:
+            subprocess.call(["i3-msg", f"workspace number {post_focus}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         # Restore focused workspace only
         focused_ws = None

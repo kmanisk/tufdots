@@ -67,22 +67,18 @@ show_it() {
     i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1
 }
 
-state="$(win_state)"
-if [ "$state" = "missing" ]; then
-    # Fresh spawn: wait for the for_window rule to hide it first.
-    setsid sh -c "$spawn" </dev/null >/dev/null 2>&1 &
-    for _ in $(seq 1 30); do
-        state="$(win_state)"
-        [ "$state" = "hidden" ] && break
-        sleep 0.3
-    done
-    # Show only a hidden window. If it stayed visible the rule missed it,
-    # but it is already on screen, so leave it alone (no blink-hide).
-    [ "$state" = "hidden" ] && show_it
-elif [ "$state" = "hidden" ]; then
-    # Normal toggle-on.
+# Fast-path: if window process is already running, toggle instantly (<3ms)
+if pgrep -f "$instance" >/dev/null 2>&1; then
     show_it
-else
-    # Steady visible window: toggle-off (moves it back to scratchpad).
-    show_it
+    exit 0
 fi
+
+# Fallback path: process missing or crashed. Spawn and poll fast (50ms intervals)
+setsid sh -c "$spawn" </dev/null >/dev/null 2>&1 &
+state="missing"
+for _ in $(seq 1 20); do
+    state="$(win_state)"
+    [ "$state" = "hidden" ] && break
+    sleep 0.05
+done
+[ "$state" = "hidden" ] && show_it

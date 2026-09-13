@@ -12,10 +12,19 @@ STATE_FILE="$HOME/.config/polybar/bar_state"
 FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
-state="$(cat "$STATE_FILE" 2>/dev/null || echo "visible")"
-[ "$state" != "hidden" ] && state="visible"
+state="$(cat "$STATE_FILE" 2>/dev/null || echo "false")"
+case "$state" in
+    false|hidden|0|off)
+        polybar-msg cmd quit 2>/dev/null || true
+        pkill -x polybar 2>/dev/null || true
+        exit 0
+        ;;
+    *)
+        state="visible"
+        ;;
+esac
 
-# 1. Revive if dead (launch one instance WITHOUT killing anything else)
+# 1. Revive if dead and state is visible
 if ! pgrep -x polybar >/dev/null 2>&1; then
     MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
     [ -z "$MON" ] && MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"

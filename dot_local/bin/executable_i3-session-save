@@ -1,21 +1,42 @@
 #!/usr/bin/env bash
 # Save i3 session layout and programs using i3-resurrect
 export PATH="$HOME/.local/bin:$PATH"
-mkdir -p "$HOME/.i3/i3-resurrect"
+SAVE_DIR="$HOME/.i3/i3-resurrect"
+mkdir -p "$SAVE_DIR"
 
 if [ "$1" = "--all" ]; then
-    workspaces=$(i3-msg -t get_workspaces 2>/dev/null | jq -r '.[].num')
+    # Extract only active workspaces containing actual windows (excluding scratchpad)
+    workspaces=$(i3-msg -t get_tree 2>/dev/null | jq -r '
+      .. | objects | select(.type=="workspace" and .name!="null" and .name!="__i3_scratch") |
+      select([.. | objects | select(.window!=null)] | length > 0) | .num // empty
+    ' | sort -u)
+
     if [ -z "$workspaces" ]; then
         exit 0
     fi
+
+    saved=()
     for ws in $workspaces; do
-        i3-resurrect save -w "$ws" --swallow=class,instance
+        # Skip gaming workspace (ws 4)
+        [ "$ws" = "4" ] && continue
+        i3-resurrect save -w "$ws" --swallow=class,instance 2>/dev/null
+        saved+=("$ws")
     done
-    command -v notify-send >/dev/null && notify-send -i document-save "i3 Session" "Saved all active workspaces ($workspaces)"
+
+    # Prune stale workspace save files that are no longer active
+    for f in "$SAVE_DIR"/workspace_*_layout.json; do
+        [ -f "$f" ] || continue
+        ws_id=$(basename "$f" | sed -E 's/workspace_([0-9]+)_layout.json/\1/')
+        if [[ ! " ${saved[*]} " =~ " ${ws_id} " ]]; then
+            rm -f "$SAVE_DIR/workspace_${ws_id}_layout.json" "$SAVE_DIR/workspace_${ws_id}_programs.json"
+        fi
+    done
+
+    command -v notify-send >/dev/null && notify-send -i document-save "i3 Session" "Saved workspaces (${saved[*]}) on shutdown"
 else
     curr_ws=$(i3-msg -t get_workspaces 2>/dev/null | jq -r '.[] | select(.focused==true).num')
-    if [ -n "$curr_ws" ]; then
-        i3-resurrect save -w "$curr_ws" --swallow=class,instance
+    if [ -n "$curr_ws" ] && [ "$curr_ws" != "4" ]; then
+        i3-resurrect save -w "$curr_ws" --swallow=class,instance 2>/dev/null
         command -v notify-send >/dev/null && notify-send -i document-save "i3 Session" "Saved workspace $curr_ws layout & programs"
     fi
 fi

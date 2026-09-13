@@ -123,5 +123,16 @@ if systemctl --user is-active --quiet "xremap.service" 2>/dev/null; then
 fi
 {{ end }}
 
+# 6. User Services: i3 Session Save on Shutdown
+if systemctl --user list-unit-files "i3-session-save.service" &>/dev/null; then
+    if ! systemctl --user is-enabled "i3-session-save.service" &>/dev/null; then
+        echo "    [i3-Session: Enabled] Enabling i3-session-save.service..."
+        if [ "$DRY_RUN" -eq 0 ]; then
+            systemctl --user daemon-reload 2>/dev/null || true
+            systemctl --user enable --now "i3-session-save.service" 2>/dev/null || true
+        fi
+    fi
+fi
+
 echo "==> System & user daemons reconciliation complete."
 {{ end }}
