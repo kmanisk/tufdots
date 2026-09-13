@@ -1,12 +1,15 @@
 #!/bin/sh
-# steam-workspace - jump to Steam workspace 3, starting Steam only if needed.
-# Second and later presses just switch to the workspace (no duplicate client).
+# steam-workspace - smart Steam launcher/focuser.
+# Not running → spawn on ws3. Already running → move+focus on ws3.
 set -u
 
 WS=3
 
-i3-msg "workspace number $WS" >/dev/null
-
 if ! pgrep -x steam >/dev/null 2>&1; then
-    setsid steam </dev/null >/dev/null 2>&1 &
+    nohup steam >/dev/null 2>&1 &
+    # Wait for steamwebhelper to map X11 window, then move to ws3 and focus it
+    (sleep 8; i3-msg "[instance=\"steamwebhelper\"] move to workspace number $WS, workspace number $WS" >/dev/null 2>&1) &
+else
+    i3-msg "[instance=\"steam\"] workspace number $WS" >/dev/null
+    i3-msg "[instance=\"steamwebhelper\"] move to workspace number $WS, workspace number $WS" >/dev/null
 fi

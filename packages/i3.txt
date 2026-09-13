@@ -15,3 +15,6 @@ xorg-xrandr
 # NOTE: autotiling comes from the i3-resurrect pip venv (see run_once venv
 # script), and xdotool is a managed ctypes shim in dot_local/bin - neither is
 # a pacman package, so they must NOT be listed here.
+pamixer
+xclip
+maim

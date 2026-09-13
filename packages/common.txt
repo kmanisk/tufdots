@@ -14,3 +14,7 @@ unzip
 wget
 which
 uv
+jq
+fzf
+bc
+age

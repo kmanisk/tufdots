@@ -58,6 +58,8 @@ alias envs="echo \$PATH | tr ' ' '\n'"
 alias fixtether="setup-tether-dns"
 alias fixtethering="setup-tether-dns"
 alias kg="killgame"
+alias dsp="dsp-stat"
+alias dspstat="dsp-stat"
 
 # Modern CLI Replacements
 if type -q bat

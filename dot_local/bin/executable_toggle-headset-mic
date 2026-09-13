@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Toggle Bluetooth Headset Mode: Hi-Fi Stereo (AAC) <-> Headset Mic (mSBC)
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+
+CARD_ID=$(pw-dump 2>/dev/null | jq '.[] | select((.info.props."device.name" // "") | startswith("bluez_card")) | .id' 2>/dev/null | head -n 1)
+
+if [[ -z "$CARD_ID" ]]; then
+    notify-send -u low -t 2000 -i dialog-warning "Headset Mode" "No Bluetooth headset connected"
+    exit 1
+fi
+
+CURRENT_PROFILE=$(pw-dump 2>/dev/null | jq -r --argjson id "$CARD_ID" '.[] | select(.id == $id) | .info.params.Profile[0].name // ""' 2>/dev/null)
+
+if [[ "$CURRENT_PROFILE" == "headset-head-unit"* ]]; then
+    # Currently in Headset Mic mode -> switch to Hi-Fi Stereo (AAC)
+    AAC_PROFILE=$(pw-dump 2>/dev/null | jq -r --argjson id "$CARD_ID" '.[] | select(.id == $id) | .info.params.EnumProfile[] | select(.name == "a2dp-sink") | .index' 2>/dev/null | head -n 1)
+    wpctl set-profile "$CARD_ID" "${AAC_PROFILE:-131076}" 2>/dev/null
+    BUILTIN_MIC=$(pactl list short sources 2>/dev/null | awk '{print $2}' | grep -E '^alsa_input\.' | head -n 1)
+    [[ -n "$BUILTIN_MIC" ]] && pactl set-default-source "$BUILTIN_MIC"
+    notify-send -t 2500 -i audio-headphones "Bluetooth Audio" "🎧 Hi-Fi Stereo Mode (AAC 48kHz)\nDefault Mic: Laptop Array"
+else
+    # Currently in Stereo -> switch to Headset Mic (mSBC Wideband Speech)
+    HFP_PROFILE=$(pw-dump 2>/dev/null | jq -r --argjson id "$CARD_ID" '.[] | select(.id == $id) | .info.params.EnumProfile[] | select(.name == "headset-head-unit") | .index' 2>/dev/null | head -n 1)
+    wpctl set-profile "$CARD_ID" "${HFP_PROFILE:-196864}" 2>/dev/null
+    sleep 0.3
+    BT_MIC=$(pactl list short sources 2>/dev/null | awk '{print $2}' | grep -E '^bluez_input\.' | head -n 1)
+    [[ -n "$BT_MIC" ]] && pactl set-default-source "$BT_MIC"
+    notify-send -t 2500 -i audio-input-microphone "Bluetooth Audio" "🎙️ Headset Mic Active (mSBC 16kHz)\nHeadset Mic + Duplex Audio"
+fi

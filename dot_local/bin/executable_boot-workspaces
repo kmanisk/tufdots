@@ -57,10 +57,8 @@ if ! has_class_on_ws 2 "brave,brave-browser,brave-origin,firefox,librewolf,zen-a
     i3-msg "exec brave-origin" >/dev/null 2>&1
 fi
 
-# 4. ws2 tabbed by default, applied ONCE here (after restore settled).
-#    Deliberately not a for_window rule: per-window `layout tabbed` forcing
-#    reorders windows while session-restore recreates them at startup.
-i3-msg "layout tabbed" >/dev/null 2>&1
+# 4. ws2 tabbed default lives in the i3 config (for_window rule);
+#    nothing to do here besides landing focused below.
 
 # 5. ws3 is the default workspace: end boot focused there.
 i3-msg "workspace number 3" >/dev/null 2>&1
