@@ -351,6 +351,8 @@ bindsym XF86AudioRaiseVolume exec --no-startup-id ~/.local/bin/volume-notify up
 bindsym XF86AudioLowerVolume exec --no-startup-id ~/.local/bin/volume-notify down
 # mute sound
 bindsym XF86AudioMute exec --no-startup-id ~/.local/bin/volume-notify mute
+bindsym $mod+XF86AudioMute exec --no-startup-id ~/.local/bin/dolby-audio toggle
+bindsym $mod+Mod1+a exec --no-startup-id ~/.local/bin/dolby-audio menu
 
 # Screen Brightness (Hardware keys & xremap)
 bindsym XF86MonBrightnessUp exec --no-startup-id ~/.local/bin/change-brightness +5%
