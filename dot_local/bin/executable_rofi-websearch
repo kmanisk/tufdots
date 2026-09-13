@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# rofi-websearch: Instant, zero-daemon bang-based web search for Rofi
+# rofi-websearch: Instant bang-based web search with live horizontal suggestions
 # ==============================================================================
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -18,11 +18,48 @@ HINTS=$(cat <<'HINT_EOF'
 HINT_EOF
 )
 
-# Launch Rofi prompt
-QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "󰖟 Search" -theme ~/.config/rofi/tsoding.rasi)
+# Fast suggestion fetcher via native public autocomplete endpoints (~30ms)
+fetch_suggestions() {
+    local eng="$1"
+    local raw="$2"
+    local enc
+    enc=$(echo -n "$raw" | jq -sRr @uri)
 
-# Exit if cancelled
+    case "$eng" in
+        youtube)
+            curl -s --max-time 1.5 "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${enc}" | jq -r '.[1][]?' 2>/dev/null | head -n 12
+            ;;
+        archwiki)
+            curl -s --max-time 1.5 "https://wiki.archlinux.org/api.php?action=opensearch&format=json&search=${enc}" | jq -r '.[1][]?' 2>/dev/null | head -n 12
+            ;;
+        wikipedia)
+            curl -s --max-time 1.5 "https://en.wikipedia.org/w/api.php?action=opensearch&format=json&search=${enc}" | jq -r '.[1][]?' 2>/dev/null | head -n 12
+            ;;
+        duckduckgo)
+            curl -s --max-time 1.5 "https://duckduckgo.com/ac/?q=${enc}&type=list" | jq -r '.[1][]?' 2>/dev/null | head -n 12
+            ;;
+        *)
+            curl -s --max-time 1.5 "https://suggestqueries.google.com/complete/search?client=chrome&q=${enc}" | jq -r '.[1][]?' 2>/dev/null | head -n 12
+            ;;
+    esac
+}
+
+# 1. First prompt: user types query
+# Control+Return (custom-1) triggers suggestions; Enter triggers instant search
+QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "󰖟 Search" \
+    -kb-custom-1 "Control+Return" \
+    -kb-custom-2 "Shift+Return" \
+    -theme ~/.config/rofi/tsoding.rasi)
+EXIT_CODE=$?
+
+# User hit Escape
+[ $EXIT_CODE -eq 1 ] && exit 0
 [ -z "$QUERY" ] && exit 0
+
+WANT_SUGGESTIONS=0
+if [ $EXIT_CODE -eq 10 ] || [ $EXIT_CODE -eq 11 ]; then
+    WANT_SUGGESTIONS=1
+fi
 
 # If user clicked/selected a hint line without typing a query, prompt with that engine prefix
 case "$QUERY" in
@@ -44,8 +81,15 @@ if [ -n "$PREFIX" ]; then
     [ -z "$QUERY" ] && exit 0
 fi
 
-# Trim leading/trailing whitespace
+# Trim whitespace
 QUERY="$(echo "$QUERY" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+# Check for trailing '?' -> triggers suggestions
+if [[ "$QUERY" =~ \?$ ]]; then
+    WANT_SUGGESTIONS=1
+    QUERY="${QUERY%\?}"
+    QUERY="$(echo "$QUERY" | sed -e 's/[[:space:]]*$//')"
+fi
 
 # Check for Direct URL
 if [[ "$QUERY" =~ ^https?:// ]] || [[ "$QUERY" =~ ^www\. ]]; then
@@ -108,7 +152,23 @@ esac
 
 [ -z "$RAW_QUERY" ] && exit 0
 
-# Fast URL encoding via jq
+# If user requested suggestions (via '?' or Ctrl+Return):
+if [ "$WANT_SUGGESTIONS" -eq 1 ]; then
+    SUGGESTIONS=$(fetch_suggestions "$ENGINE" "$RAW_QUERY")
+    if [ -n "$SUGGESTIONS" ]; then
+        # Present suggestions as horizontal chips right next to prompt
+        CHOICE=$(printf "%s\n%s" "$RAW_QUERY" "$SUGGESTIONS" | rofi -dmenu -i \
+            -p "💡 $ENGINE" \
+            -theme ~/.config/rofi/tsoding.rasi)
+        if [ -n "$CHOICE" ]; then
+            RAW_QUERY="$CHOICE"
+        else
+            exit 0
+        fi
+    fi
+fi
+
+# URL encode query via jq
 ENCODED_QUERY=$(echo -n "$RAW_QUERY" | jq -sRr @uri)
 
 # Build target URL
