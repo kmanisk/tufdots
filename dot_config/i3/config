@@ -34,7 +34,7 @@ bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
 # Games Launcher with GPU offload (Windows + Shift + g) -> Steam on NVIDIA
 bindsym $mod+Shift+g exec --no-startup-id "prime-run ~/.local/bin/steam-workspace"
 
-# Steam (Alt + Shift + s) - gaming workspace 5; starts Steam only if not running
+# Steam (Alt + Shift + S / Win + G) -> Workspace 3 (spawns, unhides from tray, or focuses)
 bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
 
 # Spotify scratchpad (Windows + m toggle, spawns if closed)

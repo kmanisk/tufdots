@@ -1,15 +1,47 @@
 #!/bin/sh
-# steam-workspace - smart Steam launcher/focuser.
-# Not running → spawn on ws3. Already running → move+focus on ws3.
+# ==============================================================================
+# steam-workspace - Smart Steam Launcher & Focuser (Workspace 3)
+# ==============================================================================
+# - Cold boot: launches steam, lands on ws3, locks focus when window maps.
+# - Background/tray: re-opens main window via steam://open/main, focuses on ws3.
+# - Already visible: immediately switches to ws3 and focuses the window.
+# ==============================================================================
 set -u
 
 WS=3
 
+has_window() {
+    i3-msg -t get_tree 2>/dev/null | grep -qE '"instance": ?"steamwebhelper"'
+}
+
+# Always switch to workspace 3
+i3-msg "workspace number $WS" >/dev/null 2>&1
+
 if ! pgrep -x steam >/dev/null 2>&1; then
+    # 1. Cold boot: Steam process is not running at all
     nohup steam >/dev/null 2>&1 &
-    # Wait for steamwebhelper to map X11 window, then move to ws3 and focus it
-    (sleep 8; i3-msg "[instance=\"steamwebhelper\"] move to workspace number $WS, workspace number $WS" >/dev/null 2>&1) &
+    (
+        for _ in $(seq 1 30); do
+            sleep 0.5
+            if has_window; then
+                i3-msg "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
+                break
+            fi
+        done
+    ) &
+elif ! has_window; then
+    # 2. Process is running in background/tray, but window is closed/hidden
+    nohup steam steam://open/main >/dev/null 2>&1 &
+    (
+        for _ in $(seq 1 15); do
+            sleep 0.2
+            if has_window; then
+                i3-msg "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
+                break
+            fi
+        done
+    ) &
 else
-    i3-msg "[instance=\"steam\"] workspace number $WS" >/dev/null
-    i3-msg "[instance=\"steamwebhelper\"] move to workspace number $WS, workspace number $WS" >/dev/null
+    # 3. Window already exists: focus immediately
+    i3-msg "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
 fi
