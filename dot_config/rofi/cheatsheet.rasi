@@ -1,5 +1,6 @@
 /**
- * Sleek Floating Modal Theme for Rofi (Gruvbox Dark)
+ * Large Floating Cheatsheet Modal for Rofi (Gruvbox Dark)
+ * High-visibility two-column layout for keybindings matrix
  */
 @import "~/.config/rofi/gruvbox-colors.rasi"
 
@@ -12,25 +13,26 @@ window {
     text-color:          @foreground;
     border:              2px;
     border-color:        @border-focus;
-    border-radius:       10px;
-    width:               680px;
+    border-radius:       12px;
+    width:               1100px;
+    height:              720px;
     location:            center;
     anchor:              center;
-    padding:             14px;
+    padding:             18px;
 }
 
 mainbox {
     background-color:    transparent;
     children:            [ inputbar, message, listview ];
-    spacing:             10px;
+    spacing:             12px;
 }
 
 inputbar {
     background-color:    @background-alt;
-    border-radius:       6px;
-    padding:             8px 12px;
+    border-radius:       8px;
+    padding:             10px 14px;
     children:            [ prompt, entry ];
-    spacing:             8px;
+    spacing:             10px;
 }
 
 prompt {
@@ -42,14 +44,13 @@ prompt {
 entry {
     background-color:    transparent;
     text-color:          @foreground;
-    placeholder:         "Type query or search...";
+    placeholder:         "Filter shortcuts (e.g. workspace, split, zed, audio, rofi)...";
     placeholder-color:   @foreground-alt;
-    font:                "Iosevka Nerd Font 13";
 }
 
 message {
     background-color:    transparent;
-    padding:             2px 6px;
+    padding:             4px 6px;
 }
 
 textbox {
@@ -61,18 +62,19 @@ textbox {
 listview {
     background-color:    transparent;
     columns:             1;
-    lines:               8;
+    lines:               16;
     spacing:             4px;
     cycle:               true;
     dynamic:             true;
     layout:              vertical;
+    scrollbar:           false;
 }
 
 element {
     background-color:    transparent;
     text-color:          @foreground;
-    border-radius:       4px;
-    padding:             6px 10px;
+    border-radius:       6px;
+    padding:             8px 12px;
     children:            [ element-text ];
 }
 
@@ -84,5 +86,6 @@ element selected {
 element-text {
     background-color:    inherit;
     text-color:          inherit;
-    font:                inherit;
+    font:                "Iosevka Nerd Font Mono 13";
+    highlight:           bold italic;
 }

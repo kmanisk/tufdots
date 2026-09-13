@@ -1,7 +1,7 @@
-/* 🖼️ ROFI WALLPAPER GRID THEME */
+/* 🖼️ ROFI WALLPAPER GRID THEME (Gruvbox Dark) */
 /* Fixed 4x2 grid with keybind header */
 
-@import "~/.config/rofi/config.rasi"
+@import "~/.config/rofi/gruvbox-colors.rasi"
 
 configuration {
     show-icons: true;
@@ -9,95 +9,121 @@ configuration {
 
 /* ---- Window ---- */
 window {
-    width: 60%;
-    height: 74%;
-    border: 2px;
-    border-radius: 12px;
+    background-color: @background;
+    text-color:       @foreground;
+    width:            60%;
+    height:           74%;
+    border:           2px;
+    border-color:     @border-focus;
+    border-radius:    12px;
+    location:         center;
+    anchor:           center;
 }
 
 /* ---- Mainbox ---- */
 mainbox {
-    children: [ "inputbar", "message", "listview" ];
-    spacing: 10px;
-    padding: 20px;
+    background-color: transparent;
+    children:         [ "inputbar", "message", "listview" ];
+    spacing:          10px;
+    padding:          20px;
 }
 
 /* ---- Inputbar ---- */
 inputbar {
-    enabled: true;
-    padding: 10px;
-    border-radius: 10px;
-    children: [ "prompt", "entry" ];
+    enabled:          true;
+    padding:          10px;
+    border-radius:    10px;
+    background-color: @background-alt;
+    children:         [ "prompt", "entry" ];
 }
 
 prompt {
-    enabled: true;
-    padding: 0px 10px 0px 0px;
+    enabled:          true;
+    padding:          0px 10px 0px 0px;
     background-color: transparent;
-    text-color: inherit;
+    text-color:       @accent-bright;
+    font:             "Iosevka Nerd Font Bold 13";
 }
 
 entry {
-    placeholder: "Search Wallpapers...";
-    background-color: transparent;
-    text-color: inherit;
+    placeholder:       "Search Wallpapers...";
+    placeholder-color: @foreground-alt;
+    background-color:  transparent;
+    text-color:        @foreground;
+    font:              "Iosevka Nerd Font 13";
 }
 
 /* ---- Message / Keybind Header ---- */
 message {
-    enabled: true;
-    padding: 10px 14px;
-    border-radius: 10px;
+    enabled:          true;
+    padding:          10px 14px;
+    border-radius:    10px;
     background-color: transparent;
-    text-color: inherit;
+    text-color:       @accent;
+}
+
+textbox {
+    background-color: transparent;
+    text-color:       @accent;
+    font:             "Iosevka Nerd Font Italic 12";
 }
 
 /* ---- Listview ---- */
 listview {
-    columns: 4;
-    lines: 2;
-    fixed-columns: true;
-    fixed-height: true;
-    dynamic: false;
-    scrollbar: true;
-    spacing: 15px;
-    padding: 10px;
-    cycle: false;
-    layout: vertical;
-    reverse: false;
+    background-color: transparent;
+    columns:          4;
+    lines:            2;
+    fixed-columns:    true;
+    fixed-height:     true;
+    dynamic:          false;
+    scrollbar:        true;
+    spacing:          15px;
+    padding:          10px;
+    cycle:            false;
+    layout:           vertical;
+    reverse:          false;
+}
+
+scrollbar {
+    handle-color: @border-col;
+    handle-width: 6px;
+    padding:      0;
 }
 
 /* ---- Elements ---- */
 element {
-    orientation: vertical;
-    padding: 10px;
-    spacing: 5px;
-    border-radius: 10px;
-    cursor: pointer;
+    background-color: transparent;
+    text-color:       @foreground;
+    orientation:      vertical;
+    padding:          10px;
+    spacing:          5px;
+    border-radius:    10px;
+    cursor:           pointer;
 }
 
 element normal.normal {
     background-color: transparent;
-    text-color: inherit;
+    text-color:       inherit;
 }
 
 element selected.normal {
-    background-color: @selected-normal-background;
-    text-color: @selected-normal-foreground;
-    border: 2px;
-    border-color: @primary;
+    background-color: @background-alt;
+    text-color:       @accent-bright;
+    border:           2px;
+    border-color:     @accent;
 }
 
 element-icon {
-    size: 6em;
+    size:             6em;
     horizontal-align: 0.5;
-    vertical-align: 0.5;
+    vertical-align:   0.5;
     background-color: transparent;
 }
 
 element-text {
     horizontal-align: 0.5;
-    vertical-align: 0.5;
+    vertical-align:   0.5;
     background-color: transparent;
-    text-color: inherit;
+    text-color:       inherit;
+    font:             "Iosevka Nerd Font 12";
 }

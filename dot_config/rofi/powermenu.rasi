@@ -1,28 +1,19 @@
 /**
- * Modern Power Menu for Rofi (i3/X11 style)
+ * Modern Power Menu for Rofi (Gruvbox Dark)
  */
+@import "~/.config/rofi/gruvbox-colors.rasi"
+
 configuration {
     show-icons: false;
 }
 
-* {
-    background:          #0f141ce6;
-    background-alt:      #1b222d;
-    foreground:          #e5e9f0;
-    selected:            #81a1c1;
-    selected-text:       #0f141c;
-    border-col:          #2e3440;
-    font:                "Iosevka Nerd Font 13";
-}
-
 window {
-    transparency:        "real";
     background-color:    @background;
     text-color:          @foreground;
     border:              2px;
-    border-color:        @border-col;
+    border-color:        @border-focus;
     border-radius:       12px;
-    width:               360px;
+    width:               380px;
     location:            center;
     anchor:              center;
     padding:             16px;
@@ -41,7 +32,7 @@ inputbar {
 
 prompt {
     background-color:    @background-alt;
-    text-color:          @selected;
+    text-color:          @accent-bright;
     padding:             8px 14px;
     border-radius:       8px;
     font:                "Iosevka Nerd Font Bold 13";
@@ -64,11 +55,12 @@ element {
     border-radius:       8px;
     padding:             10px 14px;
     cursor:              pointer;
+    children:            [ element-text ];
 }
 
 element selected.normal {
-    background-color:    @selected;
-    text-color:          @selected-text;
+    background-color:    @accent;
+    text-color:          #1d2021;
 }
 
 element-text {
@@ -76,4 +68,5 @@ element-text {
     text-color:          inherit;
     cursor:              inherit;
     vertical-align:      0.5;
+    font:                "Iosevka Nerd Font 13";
 }
