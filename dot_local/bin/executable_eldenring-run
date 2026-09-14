@@ -5,11 +5,12 @@ set -e
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
 
-# Stability & Performance environment flags
+# Stability & VKD3D flags
 export VKD3D_CONFIG=force_host_cached
 export PROTON_ENABLE_NVAPI=0
+
+# MangoHud for frame capping & smooth frame pacing
 export MANGOHUD=1
-export MANGOHUD_CONFIG="fps_limit=165,cpu_temp,gpu_temp,ram,vram"
 
 # Focus Workspace 4 automatically
 i3-msg "workspace 4" >/dev/null 2>&1 || true
@@ -19,4 +20,4 @@ GAME_EXE="$GAME_DIR/eldenring.exe"
 PROTON_BIN="/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton"
 
 cd "$GAME_DIR"
-exec gamemoderun prime-run mangohud "$PROTON_BIN" run "$GAME_EXE" "$@"
+exec gamemoderun prime-run "$PROTON_BIN" run "$GAME_EXE" "$@"
