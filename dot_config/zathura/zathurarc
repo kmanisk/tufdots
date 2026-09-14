@@ -1,0 +1,41 @@
+# Gruvbox Dark Theme for Zathura
+set default-bg                  "#282828"
+set default-fg                  "#ebdbb2"
+
+set statusbar-bg                "#3c3836"
+set statusbar-fg                "#ebdbb2"
+
+set inputbar-bg                 "#282828"
+set inputbar-fg                 "#ebdbb2"
+
+set notification-bg             "#282828"
+set notification-fg             "#ebdbb2"
+
+set notification-error-bg       "#cc241d"
+set notification-error-fg       "#ebdbb2"
+
+set notification-warning-bg     "#d79921"
+set notification-warning-fg     "#282828"
+
+set highlight-color             "#d79921"
+set highlight-active-color      "#458588"
+
+set completion-bg               "#3c3836"
+set completion-fg               "#ebdbb2"
+
+set completion-highlight-bg     "#504945"
+set completion-highlight-fg     "#ebdbb2"
+
+set recolor-lightcolor          "#282828"
+set recolor-darkcolor           "#ebdbb2"
+
+set recolor                     "true"
+set recolor-keephue             "true"
+
+# Settings
+set selection-clipboard         "clipboard"
+set adjust-open                 "best-fit"
+set pages-per-row               "1"
+set scroll-page-aware           "true"
+set smooth-scroll               "true"
+set statusbar-home-tilde        "true"

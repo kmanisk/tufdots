@@ -59,6 +59,16 @@ text/javascript=nvim.desktop
 application/javascript=nvim.desktop
 text/xml=nvim.desktop
 application/xml=nvim.desktop
+application/x-pdf=org.pwmt.zathura.desktop
+application/oxps=org.pwmt.zathura.desktop
+application/vnd.ms-xpsdocument=org.pwmt.zathura.desktop
+application/postscript=org.pwmt.zathura.desktop
+application/x-eps=org.pwmt.zathura.desktop
+image/vnd.djvu=org.pwmt.zathura.desktop
+application/x-cbr=org.pwmt.zathura.desktop
+application/x-cbz=org.pwmt.zathura.desktop
+application/x-cb7=org.pwmt.zathura.desktop
+application/x-cbt=org.pwmt.zathura.desktop
 
 [Added Associations]
 video/mp4=mpv.desktop;vlc.desktop;fr.handbrake.ghb.desktop;
