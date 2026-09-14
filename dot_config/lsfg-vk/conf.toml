@@ -1,14 +1,18 @@
-# lsfg-vk configuration file
+version = 2
 
-[general]
-# Absolute path to Lossless.dll
-dll_path = "/mnt/Games/Games/Lossless Scaling/Lossless.dll"
-# Target multiplier (e.g. 2 for 2x frames)
+# Global options
+[global]
+dll = "/home/manisk/.config/lsfg-vk/lsfg-vk.dll"
+allow_fp16 = true
+log_level = "info"
+
+# Sleeping Dogs: Definitive Edition Profile
+[[profile]]
+name = "Sleeping Dogs Definitive Edition"
+active_in = ["sdhdship.exe"]
 multiplier = 2
-# Performance mode (0 = off/quality, 1 = on)
-performance_mode = 0
-# Allow tearing (0 = off, 1 = on)
-allow_tearing = 1
-
-[logging]
-level = "info"
+flow_scale = 1.0
+performance_mode = false
+pacing = "vsync"
+override_present_mode = true
+preserve_swapchain_image_count = false
