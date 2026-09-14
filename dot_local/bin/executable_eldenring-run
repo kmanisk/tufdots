@@ -4,15 +4,13 @@ set -e
 # Prefix configuration
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
-mkdir -p "$STEAM_COMPAT_DATA_PATH"
 
-export VKD3D_CONFIG=no_upload_hvv
-export PROTON_NO_ESYNC=1
-export PROTON_NO_FSYNC=0
+# Stability environment flags
+export VKD3D_CONFIG=force_host_cached
 
 GAME_DIR="/mnt/Games/Games/ELDEN RING/Game"
 GAME_EXE="$GAME_DIR/eldenring.exe"
-PROTON_BIN="/home/manisk/.local/share/Steam/steamapps/common/Proton - Experimental/proton"
+PROTON_BIN="/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton"
 
 cd "$GAME_DIR"
 exec gamemoderun prime-run "$PROTON_BIN" run "$GAME_EXE" "$@"
