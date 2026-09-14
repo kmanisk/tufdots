@@ -6,13 +6,13 @@ export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
 mkdir -p "$STEAM_COMPAT_DATA_PATH"
 
-export MANGOHUD=1
-export PROTON_ENABLE_NVAPI=1
-export VKD3D_CONFIG=dxr11
+export VKD3D_CONFIG=no_upload_hvv
+export PROTON_NO_ESYNC=1
+export PROTON_NO_FSYNC=0
 
 GAME_DIR="/mnt/Games/Games/ELDEN RING/Game"
 GAME_EXE="$GAME_DIR/eldenring.exe"
-PROTON_BIN="/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton"
+PROTON_BIN="/home/manisk/.local/share/Steam/steamapps/common/Proton - Experimental/proton"
 
 cd "$GAME_DIR"
 exec gamemoderun prime-run "$PROTON_BIN" run "$GAME_EXE" "$@"
