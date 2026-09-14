@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -e
+
+# Environment setup
+export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
+export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
+mkdir -p "$STEAM_COMPAT_DATA_PATH"
+
+# Enable Lossless Scaling & MangoHud & RTX 5050 Mobile Offload
+export MANGOHUD=1
+export ENABLE_LSFG=1
+export LSFG_DLL_PATH="/mnt/Games/Games/Lossless Scaling/Lossless.dll"
+export LSFG_MULTIPLIER=2
+
+GAME_DIR="/mnt/Games/Games/ELDEN RING/Game"
+GAME_EXE="$GAME_DIR/eldenring.exe"
+PROTON_BIN="/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton"
+
+cd "$GAME_DIR"
+exec gamemoderun prime-run mangohud "$PROTON_BIN" run "$GAME_EXE" "$@"
