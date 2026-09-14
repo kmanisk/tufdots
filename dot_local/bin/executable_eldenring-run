@@ -5,8 +5,11 @@ set -e
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
 
-# Stability environment flags
+# Stability flags
 export VKD3D_CONFIG=force_host_cached
+
+# Automatically switch to Workspace 4 so the screen is immediately visible
+i3-msg "workspace 4" >/dev/null 2>&1 || true
 
 GAME_DIR="/mnt/Games/Games/ELDEN RING/Game"
 GAME_EXE="$GAME_DIR/eldenring.exe"
