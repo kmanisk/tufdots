@@ -353,9 +353,9 @@ for_window [instance="steamwebhelper" window_role="pop-up"] floating enable
 # Game window rules (tiled on Games Workspace 4, reached via Win+4.
 # Steam client stays on ws3; dialogs stay floating above. No forced
 # fullscreen: it would trap focus. Single game fills the workspace.)
-assign [class="(?i)^(cs2|gamescope)$"] workspace number $ws4
+assign [class="(?i)^(cs2|gamescope|eldenring)$"] workspace number $ws4
 assign [class="^steam_app_.*"] workspace number $ws4
-for_window [class="(?i)^(cs2|gamescope)$"] move to workspace number $ws4, floating disable, border none
+for_window [class="(?i)^(cs2|gamescope|eldenring)$"] move to workspace number $ws4, floating disable, border none
 for_window [class="^steam_app_.*"] move to workspace number $ws4, floating disable, border none
 for_window [window_role="pop-up"] floating enable
 focus_on_window_activation none
@@ -437,7 +437,7 @@ exec_always --no-startup-id gsettings set org.gnome.desktop.interface gtk-theme 
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface icon-theme 'Gruvbox-Plus-Dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-theme 'phinger-cursors-gruvbox-material'
-exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-size 40
+exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-size 37
 exec_always --no-startup-id xsetroot -cursor_name left_ptr
 exec_always --no-startup-id xrdb -merge ~/.Xresources
 exec_always --no-startup-id ~/.local/bin/auto-power-profile
