@@ -6,6 +6,6 @@ gtk-menu-images=1
 gtk-button-images=1
 gtk-cursor-theme-size=40
 gtk-cursor-theme-name="phinger-cursors-gruvbox-material"
-gtk-icon-theme-name="Gruvbox-Dark"
+gtk-icon-theme-name="Gruvbox-Plus-Dark"
 gtk-font-name="Fira Sans, 10"
 gtk-modules="canberra-gtk-module"

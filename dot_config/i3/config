@@ -434,7 +434,7 @@ exec_always --no-startup-id sh -c 'pkill -f "polybar-ws-hid[e]"; sleep 0.2; exec
 exec --no-startup-id sh -c 'sleep 0.2 && ~/.local/bin/i3-session-restore --all --post-focus 2'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface gtk-theme 'Gruvbox-Dark'
-exec_always --no-startup-id gsettings set org.gnome.desktop.interface icon-theme 'Gruvbox-Dark'
+exec_always --no-startup-id gsettings set org.gnome.desktop.interface icon-theme 'Gruvbox-Plus-Dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-theme 'phinger-cursors-gruvbox-material'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-size 40
