@@ -1,21 +1,35 @@
 virtual_modifiers:
   - CapsLock
+
 modmap:
-  - name: CapsLock tap=Escape, hold=RightCtrl
+  - name: Global Modmap
     remap:
       CapsLock:
-        held: RightCtrl
+        held: CapsLock
         alone: Esc
         alone_timeout_millis: 200
+      RightCtrl: RightMeta
 
 keymap:
-  # --- Alacritty-specific overrides (must come BEFORE general CapsLock layer) ---
-  - name: Alacritty overrides
+  # --- Alacritty Universal Copy / Paste / Cut (Safe against SIGINT) ---
+  - name: Alacritty Universal Clipboard
     application:
       only: ["Alacritty"]
     remap:
-      Alt-c: C-S-c # Alt+C → Ctrl+Shift+C (copy in Alacritty)
-      CapsLock-DOT: C-S-v # CapsLock+. → Ctrl+Shift+V (paste in Alacritty)
+      M-c: C-S-c # Win+C -> Ctrl+Shift+C (safe copy without killing running processes)
+      M-v: C-S-v # Win+V -> Ctrl+Shift+V (safe paste)
+      M-x: C-S-c # Win+X -> Ctrl+Shift+C (copy selection)
+      Alt-c: C-S-c
+      CapsLock-DOT: C-S-v
+
+  # --- General Universal Copy / Paste / Cut (All GUI Applications) ---
+  - name: Universal Copy Paste
+    application:
+      not: ["Alacritty"]
+    remap:
+      M-c: C-c # Win+C -> Ctrl+C (Universal Copy)
+      M-v: C-v # Win+V -> Ctrl+V (Universal Paste)
+      M-x: C-x # Win+X -> Ctrl+X (Universal Cut)
 
   # --- CapsLock layer ---
   - name: CapsLock layer
@@ -72,59 +86,11 @@ keymap:
       CapsLock-x: x
       CapsLock-z: z
 
-  # --- RControl mirror layer ---
-  - name: RCtrl layer
+  # --- Katana Sub-legends on Windows key (Super / RightMeta) ---
+  - name: Katana sub-legends
     remap:
-      RIGHTCTRL-h: Left
-      RIGHTCTRL-j: Down
-      RIGHTCTRL-k: Up
-      RIGHTCTRL-l: Right
-      RIGHTCTRL-n: Enter
-      RIGHTCTRL-i: [C-a, BackSpace]
-      RIGHTCTRL-g: [C-a, C-c, Right]
-      RIGHTCTRL-y: C-z
-      RIGHTCTRL-SLASH: C-A-q
-      RIGHTCTRL-o: C-Left
-      RIGHTCTRL-p: C-Right
-      RIGHTCTRL-m: BackSpace
-      RIGHTCTRL-u: C-BackSpace
-      RIGHTCTRL-d: Delete
-      RIGHTCTRL-f: C-f
-      RIGHTCTRL-DOT: C-v
-      RIGHTCTRL-COMMA: [C-a, C-c]
-      RIGHTCTRL-SEMICOLON: [End, Enter]
-      # Brightness
-      RIGHTCTRL-LEFTBRACE: BrightnessUp
-      RIGHTCTRL-APOSTROPHE: BrightnessDown
-      # Volume (] for up, \ for down)
-      RIGHTCTRL-RIGHTBRACE: VolumeUp
-      RIGHTCTRL-BACKSLASH: VolumeDown
-      # F-keys
-      RIGHTCTRL-1: F1
-      RIGHTCTRL-2: F2
-      RIGHTCTRL-3: F3
-      RIGHTCTRL-4: F4
-      RIGHTCTRL-5: F5
-      RIGHTCTRL-6: F6
-      RIGHTCTRL-7: F7
-      RIGHTCTRL-8: F8
-      RIGHTCTRL-9: F9
-      RIGHTCTRL-0: F10
-      RIGHTCTRL-MINUS: F11
-      RIGHTCTRL-EQUAL: F12
-      # Katana Base Sub-legends for RCtrl
-      RIGHTCTRL-q: BrightnessDown
-      RIGHTCTRL-w: BrightnessUp
-      # Passthrough
-      RIGHTCTRL-a: a
-      RIGHTCTRL-b: b
-      RIGHTCTRL-c: c
-      RIGHTCTRL-e: e
-      RIGHTCTRL-s: s
-      RIGHTCTRL-t: t
-      RIGHTCTRL-v: v
-      RIGHTCTRL-x: x
-      RIGHTCTRL-z: z
+      M-q: BrightnessDown
+      M-w: BrightnessUp
 
   # --- Misc ---
   - name: Misc

@@ -18,7 +18,8 @@ bindsym $mod+slash exec --no-startup-id ~/.local/bin/rofi-websearch
 bindsym Mod1+Shift+space exec --no-startup-id ~/.local/bin/rofi-websearch --floating
 bindsym $mod+d exec --no-startup-id ~/.local/bin/rofi-websearch --floating
 
-# Clipboard History (Clipmenu + Rofi): Win + y
+# Clipboard History (Clipmenu + Rofi): Win + Shift + v & Win + y
+bindsym $mod+Shift+v exec --no-startup-id ~/.local/bin/rofi-clipboard
 bindsym $mod+y exec --no-startup-id ~/.local/bin/rofi-clipboard
 
 # Browser (Windows + b) -> Default Brave on Intel iGPU (Workspace 2)
@@ -35,8 +36,8 @@ bindsym $mod+Shift+t exec $term -e nvim
 # File Manager
 bindsym $mod+e exec thunar
 
-# Process Killer Menu (Windows + x)
-bindsym $mod+x exec --no-startup-id ~/.local/bin/rofi-pkill
+# Process Killer Menu (Windows + Escape)
+bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 
 # Games Launcher (Windows + g) -> Steam workspace
 bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
@@ -110,8 +111,8 @@ bindsym $mod+Shift+space floating toggle
 bindsym $mod+space focus mode_toggle
 bindsym $mod+Shift+a focus parent
 
-# Split orientation
-bindsym $mod+v split v
+# Split orientation (Vertical split via Win+Shift+v is replaced by autotiling; Win+v is reserved for Universal Paste)
+# bindsym $mod+v split v
 
 # ==============================================================================
 # FOCUS MOVEMENT (Windows + hjkl & Arrows)
@@ -251,8 +252,7 @@ bindsym Mod1+Shift+9 exec --no-startup-id ~/.local/bin/i3-session-menu
 bindsym Mod1+Control+7 exec --no-startup-id ~/.local/bin/i3-session-save
 bindsym Mod1+Control+8 exec --no-startup-id ~/.local/bin/i3-session-restore
 
-# Power / Shutdown Menu (Windows + Escape & Windows + Shift + e)
-bindsym $mod+Escape exec --no-startup-id ~/.local/bin/powermenu
+# Power / Shutdown Menu (Windows + Shift + e)
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
 
 # Shortcuts & Cheatsheet:
@@ -380,7 +380,8 @@ bindsym XF86AudioMute exec --no-startup-id ~/.local/bin/volume-notify mute
 bindsym XF86MonBrightnessUp exec --no-startup-id ~/.local/bin/change-brightness +5%
 bindsym XF86MonBrightnessDown exec --no-startup-id ~/.local/bin/change-brightness 5%-
 
-bindsym $mod+c exec gnome-calculator
+# Calculator (Windows + Alt + c, freeing Win + c for Universal Copy)
+bindsym $mod+Mod1+c exec gnome-calculator
 #bindsym $mod+p exec ~/.scripts/dmshot
 
 # Wallpaper Switcher: Alt+Shift+W = blxss originals, Alt+Shift+Q = blxss 4K pack
