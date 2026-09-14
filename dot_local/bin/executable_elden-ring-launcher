@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Elden Ring Launcher for RTX 5050 Mobile & 165Hz Display
+export ENABLE_LSFG=1
+export LSFG_DLL_PATH="/mnt/Games/Games/Lossless Scaling/Lossless.dll"
+export LSFG_MULTIPLIER=2
+
+exec gamemoderun prime-run "$@"

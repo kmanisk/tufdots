@@ -1,0 +1,14 @@
+# lsfg-vk configuration file
+
+[general]
+# Absolute path to Lossless.dll
+dll_path = "/mnt/Games/Games/Lossless Scaling/Lossless.dll"
+# Target multiplier (e.g. 2 for 2x frames)
+multiplier = 2
+# Performance mode (0 = off/quality, 1 = on)
+performance_mode = 0
+# Allow tearing (0 = off, 1 = on)
+allow_tearing = 1
+
+[logging]
+level = "info"
