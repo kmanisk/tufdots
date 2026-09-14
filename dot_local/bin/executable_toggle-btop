@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# toggle-btop: Single-instance launcher / focuser / toggler for btop in Alacritty
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Check if btop window already exists in i3 tree
+if i3-msg -t get_tree | grep -q '"class":"btop"'; then
+    # If focused, hide or close it; if not focused, focus it
+    FOCUSED_CLASS=$(i3-msg -t get_tree | jq -r '.. | objects | select(.focused? == true) | .window_properties.class // empty')
+    if [ "$FOCUSED_CLASS" = "btop" ]; then
+        i3-msg '[class="^btop$"] kill' >/dev/null 2>&1
+    else
+        i3-msg '[class="^btop$"] focus' >/dev/null 2>&1
+    fi
+else
+    # Not running: spawn single instance
+    exec alacritty --class btop -e btop
+fi

@@ -7,14 +7,12 @@ export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
 DELTA="${1:-250}"
-STATE_FILE="/tmp/nightlight_state"
+STATE_FILE="$HOME/.config/nightlight_state"
 TEMP_FILE="$HOME/.config/nightlight_temp"
 
 CURRENT_TEMP=4200
 if [[ -f "$TEMP_FILE" ]]; then
     CURRENT_TEMP=$(cat "$TEMP_FILE" 2>/dev/null)
-elif [[ -f "/tmp/nightlight_temp" ]]; then
-    CURRENT_TEMP=$(cat "/tmp/nightlight_temp" 2>/dev/null)
 fi
 
 NEW_TEMP=$(( CURRENT_TEMP + DELTA ))
@@ -28,19 +26,24 @@ if (( NEW_TEMP < 2000 )); then
 fi
 
 echo "$NEW_TEMP" > "$TEMP_FILE"
-echo "$NEW_TEMP" > "/tmp/nightlight_temp" 2>/dev/null || true
 
 # Calculate percentage (2000K = 0%, 6500K = 100%)
 PERCENT=$(( (NEW_TEMP - 2000) * 100 / 4500 ))
 
 if (( NEW_TEMP >= 6500 )); then
+    pkill -9 redshift >/dev/null 2>&1
     redshift -x -m randr >/dev/null 2>&1
-    xrandr --output eDP-1 --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
+    [ -z "$PRIMARY_MON" ] && PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"
+    if [ -n "$PRIMARY_MON" ]; then
+        xrandr --output "$PRIMARY_MON" --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    fi
     echo "off" > "$STATE_FILE"
     dunstify -a "Night Light" -u low -i preferences-desktop-display \
         -h string:x-dunst-stack-tag:nightlight -h int:value:100 \
         "Night Light: 6500K (Daylight)"
 else
+    pkill -9 redshift >/dev/null 2>&1
     redshift -r -P -m randr -O "$NEW_TEMP" >/dev/null 2>&1
     echo "on" > "$STATE_FILE"
     dunstify -a "Night Light" -u low -i preferences-desktop-display \

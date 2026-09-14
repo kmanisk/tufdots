@@ -14,7 +14,7 @@
         "Aporetic Sans Mono",
         "FantasqueSansM Nerd Font Mono"
     ],
-    "buffer_font_size": 16.0, // <- Change this to adjust editor code size
+    "buffer_font_size": 29.0, // <- Change this to adjust editor code size
     // "buffer_font_size": 30.0, // <- Change this to adjust editor code size
     "buffer_font_weight": 400, // Regular = 400, Medium = 500, SemiBold = 600, Bold = 700
     "buffer_line_height": {
@@ -27,13 +27,13 @@
     },
     // UI Font (Sidebars, Menus, Status Bar, Tabs)
     "ui_font_family": "Cantarell",
-    "agent_ui_font_size": 16,
+    "agent_ui_font_size": 18,
     // "ui_font_family": "IntoneMono Nerd Font",
     "ui_font_fallbacks": [
         "Cantarell",
         "system-ui"
     ],
-    "ui_font_size": 16.0,
+    "ui_font_size": 20.0,
     "ui_font_weight": 400,
     // Terminal Font
     "terminal": {
@@ -42,7 +42,7 @@
         "font_fallbacks": [
             "monospace"
         ],
-        "font_size": 16.0,
+        "font_size": 23.0,
         "line_height": {
             "custom": 1.0
         },
@@ -52,11 +52,11 @@
     // ─────────────────────────────────────────────────────────────────────────────
     // 2. THEME & ICONS
     // ─────────────────────────────────────────────────────────────────────────────
-    "icon_theme": "JetBrains Icons Dark",
+    "icon_theme": "JetBrains New UI Icons (Dark)",
     "theme": {
         "mode": "dark",
         "light": "VSCode Light+",
-        "dark": "Lydia"
+        "dark": "Gruvbox Material Neovim Dark"
     },
     // ─────────────────────────────────────────────────────────────────────────────
     // 3. GENERAL & WINDOW

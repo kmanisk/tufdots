@@ -1,30 +1,43 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Night Light Toggle for i3wm (using Redshift + Dunst OSD)
-# Supports: toggle-nightlight [on|off|toggle] [--silent]
+# Persistent State: ~/.config/nightlight_state (maintains state across reboots)
+# Supports: toggle-nightlight [on|off|toggle] [--silent] [--auto]
 # ==============================================================================
 export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
-STATE_FILE="/tmp/nightlight_state"
+STATE_FILE="$HOME/.config/nightlight_state"
 TEMP_FILE="$HOME/.config/nightlight_temp"
 
 CURRENT_TEMP=4200
 if [[ -f "$TEMP_FILE" ]]; then
     CURRENT_TEMP=$(cat "$TEMP_FILE" 2>/dev/null)
-elif [[ -f "/tmp/nightlight_temp" ]]; then
-    CURRENT_TEMP=$(cat "/tmp/nightlight_temp" 2>/dev/null)
 fi
 
-ACTION="${1:-toggle}"
+ACTION="toggle"
 SILENT=0
+IS_AUTO=0
+
 for arg in "$@"; do
     if [[ "$arg" == "--silent" ]]; then
         SILENT=1
+    elif [[ "$arg" == "--auto" ]]; then
+        IS_AUTO=1
     elif [[ "$arg" == "on" || "$arg" == "off" || "$arg" == "toggle" ]]; then
         ACTION="$arg"
     fi
 done
+
+# If triggered by automated schedule/timer, respect user disabled preference:
+# If persistent state is explicitly "off" (or "disabled"), do NOT enable it automatically.
+CURRENT_STATE="$(cat "$STATE_FILE" 2>/dev/null || echo "on")"
+if (( IS_AUTO == 1 )); then
+    if [[ "$CURRENT_STATE" == "off" || "$CURRENT_STATE" == "disabled" || "$CURRENT_STATE" == "0" ]]; then
+        # User manually turned it off; do nothing on boot/auto schedule
+        exit 0
+    fi
+fi
 
 turn_on() {
     pkill -9 redshift >/dev/null 2>&1
@@ -41,7 +54,11 @@ turn_on() {
 turn_off() {
     pkill -9 redshift >/dev/null 2>&1
     redshift -x -m randr >/dev/null 2>&1
-    xrandr --output eDP-1 --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
+    [ -z "$PRIMARY_MON" ] && PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"
+    if [ -n "$PRIMARY_MON" ]; then
+        xrandr --output "$PRIMARY_MON" --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    fi
     echo "off" > "$STATE_FILE"
     if (( SILENT == 0 )); then
         dunstify -a "Night Light" -u low -i preferences-desktop-display \
@@ -58,7 +75,7 @@ case "$ACTION" in
         turn_off
         ;;
     toggle|*)
-        if [[ -f "$STATE_FILE" ]] && [[ "$(cat "$STATE_FILE")" == "on" ]]; then
+        if [[ "$CURRENT_STATE" == "on" || "$CURRENT_STATE" == "1" ]]; then
             turn_off
         else
             turn_on

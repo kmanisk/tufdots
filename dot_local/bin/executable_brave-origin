@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Brave Browser Launcher (runs on power-efficient Intel iGPU with VA-API hardware decode)
+# Brave Browser Launcher (VA-API / NVDEC hardware decode support)
+export LIBVA_DRIVER_NAME=nvidia
+export NVD_BACKEND=direct
+
 BRAVE_BIN=$(command -v /usr/bin/brave-origin || command -v /usr/sbin/brave-origin || command -v /usr/bin/brave)
 if [ -z "$BRAVE_BIN" ]; then
     echo "brave launcher: real binary not found" >&2

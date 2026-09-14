@@ -5,8 +5,8 @@ Xft.lcdfilter: lcddefault
 Xft.hintstyle: hintslight
 Xft.hinting: 1
 Xft.antialias: 1
-Xcursor.size: 16
-Xcursor.theme: Dusky
+Xcursor.size: 40
+Xcursor.theme: phinger-cursors-gruvbox-material
 
 ! =============================================================================
 ! Gruvbox Dark Color Palette (from morhetz/gruvbox-generalized)

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# force-kill-window: Force terminate the currently focused window
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+# First send immediate force-kill via i3-msg (WM level)
+i3-msg -q 'kill' 2>/dev/null
+
+# Also fallback to xdotool windowkill for stubborn/frozen clients
+WID=$(xdotool getwindowfocus 2>/dev/null)
+if [ -n "$WID" ] && [ "$WID" -ne 0 ]; then
+    # Double check it's not the desktop/root window
+    ROOT=$(xdotool getactivewindow 2>/dev/null)
+    if [ -n "$ROOT" ]; then
+        xdotool windowkill "$WID" 2>/dev/null || true
+    fi
+fi

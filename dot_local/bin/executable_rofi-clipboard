@@ -1,41 +1,141 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# rofi-clipboard: Interactive Clipboard Selector backed by BoltDB (cliphist)
-# Survives full system reboots. Dual-asserts selection to xsel + xclip.
-# Shortcuts inside Rofi:
-#   Enter       -> Restore item to active clipboard
-#   Shift+Del   -> Delete selected item from database
+# rofi-clipboard: Interactive Floating Clipboard & Pinned Notes Selector
+# Supports:
+#   Enter       -> Copy to Clipboard & Exit
+#   Alt+p       -> Pin selected entry (stays open / loops)
+#   Alt+x       -> Unpin entry (stays open / loops)
+#   Alt+d       -> Delete entry (stays open / loops)
+#   Escape      -> Exit
 # ==============================================================================
 export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
 DB_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/cliphist/db"
-mkdir -p "$(dirname "$DB_PATH")"
+PIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/clipboard_pins"
+mkdir -p "$(dirname "$DB_PATH")" "$PIN_DIR"
+THEME="$HOME/.config/rofi/clipboard-floating.rasi"
 
-# Present list via Rofi with custom keybinding for delete (Shift+Delete = exit code 10)
-chosen=$(cliphist -db-path "$DB_PATH" list 2>/dev/null | rofi -dmenu \
-    -p "📋 Clipboard" \
-    -mesg "Enter: Copy to Clipboard | Shift+Del: Delete Entry" \
-    -kb-delete-entry "" \
-    -kb-custom-1 "Shift+Delete" \
-    -l 20 \
-    -width 65 \
-    "$@")
-exit_code=$?
+PIN_PREFIX="📌 [PIN] "
 
-# If empty or canceled, exit
-[ -z "$chosen" ] && exit 0
+notify() {
+    command -v dunstify >/dev/null 2>&1 && dunstify -a "Clipboard" -u low -i edit-paste "$1" "$2"
+}
 
-# Shift+Delete triggered -> delete entry from database
-if [ "$exit_code" -eq 10 ]; then
-    cliphist -db-path "$DB_PATH" delete <<< "$chosen" 2>/dev/null
-    command -v dunstify >/dev/null 2>&1 && dunstify -a "Clipboard" -u low -i edit-delete "Deleted clipboard entry"
+# Assemble display list: Pinned items first, then cliphist history
+display_items() {
+    if [ -d "$PIN_DIR" ]; then
+        for f in "$PIN_DIR"/*; do
+            [ -f "$f" ] || continue
+            first_line=$(head -n 1 "$f" | tr -d '\r\n')
+            [ -z "$first_line" ] && first_line="<empty>"
+            echo "${PIN_PREFIX}${first_line}"
+        done
+    fi
+    cliphist -db-path "$DB_PATH" list 2>/dev/null
+}
+
+# Main interactive loop: pinning, unpinning, or deleting keeps the menu open
+while true; do
+    chosen=$(display_items | rofi -dmenu \
+        -p "📋 Clipboard" \
+        -mesg "Enter: Copy & Close  |  Alt+p: Pin  |  Alt+x: Unpin  |  Alt+d: Delete" \
+        -kb-delete-entry "" \
+        -kb-custom-1 "Alt+d,Shift+Delete" \
+        -kb-custom-2 "Alt+p" \
+        -kb-custom-3 "Alt+x" \
+        -theme "$THEME" \
+        "$@")
+    exit_code=$?
+
+    # Esc or window close / canceled
+    [ -z "$chosen" ] && exit 0
+    [ "$exit_code" -eq 1 ] && exit 0
+
+    is_pinned=0
+    if [[ "$chosen" == "${PIN_PREFIX}"* ]]; then
+        is_pinned=1
+    fi
+
+    # --- ACTION: ALT+D (Delete) -> Loops ---
+    if [ "$exit_code" -eq 10 ]; then
+        if [ "$is_pinned" -eq 1 ]; then
+            pin_text="${chosen#"${PIN_PREFIX}"}"
+            for f in "$PIN_DIR"/*; do
+                [ -f "$f" ] || continue
+                line=$(head -n 1 "$f" | tr -d '\r\n')
+                if [ "$line" = "$pin_text" ]; then
+                    rm -f "$f"
+                    notify "Deleted Pin" "$pin_text"
+                    break
+                fi
+            done
+        else
+            cliphist -db-path "$DB_PATH" delete <<< "$chosen" 2>/dev/null
+            notify "Deleted Entry" "Clipboard entry removed"
+        fi
+        continue
+    fi
+
+    # --- ACTION: ALT+P (Pin) -> Loops ---
+    if [ "$exit_code" -eq 11 ]; then
+        if [ "$is_pinned" -eq 1 ]; then
+            notify "Already Pinned" "This item is already pinned"
+        else
+            raw_text=$(cliphist -db-path "$DB_PATH" decode <<< "$chosen" 2>/dev/null)
+            if [ -n "$raw_text" ]; then
+                hash_id=$(printf '%s' "$raw_text" | md5sum | cut -d' ' -f1)
+                printf '%s' "$raw_text" > "$PIN_DIR/$hash_id"
+                notify "Pinned Note" "$(head -n 1 "$PIN_DIR/$hash_id")"
+            fi
+        fi
+        continue
+    fi
+
+    # --- ACTION: ALT+X (Unpin) -> Loops ---
+    if [ "$exit_code" -eq 12 ]; then
+        if [ "$is_pinned" -eq 1 ]; then
+            pin_text="${chosen#"${PIN_PREFIX}"}"
+            for f in "$PIN_DIR"/*; do
+                [ -f "$f" ] || continue
+                line=$(head -n 1 "$f" | tr -d '\r\n')
+                if [ "$line" = "$pin_text" ]; then
+                    rm -f "$f"
+                    notify "Unpinned" "$pin_text"
+                    break
+                fi
+            done
+        else
+            notify "Not Pinned" "Item is in standard history, not pinned"
+        fi
+        continue
+    fi
+
+    # --- ACTION: ENTER (Copy & Close) ---
+    if [ "$exit_code" -eq 0 ]; then
+        if [ "$is_pinned" -eq 1 ]; then
+            pin_text="${chosen#"${PIN_PREFIX}"}"
+            for f in "$PIN_DIR"/*; do
+                [ -f "$f" ] || continue
+                line=$(head -n 1 "$f" | tr -d '\r\n')
+                if [ "$line" = "$pin_text" ]; then
+                    xsel -b -i < "$f" 2>/dev/null
+                    xclip -selection clipboard < "$f" 2>/dev/null
+                    notify "Copied Pin" "$pin_text"
+                    break
+                fi
+            done
+        else
+            raw_text=$(cliphist -db-path "$DB_PATH" decode <<< "$chosen" 2>/dev/null)
+            if [ -n "$raw_text" ]; then
+                printf '%s' "$raw_text" | xsel -b -i 2>/dev/null
+                printf '%s' "$raw_text" | xclip -selection clipboard 2>/dev/null
+                notify "Copied to Clipboard" "$(head -n 1 <<< "$raw_text")"
+            fi
+        fi
+        exit 0
+    fi
+
+    # Fallback exit for other codes
     exit 0
-fi
-
-# Enter pressed -> decode item and restore to both xsel and xclip
-data=$(cliphist -db-path "$DB_PATH" decode <<< "$chosen" 2>/dev/null)
-if [ -n "$data" ]; then
-    printf '%s' "$data" | xsel -b -i 2>/dev/null
-    printf '%s' "$data" | xclip -selection clipboard 2>/dev/null
-fi
+done

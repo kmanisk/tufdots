@@ -36,7 +36,7 @@ keymap:
       CapsLock-i: [C-a, BackSpace]
       CapsLock-g: [C-a, C-c, Right]
       CapsLock-y: C-z
-      CapsLock-SLASH: A-F4
+      CapsLock-SLASH: C-A-q
       CapsLock-m: BackSpace
       CapsLock-u: C-BackSpace
       CapsLock-d: Delete
@@ -83,7 +83,7 @@ keymap:
       RIGHTCTRL-i: [C-a, BackSpace]
       RIGHTCTRL-g: [C-a, C-c, Right]
       RIGHTCTRL-y: C-z
-      RIGHTCTRL-SLASH: A-F4
+      RIGHTCTRL-SLASH: C-A-q
       RIGHTCTRL-o: C-Left
       RIGHTCTRL-p: C-Right
       RIGHTCTRL-m: BackSpace
@@ -112,16 +112,17 @@ keymap:
       RIGHTCTRL-0: F10
       RIGHTCTRL-MINUS: F11
       RIGHTCTRL-EQUAL: F12
+      # Katana Base Sub-legends for RCtrl
+      RIGHTCTRL-q: BrightnessDown
+      RIGHTCTRL-w: BrightnessUp
       # Passthrough
       RIGHTCTRL-a: a
       RIGHTCTRL-b: b
       RIGHTCTRL-c: c
       RIGHTCTRL-e: e
-      RIGHTCTRL-q: q
       RIGHTCTRL-s: s
       RIGHTCTRL-t: t
       RIGHTCTRL-v: v
-      RIGHTCTRL-w: w
       RIGHTCTRL-x: x
       RIGHTCTRL-z: z
 

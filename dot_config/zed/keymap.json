@@ -348,8 +348,7 @@
       "ctrl-space": "editor::ShowCompletions",
       "alt-l": "workspace::ToggleLeftDock",
       "alt-d": "multi_workspace::ToggleWorkspaceSidebar",
-      "ctrl-p": "editor::Paste",
-      "space w": ["editor::Format", "workspace::Save"]
+      "ctrl-p": "editor::Paste"
     }
   },
 

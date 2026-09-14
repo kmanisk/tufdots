@@ -35,8 +35,8 @@ bindsym $mod+Shift+t exec $term -e nvim
 # File Manager
 bindsym $mod+e exec thunar
 
-# Kill Window (Windows + x)
-bindsym $mod+x exec --no-startup-id "i3-msg 'kill'"
+# Process Killer Menu (Windows + x)
+bindsym $mod+x exec --no-startup-id ~/.local/bin/rofi-pkill
 
 # Games Launcher (Windows + g) -> Steam workspace
 bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
@@ -48,9 +48,11 @@ bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
 
 # Spotify scratchpad (Windows + m toggle, spawns if closed)
 bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
+bindsym $mod+t exec --no-startup-id zed
 
 # Task Manager (TMOG in floating window)
-bindsym Control+Shift+Escape exec --no-startup-id /usr/bin/TaskManagerOG
+bindsym Control+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
+bindsym $mod+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
 
 # ==============================================================================
 # SYSTEM UTILITIES
@@ -58,24 +60,35 @@ bindsym Control+Shift+Escape exec --no-startup-id /usr/bin/TaskManagerOG
 bindsym $mod+Mod1+1 exec $term --class nmtui -e nmtui
 bindsym $mod+Mod1+2 exec blueman-manager
 bindsym $mod+Mod1+3 exec pavucontrol
-bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/screenshot-region
+bindsym $mod+s exec --no-startup-id ~/.local/bin/screenshot-region
 bindsym Mod1+Shift+o exec --no-startup-id ~/.local/bin/toggle-audio-sink
 bindsym Mod1+Shift+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 bindsym $mod+Control+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 # Favorite URLs & Bookmarks Menu (Alt + u / Alt + Shift + b)
-bindsym Mod1+u exec --no-startup-id ~/.local/bin/rofi-favorites
 bindsym Mod1+Shift+b exec --no-startup-id ~/.local/bin/rofi-favorites
 
-# Night Light Toggle (Alt + Shift + n) & Color Temp ({ / " or [ / ') with Dunst OSD
+# Night Light Toggle (Alt + Shift + n) & Color Temp Adjustments
 bindsym Mod1+Shift+n exec --no-startup-id ~/.local/bin/toggle-nightlight
-bindsym Mod1+Shift+braceleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
 bindsym Mod1+Shift+bracketleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Mod1+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -250
-bindsym Mod1+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -250
-bindsym Control+Shift+braceleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Control+Shift+bracketleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
-bindsym Control+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+bindsym Mod1+Shift+bracketright exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+bindsym Mod1+Shift+braceleft exec --no-startup-id ~/.local/bin/adjust-nightlight +250
+bindsym Mod1+Shift+braceright exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+
+# Ctrl + Shift + ' (apostrophe / quotedbl) for Night Light
 bindsym Control+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+bindsym Control+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+bindsym Control+Shift+semicolon exec --no-startup-id ~/.local/bin/adjust-nightlight +250
+bindsym Control+Shift+colon exec --no-startup-id ~/.local/bin/adjust-nightlight +250
+bindsym Mod1+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+bindsym Mod1+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -250
+
+# Cursor Theme & Size Controls:
+# Alt + Shift + c -> Toggle Cursor Theme (Gruvbox Dark / Light)
+# Alt + Shift + = -> Increase Cursor Size (+4px, persistent)
+# Alt + Shift + - -> Decrease Cursor Size (-4px, persistent)
+bindsym Mod1+Shift+c exec --no-startup-id ~/.local/bin/toggle-cursor-theme
+bindsym Mod1+Shift+equal exec --no-startup-id ~/.local/bin/adjust-cursor-size +4
+bindsym Mod1+Shift+minus exec --no-startup-id ~/.local/bin/adjust-cursor-size -4
 
 # Screen Lock (Windows + Ctrl + l)
 bindsym $mod+Control+l exec "sleep 0.1 && i3lock --blur 5"
@@ -85,14 +98,13 @@ bindsym $mod+Control+l exec "sleep 0.1 && i3lock --blur 5"
 # ==============================================================================
 # Kill / Close window (Windows + q & Windows + Shift + q)
 bindsym $mod+q kill
-bindsym $mod+Shift+q kill
+bindsym $mod+Shift+q exec --no-startup-id ~/.local/bin/force-kill-window
 
 # Smart Layout Toggle: Toggle between Tiling and Tabbed mode
 # Bound to Windows + semicolon (comfortable right-hand home row) & Windows + a
 bindsym $mod+semicolon exec --no-startup-id ~/.local/bin/smart-layout-toggle
 bindsym $mod+a exec --no-startup-id ~/.local/bin/smart-layout-toggle
 bindsym $mod+w layout tabbed
-bindsym $mod+s layout stacking
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+space floating toggle
 bindsym $mod+space focus mode_toggle
@@ -244,14 +256,12 @@ bindsym $mod+Escape exec --no-startup-id ~/.local/bin/powermenu
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
 
 # Shortcuts & Cheatsheet:
-# Win + ? (Win + Shift + slash) or Win + F1 -> Interactive Rofi Quick-Finder Modal
-# Win + Ctrl + ? or Win + Shift + F1        -> Open full formatted Cheatsheet in Zed Markdown
-bindsym $mod+Shift+slash exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
-bindsym $mod+question exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
-bindsym $mod+F1 exec --no-startup-id ~/.local/bin/i3-cheatsheet --rofi
-bindsym $mod+Control+Shift+slash exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
-bindsym $mod+Control+question exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
-bindsym $mod+Shift+F1 exec --no-startup-id ~/.local/bin/i3-cheatsheet --zed
+# Win + ? (Win + Shift + slash) -> Interactive Rofi Quick-Finder Modal
+# Win + Ctrl + ?               -> Open full formatted Cheatsheet in Zed Markdown
+bindsym $mod+Shift+slash exec --no-startup-id ~/.local/bin/i3-cheatsheet -r
+bindsym $mod+question exec --no-startup-id ~/.local/bin/i3-cheatsheet -r
+bindsym $mod+Control+slash exec --no-startup-id ~/.local/bin/i3-cheatsheet -z
+bindsym $mod+Control+question exec --no-startup-id ~/.local/bin/i3-cheatsheet -z
 
 
 #
@@ -299,8 +309,8 @@ for_window [class="imv"] floating enable
 for_window [class="zenity"] floating enable
 for_window [class="cachyos-welcome"] floating enable
 for_window [class="(?i)^nvidia-settings$"] floating enable, move position center
-for_window [class="(?i)^btop$"] floating enable, resize set 1300 800, move position center
-for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1300 800, move position center
+for_window [class="(?i)^btop$"] floating enable, resize set 1820 1100, move position center
+for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1100, move position center
 for_window [instance="(?i)^AppRun\.wrapped$"] floating enable, resize set 1200 750, move position center
 for_window [instance="(?i)^pkg-float$"] floating enable, resize set 1250 780, move position center
 # Alacritty dropdown scratch terminal - auto-hidden, toggle via Ctrl+Space
@@ -365,8 +375,6 @@ bindsym XF86AudioRaiseVolume exec --no-startup-id ~/.local/bin/volume-notify up
 bindsym XF86AudioLowerVolume exec --no-startup-id ~/.local/bin/volume-notify down
 # mute sound
 bindsym XF86AudioMute exec --no-startup-id ~/.local/bin/volume-notify mute
-bindsym $mod+XF86AudioMute exec --no-startup-id ~/.local/bin/dolby-audio toggle
-bindsym $mod+Mod1+a exec --no-startup-id ~/.local/bin/dolby-audio menu
 
 # Screen Brightness (Hardware keys & xremap)
 bindsym XF86MonBrightnessUp exec --no-startup-id ~/.local/bin/change-brightness +5%
@@ -426,7 +434,9 @@ exec --no-startup-id sh -c 'sleep 0.2 && ~/.local/bin/i3-session-restore --all -
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface gtk-theme 'cachyos-nord'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
-exec_always --no-startup-id gsettings set org.gnome.desktop.interface font-name 'CommitMono Nerd Font 11'
+exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-theme 'phinger-cursors-gruvbox-material'
+exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-size 40
+exec_always --no-startup-id xsetroot -cursor_name left_ptr
 exec_always --no-startup-id xrdb -merge ~/.Xresources
 exec_always --no-startup-id ~/.local/bin/auto-power-profile
 exec --no-startup-id ~/.local/bin/auto-power-profile --daemon

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# adjust-cursor-size: Adjust cursor size up or down (+4 / -4)
+# Range: 16px to 64px
+# Persists across Xresources, GTK2, GTK3, GTK4, GSettings, and root window
+# ==============================================================================
+export DISPLAY="${DISPLAY:-:0}"
+export PATH="$HOME/.local/bin:$PATH"
+
+DELTA="${1:-4}"
+
+# Get current size from gsettings or fallback to Xresources
+CURRENT_SIZE=$(gsettings get org.gnome.desktop.interface cursor-size 2>/dev/null | tr -d "'\"")
+if [[ -z "$CURRENT_SIZE" || "$CURRENT_SIZE" -le 0 ]]; then
+    CURRENT_SIZE=$(grep -E '^Xcursor\.size:' "$HOME/.Xresources" 2>/dev/null | awk '{print $2}')
+fi
+CURRENT_SIZE="${CURRENT_SIZE:-32}"
+
+NEW_SIZE=$(( CURRENT_SIZE + DELTA ))
+
+# Clamp between 16 and 64
+if (( NEW_SIZE > 64 )); then
+    NEW_SIZE=64
+fi
+if (( NEW_SIZE < 16 )); then
+    NEW_SIZE=16
+fi
+
+CURRENT_THEME=$(gsettings get org.gnome.desktop.interface cursor-theme 2>/dev/null | tr -d "'\"")
+CURRENT_THEME="${CURRENT_THEME:-phinger-cursors-gruvbox-material-light}"
+
+# 1. Update GSettings (GNOME / GTK live)
+gsettings set org.gnome.desktop.interface cursor-size "$NEW_SIZE"
+
+# 2. Update .Xresources & merge
+sed -i -E "s/Xcursor\.size:.*/Xcursor.size: $NEW_SIZE/" "$HOME/.Xresources"
+xrdb -merge "$HOME/.Xresources"
+
+# 3. Update GTK 2
+if [ -f "$HOME/.gtkrc-2.0" ]; then
+    sed -i -E "s/gtk-cursor-theme-size=.*/gtk-cursor-theme-size=$NEW_SIZE/" "$HOME/.gtkrc-2.0"
+fi
+
+# 4. Update GTK 3 & 4
+for cfg in "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"; do
+    if [ -f "$cfg" ]; then
+        sed -i -E "s/gtk-cursor-theme-size=.*/gtk-cursor-theme-size=$NEW_SIZE/" "$cfg"
+    fi
+done
+
+# 5. Refresh root window cursor
+xsetroot -cursor_name left_ptr 2>/dev/null
+
+# 6. Update toggle-cursor-theme default size and i3 config so reboots/reloads preserve this size
+sed -i -E "s/^SIZE=[0-9]+/SIZE=$NEW_SIZE/" "$HOME/.local/bin/toggle-cursor-theme" 2>/dev/null
+sed -i -E "s/cursor-size [0-9]+/cursor-size $NEW_SIZE/" "$HOME/.config/i3/config" 2>/dev/null
+
+# 7. Notify user
+command -v dunstify >/dev/null 2>&1 && dunstify -a "Cursor" -u low -i preferences-desktop-theme -r 9944 "Cursor Size" "Set to ${NEW_SIZE}px"

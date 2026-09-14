@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# toggle-cursor-theme: Toggle between Gruvbox Material Dark & Light cursor
+# ==============================================================================
+DARK_THEME="phinger-cursors-gruvbox-material"
+LIGHT_THEME="phinger-cursors-gruvbox-material-light"
+SIZE=40
+
+CURRENT=$(gsettings get org.gnome.desktop.interface cursor-theme 2>/dev/null | tr -d "'\"")
+
+if [ "$CURRENT" = "$LIGHT_THEME" ]; then
+    NEW_THEME="$DARK_THEME"
+    MODE="Dark"
+else
+    NEW_THEME="$LIGHT_THEME"
+    MODE="Light"
+fi
+
+# Apply to GNOME / GTK settings
+gsettings set org.gnome.desktop.interface cursor-theme "$NEW_THEME"
+gsettings set org.gnome.desktop.interface cursor-size "$SIZE"
+
+# Update .Xresources
+sed -i -E "s/Xcursor\.theme:.*/Xcursor.theme: $NEW_THEME/" "$HOME/.Xresources"
+sed -i -E "s/Xcursor\.size:.*/Xcursor.size: $SIZE/" "$HOME/.Xresources"
+xrdb -merge "$HOME/.Xresources"
+
+# Update GTK 2
+if [ -f "$HOME/.gtkrc-2.0" ]; then
+    sed -i -E "s/gtk-cursor-theme-name=.*/gtk-cursor-theme-name=\"$NEW_THEME\"/" "$HOME/.gtkrc-2.0"
+    sed -i -E "s/gtk-cursor-theme-size=.*/gtk-cursor-theme-size=$SIZE/" "$HOME/.gtkrc-2.0"
+fi
+
+# Update GTK 3 & 4
+for cfg in "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-4.0/settings.ini"; do
+    if [ -f "$cfg" ]; then
+        sed -i -E "s/gtk-cursor-theme-name=.*/gtk-cursor-theme-name=$NEW_THEME/" "$cfg"
+        sed -i -E "s/gtk-cursor-theme-size=.*/gtk-cursor-theme-size=$SIZE/" "$cfg"
+    fi
+done
+
+# Update fallback index.theme
+for idx in "$HOME/.icons/default/index.theme" "$HOME/.local/share/icons/default/index.theme"; do
+    if [ -f "$idx" ]; then
+        cat <<EOF > "$idx"
+[Icon Theme]
+Inherits=$NEW_THEME
+EOF
+    fi
+done
+
+# Apply to root window and sync i3 config
+sed -i -E "s/cursor-theme '[^']+'/cursor-theme '$NEW_THEME'/" "$HOME/.config/i3/config" 2>/dev/null
+xsetroot -cursor_name left_ptr 2>/dev/null
+
+command -v dunstify >/dev/null 2>&1 && dunstify -a "Theme" -u low -i preferences-desktop-theme "Cursor Theme" "Switched to Gruvbox $MODE ($SIZE px)"

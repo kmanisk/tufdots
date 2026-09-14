@@ -1,5 +1,5 @@
 /**
- * Sleek Medium-Large Floating Modal Theme for Rofi Websearch (Gruvbox Dark)
+ * Balanced Centered Floating Modal Theme for Rofi Clipboard (Gruvbox Dark)
  */
 @import "~/.config/rofi/gruvbox-colors.rasi"
 
@@ -13,55 +13,56 @@ window {
     border:              2px;
     border-color:        @border-focus;
     border-radius:       12px;
-    width:               1050px;
+    width:               1150px;
     location:            center;
     anchor:              center;
-    padding:             20px;
+    padding:             18px;
 }
 
 mainbox {
     background-color:    transparent;
     children:            [ inputbar, message, listview ];
-    spacing:             14px;
+    spacing:             12px;
 }
 
 inputbar {
     background-color:    @background-alt;
     border-radius:       8px;
-    padding:             12px 18px;
+    padding:             10px 16px;
     children:            [ prompt, entry ];
-    spacing:             14px;
+    spacing:             12px;
 }
 
 prompt {
     background-color:    transparent;
     text-color:          @accent-bright;
-    font:                "Iosevka Nerd Font Bold 17";
+    font:                "Iosevka Nerd Font Bold 16";
 }
 
 entry {
     background-color:    transparent;
     text-color:          @foreground;
-    placeholder:         "Type query or search...";
+    placeholder:         "Filter clipboard history...";
     placeholder-color:   @foreground-alt;
-    font:                "Iosevka Nerd Font 17";
+    font:                "Iosevka Nerd Font 16";
 }
 
 message {
-    background-color:    transparent;
-    padding:             4px 8px;
+    background-color:    @background-alt;
+    border-radius:       6px;
+    padding:             6px 12px;
 }
 
 textbox {
     background-color:    transparent;
-    text-color:          @accent;
-    font:                "Iosevka Nerd Font Italic 15";
+    text-color:          @accent-bright;
+    font:                "Iosevka Nerd Font SemiBold 14";
 }
 
 listview {
     background-color:    transparent;
     columns:             1;
-    lines:               11;
+    lines:               12;
     spacing:             6px;
     cycle:               true;
     dynamic:             true;
@@ -72,7 +73,7 @@ element {
     background-color:    transparent;
     text-color:          @foreground;
     border-radius:       6px;
-    padding:             8px 16px;
+    padding:             8px 14px;
     children:            [ element-text ];
 }
 
@@ -84,5 +85,5 @@ element selected {
 element-text {
     background-color:    inherit;
     text-color:          inherit;
-    font:                "Iosevka Nerd Font 16";
+    font:                "Iosevka Nerd Font 15";
 }

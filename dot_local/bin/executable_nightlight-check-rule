@@ -2,9 +2,18 @@
 # ==============================================================================
 # nightlight-check-rule: Enforces Night Light schedule (10:00 PM to 6:00 AM)
 # Zero CPU polling - triggered on schedule by systemd timer or manual call
+# Honors persistent user state: if disabled, it will never auto-enable on boot.
 # ==============================================================================
 export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
+
+STATE_FILE="$HOME/.config/nightlight_state"
+CURRENT_STATE="$(cat "$STATE_FILE" 2>/dev/null || echo "on")"
+
+# If the user explicitly disabled nightlight, respect their choice
+if [[ "$CURRENT_STATE" == "off" || "$CURRENT_STATE" == "disabled" || "$CURRENT_STATE" == "0" ]]; then
+    exit 0
+fi
 
 # Current hour in 24-hour integer format (0 - 23)
 HOUR=$(date +%-H)
@@ -12,8 +21,8 @@ HOUR=$(date +%-H)
 # Schedule: 10pm (22:00) to 6am (05:59) -> Active if HOUR >= 22 or HOUR < 6
 if (( HOUR >= 22 || HOUR < 6 )); then
     # Within 10pm - 6am window: ensure Night Light is ON
-    ~/.local/bin/toggle-nightlight on --silent
+    ~/.local/bin/toggle-nightlight on --silent --auto
 else
     # Outside 10pm - 6am window: ensure Night Light is OFF
-    ~/.local/bin/toggle-nightlight off --silent
+    ~/.local/bin/toggle-nightlight off --silent --auto
 fi

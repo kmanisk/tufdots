@@ -55,6 +55,7 @@ def friendly_action(action):
         "layout stacking": "Switch layout to Stacking",
         "layout toggle split": "Toggle Split Layout",
         "~/.local/bin/rofi-clipboard": "Clipboard History (Rofi + Persistent Storage)",
+        "~/.local/bin/rofi-pkill": "Process Killer Menu (Unique Processes)",
         "~/.local/bin/screenshot-region": "Screenshot Interactive Region (Maim)",
         "~/.local/bin/toggle-audio-sink": "Toggle Audio Output (Speakers / Headset)",
         "~/.local/bin/toggle-headset-mic": "Toggle Headset Microphone Mute",
@@ -68,7 +69,9 @@ def friendly_action(action):
         "~/.local/bin/i3-session-save": "Save Current Workspace Session",
         "~/.local/bin/i3-session-restore": "Restore Current Workspace Session",
         "~/.local/bin/alacritty-quick": "Spawn Quick Floating Terminal",
-        "~/.local/bin/switch-audio-profile": "Switch Dolby / Equalizer Profile",
+        "~/.local/bin/toggle-cursor-theme": "Toggle Cursor Theme (Dark / Light)",
+        "~/.local/bin/adjust-cursor-size +4": "Increase Cursor Size (+4px)",
+        "~/.local/bin/adjust-cursor-size -4": "Decrease Cursor Size (-4px)",
         "reload": "Reload i3wm configuration",
         "restart": "Restart i3wm in-place",
     }

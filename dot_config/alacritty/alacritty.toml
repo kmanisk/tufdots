@@ -1,7 +1,7 @@
 general.import = ["alacritty-colors.toml"]
 
 [font]
-size = 17.0
+size = 16.0
 normal = { family = "Iosevka Nerd Font", style = "Regular" }
 bold = { family = "Iosevka Nerd Font", style = "Bold" }
 italic = { family = "Iosevka Nerd Font", style = "Italic" }
@@ -9,3 +9,12 @@ bold_italic = { family = "Iosevka Nerd Font", style = "Bold Italic" }
 
 [cursor]
 style = { shape = "Beam", blinking = "Off" }
+
+[selection]
+save_to_clipboard = true
+
+[keyboard]
+bindings = [
+  { key = "U", mods = "Alt|Shift", action = "IncreaseFontSize" },
+  { key = "Y", mods = "Alt|Shift", action = "DecreaseFontSize" }
+]
