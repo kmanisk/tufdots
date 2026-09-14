@@ -4,6 +4,11 @@ set -e
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
 
+# Offload directly to RTX 5050 Mobile
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export __VK_LAYER_NV_optimus=NVIDIA_only
+
 # Blackwell (RTX 50-series) VKD3D memory alignment & stability fixes
 export VKD3D_CONFIG="no_upload_hvv,force_host_cached"
 export PROTON_ENABLE_NVAPI=0
@@ -16,5 +21,5 @@ GAME_EXE="$GAME_DIR/eldenring.exe"
 PROTON_BIN="$HOME/.local/share/Steam/steamapps/common/Proton - Experimental/proton"
 
 cd "$GAME_DIR"
-exec gamemoderun prime-run "$PROTON_BIN" run "$GAME_EXE" "$@"
+exec "$PROTON_BIN" run "$GAME_EXE" "$@"
 
