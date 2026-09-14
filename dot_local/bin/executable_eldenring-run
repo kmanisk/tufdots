@@ -5,10 +5,13 @@ set -e
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
 
-# Stability flags
+# Stability & Performance environment flags
 export VKD3D_CONFIG=force_host_cached
+export PROTON_ENABLE_NVAPI=0
+export MANGOHUD=1
+export MANGOHUD_CONFIG="fps_limit=165,cpu_temp,gpu_temp,ram,vram"
 
-# Automatically switch to Workspace 4 so the screen is immediately visible
+# Focus Workspace 4 automatically
 i3-msg "workspace 4" >/dev/null 2>&1 || true
 
 GAME_DIR="/mnt/Games/Games/ELDEN RING/Game"
@@ -16,4 +19,4 @@ GAME_EXE="$GAME_DIR/eldenring.exe"
 PROTON_BIN="/usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton"
 
 cd "$GAME_DIR"
-exec gamemoderun prime-run "$PROTON_BIN" run "$GAME_EXE" "$@"
+exec gamemoderun prime-run mangohud "$PROTON_BIN" run "$GAME_EXE" "$@"
