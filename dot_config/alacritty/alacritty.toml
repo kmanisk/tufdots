@@ -13,6 +13,14 @@ style = { shape = "Beam", blinking = "Off" }
 [selection]
 save_to_clipboard = true
 
+[[hints.enabled]]
+regex = "(https?|ftp|file|git|ssh|mailto)://[^\\s<>\"'()\\[\\]{}|^`]+"
+hyperlinks = true
+command = "xdg-open"
+post_processing = true
+mouse = { mods = "None", enabled = true }
+binding = { key = "O", mods = "Control|Shift" }
+
 [keyboard]
 bindings = [
   { key = "U", mods = "Alt|Shift", action = "IncreaseFontSize" },
