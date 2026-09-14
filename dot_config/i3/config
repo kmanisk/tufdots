@@ -252,6 +252,10 @@ bindsym Mod1+Shift+9 exec --no-startup-id ~/.local/bin/i3-session-menu
 bindsym Mod1+Control+7 exec --no-startup-id ~/.local/bin/i3-session-save
 bindsym Mod1+Control+8 exec --no-startup-id ~/.local/bin/i3-session-restore
 
+# MangoHud Hardware Overlay & FPS limit toggle via xremap (Caps+9 = F9, Caps+8 = F8)
+bindsym F9 exec --no-startup-id mangohudctl toggle no_display
+bindsym F8 exec --no-startup-id xdotool key --clearmodifiers Shift_L+F1
+
 # Power / Shutdown Menu (Windows + Shift + e)
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
 
