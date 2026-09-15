@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Fullscreen Screenshot -> ~/Pictures/Screenshots + Clipboard (X11)
+# Bound to Win+Shift+S in i3
+# Uses maim (feh is an image viewer and cannot capture the screen)
+# ==============================================================================
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+export DISPLAY="${DISPLAY:-:0}"
+
+DIR="$HOME/Pictures/Screenshots"
+mkdir -p "$DIR"
+FILE="$DIR/screenshot-$(date +%Y-%m-%d_%H-%M-%S)_$$.png"
+
+if maim "$FILE" 2>/dev/null && [ -s "$FILE" ]; then
+    if [ -n "$WAYLAND_DISPLAY" ] && command -v wl-copy >/dev/null 2>&1; then
+        wl-copy -t image/png < "$FILE"
+    else
+        xclip -selection clipboard -t image/png -i "$FILE"
+    fi
+    notify-send -t 2000 -i camera-photo "Screenshot Saved" "$(basename "$FILE")"
+else
+    notify-send -t 2000 -i dialog-error "Screenshot Failed"
+    rm -f "$FILE"
+fi
