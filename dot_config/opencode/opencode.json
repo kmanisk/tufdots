@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": "allow",
+  "provider": {
+    "lmstudio": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LM Studio (Local)",
+      "options": {
+        "baseURL": "http://127.0.0.1:1234/v1"
+      },
+      "models": {
+        "nanbeige4.1-3b": {
+          "name": "Nanbeige 4.1 3B"
+        },
+        "glm-4.7-flash": {
+          "name": "GLM 4.7 Flash"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "system-metrics": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/sysmetrics-mcp"
+      ],
+      "enabled": true
+    },
+    "gpu-tuning": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/gpu-tuning-mcp"
+      ],
+      "enabled": true
+    },
+    "systemd": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/systemd-mcp"
+      ],
+      "enabled": true
+    },
+    "desktop": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/desktop-mcp"
+      ],
+      "enabled": true
+    },
+    "chezmoi": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/chezmoi-mcp"
+      ],
+      "enabled": true
+    },
+    "i3": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/i3-mcp"
+      ],
+      "enabled": true
+    },
+    "x11": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/x11-mcp"
+      ],
+      "enabled": true
+    },
+    "input-stack": {
+      "type": "local",
+      "command": [
+        "/home/manisk/.local/bin/input-stack-mcp"
+      ],
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+input-stack-mcp: Model Context Protocol server for evdev, xremap, and Linux input layer diagnostics
+Complies with OpenCode / Antigravity JSON-RPC 2.0 stdio MCP specification.
+"""
+import json
+import os
+import subprocess
+import sys
+
+def run_cmd(cmd, timeout=10):
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        if res.returncode != 0:
+            return {"error": res.stderr.strip() or f"Exit {res.returncode}"}
+        return res.stdout.strip()
+    except Exception as e:
+        return {"error": str(e)}
+
+def list_input_devices():
+    devices = []
+    try:
+        import evdev
+        for path in evdev.list_devices():
+            dev = evdev.InputDevice(path)
+            devices.append({
+                "name": dev.name,
+                "path": dev.path,
+                "phys": dev.phys,
+                "vendor": hex(dev.info.vendor),
+                "product": hex(dev.info.product)
+            })
+    except ImportError:
+        # Fallback to /proc/bus/input/devices
+        try:
+            with open("/proc/bus/input/devices", "r") as f:
+                content = f.read()
+            devices.append({"raw_proc": content[:1500]})
+        except Exception as e:
+            devices.append({"error": str(e)})
+    return {"devices": devices}
+
+def xremap_status():
+    status = run_cmd(["systemctl", "--user", "is-active", "xremap"])
+    pid = run_cmd(["pgrep", "-f", "xremap"])
+    return {
+        "systemd_user_status": status if isinstance(status, str) else "unknown",
+        "running_pid": pid if isinstance(pid, str) else "not running"
+    }
+
+def xremap_config():
+    cfg_path = os.path.expanduser("~/.config/xremap/config.yml")
+    if not os.path.exists(cfg_path):
+        return {"error": f"Config not found at {cfg_path}"}
+    try:
+        with open(cfg_path, "r") as f:
+            content = f.read()
+        return {
+            "path": cfg_path,
+            "content": content
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+def uinput_permissions():
+    uinput_path = "/dev/uinput"
+    exists = os.path.exists(uinput_path)
+    readable = os.access(uinput_path, os.R_OK) if exists else False
+    writable = os.access(uinput_path, os.W_OK) if exists else False
+    return {
+        "path": uinput_path,
+        "exists": exists,
+        "readable": readable,
+        "writable": writable
+    }
+
+TOOLS = [
+    {
+        "name": "list_input_devices",
+        "description": "List all kernel evdev input devices (physical keyboards, mice, virtual uinput devices).",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "xremap_status",
+        "description": "Check whether xremap service/process is active.",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "xremap_config",
+        "description": "Read the active xremap keymap and virtual modifier configuration (~/.config/xremap/config.yml).",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "uinput_permissions",
+        "description": "Verify access permissions to /dev/uinput for synthetic key event injection.",
+        "inputSchema": {"type": "object", "properties": {}}
+    }
+]
+
+def read_message():
+    line = sys.stdin.readline()
+    if not line:
+        return None
+    return json.loads(line)
+
+def write_message(msg):
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+def main():
+    while True:
+        req = read_message()
+        if req is None:
+            break
+        req_id = req.get("id")
+        method = req.get("method")
+        
+        if method == "initialize":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "input-stack-mcp", "version": "1.0.0"}
+                }
+            })
+        elif method == "notifications/initialized":
+            pass
+        elif method == "tools/list":
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"tools": TOOLS}
+            })
+        elif method == "tools/call":
+            params = req.get("params", {})
+            name = params.get("name")
+            
+            res = {}
+            if name == "list_input_devices":
+                res = list_input_devices()
+            elif name == "xremap_status":
+                res = xremap_status()
+            elif name == "xremap_config":
+                res = xremap_config()
+            elif name == "uinput_permissions":
+                res = uinput_permissions()
+            else:
+                res = {"error": f"Unknown tool: {name}"}
+                
+            write_message({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(res, indent=2)}]
+                }
+            })
+        else:
+            if req_id is not None:
+                write_message({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32601, "message": f"Method {method} not found"}
+                })
+
+if __name__ == "__main__":
+    main()
