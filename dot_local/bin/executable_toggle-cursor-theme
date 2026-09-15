@@ -4,7 +4,7 @@
 # ==============================================================================
 DARK_THEME="phinger-cursors-gruvbox-material"
 LIGHT_THEME="phinger-cursors-gruvbox-material-light"
-SIZE=40
+SIZE=37
 
 CURRENT=$(gsettings get org.gnome.desktop.interface cursor-theme 2>/dev/null | tr -d "'\"")
 
