@@ -97,3 +97,87 @@ keymap:
     remap:
       Alt-BackSpace: A-Left
       PageUp: Home
+
+  # DISABLED 2026-09-15: full Thunar block commented out, nothing else touched.
+  # # ============================================================
+  # # THUNAR VIM LAYER
+  # # WM_CLASS: thunar.Thunar  (confirmed via xremap --list-windows)
+  # #
+  # # Modes (global xremap modes, Thunar-gated via application:):
+  # #   default          — normal xremap operation (all apps)
+  # #   thunar_normal    — Thunar normal mode  (hjkl, yxp, d, r, gg/G …)
+  # #
+  # # Entry:  focus Thunar → press Esc → thunar_normal
+  # # Exit:   i, or any text-entry action (r rename, / search, a new folder)
+  # #         → back to default so typing works (vim-like insert)
+  # # gg is a nested remap with timeout (no extra mode → no stuck state)
+  # # ============================================================
+  #
+  # # --- (A) Esc in Thunar → enter normal mode -----------------
+  # - name: Thunar enter normal mode
+  #   application:
+  #     only: ["thunar.Thunar"]
+  #   remap:
+  #     Esc: { set_mode: thunar_normal }
+  #
+  # # --- (B) Thunar NORMAL MODE — navigation & file ops --------
+  # - name: Thunar normal navigation
+  #   mode: thunar_normal
+  #   application:
+  #     only: ["thunar.Thunar"]
+  #   remap:
+  #     # ── Movement ────────────────────────────────────────────
+  #     j: KEY_DOWN
+  #     k: KEY_UP
+  #     l: KEY_ENTER
+  #     h: A-KEY_UP
+  #
+  #     # ── History ─────────────────────────────────────────────
+  #     H: A-KEY_LEFT
+  #     L: A-KEY_RIGHT
+  #
+  #     # ── Jump to home directory (in-place, no new window) ──────
+  #     GRAVE: A-Home
+  #
+  #     # ── Page scrolling ───────────────────────────────────────
+  #     C-d: [KEY_DOWN, KEY_DOWN, KEY_DOWN, KEY_DOWN, KEY_DOWN, KEY_DOWN, KEY_DOWN, KEY_DOWN]
+  #     C-u: [KEY_UP, KEY_UP, KEY_UP, KEY_UP, KEY_UP, KEY_UP, KEY_UP, KEY_UP]
+  #
+  #     # ── First / last item (gg has 600ms window, lone g = type-ahead)
+  #     G: C-End
+  #     g:
+  #       remap:
+  #         g: C-Home
+  #       timeout_millis: 600
+  #       timeout_key: g
+  #
+  #     # ── File operations (text-entry actions drop to default first)
+  #     y: C-c
+  #     x: C-x
+  #     p: C-v
+  #     d: KEY_DELETE
+  #     r: [{ set_mode: default }, KEY_F2]
+  #     o: C-o
+  #     a: [{ set_mode: default }, C-S-n]
+  #
+  #     # ── Selection / search passthrough ─────────────────────────
+  #     # Space (select+advance in list view) and n are intentionally
+  #     # unmapped: Thunar handles Space natively and n gives type-ahead.
+  #     # (Old mappings Space→Down and n→F3 broke selection.)
+  #
+  #     # ── Search (drops to default so you can type the query) ────
+  #     SLASH: [{ set_mode: default }, C-f]
+  #
+  #     # ── Quit ─────────────────────────────────────────────────
+  #     q: C-q
+  #
+  #     # ── Exit normal mode ─────────────────────────────────────
+  #     i: { set_mode: default }
+  #
+  # # --- (C) Reset mode when focus leaves Thunar -----------------
+  # - name: Thunar reset normal on switch
+  #   mode: thunar_normal
+  #   application:
+  #     not: ["thunar.Thunar"]
+  #   remap:
+  #     Esc: { set_mode: default }

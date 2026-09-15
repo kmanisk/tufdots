@@ -62,6 +62,8 @@ bindsym $mod+Mod1+1 exec $term --class nmtui -e nmtui
 bindsym $mod+Mod1+2 exec blueman-manager
 bindsym $mod+Mod1+3 exec pavucontrol
 bindsym $mod+s exec --no-startup-id ~/.local/bin/screenshot-region
+# Fullscreen screenshot to ~/Pictures/Screenshots + clipboard (Win+Shift+S)
+bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/screenshot-fullscreen
 bindsym Mod1+Shift+o exec --no-startup-id ~/.local/bin/toggle-audio-sink
 bindsym Mod1+Shift+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 bindsym $mod+Control+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
