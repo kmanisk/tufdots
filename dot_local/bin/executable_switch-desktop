@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Desktop Session Switcher (KDE Plasma Wayland <-> i3 X11)
+# ==============================================================================
+
+SESSION_FILE="$HOME/.session_choice"
+
+case "$1" in
+    plasma|kde|wayland)
+        echo "plasma" > "$SESSION_FILE"
+        echo "Default desktop set to: KDE Plasma (Wayland)"
+        echo "Log out or restart session to switch."
+        ;;
+    i3|x11|i3wm)
+        echo "i3" > "$SESSION_FILE"
+        echo "Default desktop set to: i3 (X11)"
+        echo "Log out or restart session to switch."
+        ;;
+    status|"")
+        CURRENT="plasma"
+        [ -f "$SESSION_FILE" ] && CURRENT=$(tr -d '[:space:]' < "$SESSION_FILE")
+        echo "Current default session: $CURRENT"
+        echo "Usage: switch-desktop [plasma|i3]"
+        ;;
+    *)
+        echo "Unknown session: $1"
+        echo "Usage: switch-desktop [plasma|i3]"
+        exit 1
+        ;;
+esac

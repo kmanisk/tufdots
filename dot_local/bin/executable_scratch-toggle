@@ -18,11 +18,11 @@ mode="${1:?usage: scratch-toggle <term|notes|spotify>}"
 case "$mode" in
     term)
         instance="scratch-term"
-        spawn="alacritty --class Alacritty,scratch-term"
+        spawn="alacritty --class scratch-term"
         ;;
     notes)
         instance="scratch-notes"
-        spawn="alacritty --class Alacritty,scratch-notes -e nvim $HOME/notes.md"
+        spawn="alacritty -o font.size=17.5 --class scratch-notes -e nvim $HOME/notes.md"
         ;;
     spotify)
         instance="spotify"
@@ -34,9 +34,14 @@ case "$mode" in
         ;;
 esac
 
-# Reports where the window is: missing | visible | hidden (output __i3).
+IPC_CMD="i3-msg"
+if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    IPC_CMD="swaymsg"
+fi
+
+# Reports where the window is: missing | visible | hidden (scratchpad).
 win_state() {
-    i3-msg -t get_tree 2>/dev/null | python3 -c '
+    $IPC_CMD -t get_tree 2>/dev/null | python3 -c '
 import json, sys
 inst = sys.argv[1]
 try:
@@ -46,25 +51,38 @@ except Exception:
     sys.exit(0)
 result = ["missing"]
 
-def walk(n, output):
+def walk(n, in_scratch):
     if result[0] == "hidden":
         return
-    if n.get("type") == "output":
-        output = n.get("name")
+    name = n.get("name") or ""
+    if name in ("__i3", "__i3_scratch") or (n.get("type") == "workspace" and name == "__i3_scratch"):
+        in_scratch = True
     wp = n.get("window_properties") or {}
-    if wp.get("instance") == inst:
-        result[0] = "hidden" if output == "__i3" else "visible"
+    app_id = n.get("app_id") or ""
+    cls = wp.get("class") or n.get("class") or ""
+    cur_inst = wp.get("instance") or ""
+    
+    if cur_inst == inst or app_id == inst or cls.lower() == inst.lower():
+        is_hidden = in_scratch or (n.get("scratchpad_state") not in (None, "none") and not n.get("visible", False))
+        result[0] = "hidden" if is_hidden else "visible"
         return
     for c in n.get("nodes", []) + n.get("floating_nodes", []):
-        walk(c, output)
+        walk(c, in_scratch)
 
-walk(tree, "")
+walk(tree, False)
 print(result[0])
 ' "$instance"
 }
 
 show_it() {
-    i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1
+    if [ "$IPC_CMD" = "swaymsg" ]; then
+        swaymsg "[app_id=\"$instance\"] scratchpad show" >/dev/null 2>&1 || \
+        swaymsg "[class=\"(?i)$instance\"] scratchpad show" >/dev/null 2>&1 || \
+        swaymsg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1
+    else
+        i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1 || \
+        i3-msg "[class=\"(?i)$instance\"] scratchpad show" >/dev/null 2>&1
+    fi
 }
 
 # Fast-path: if window process is already running, toggle instantly (<3ms)

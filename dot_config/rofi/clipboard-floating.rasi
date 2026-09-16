@@ -1,5 +1,6 @@
 /**
- * Balanced Centered Floating Modal Theme for Rofi Clipboard (Gruvbox Dark)
+ * Balanced Centered Floating Modal Theme for Rofi Clipboard & Modals (Gruvbox Dark)
+ * Centrally controlled via ~/.config/rofi/gruvbox-colors.rasi
  */
 @import "~/.config/rofi/gruvbox-colors.rasi"
 
@@ -12,58 +13,58 @@ window {
     text-color:          @foreground;
     border:              2px;
     border-color:        @border-focus;
-    border-radius:       12px;
-    width:               1150px;
+    border-radius:       @modal-radius;
+    width:               @modal-width;
     location:            center;
     anchor:              center;
-    padding:             18px;
+    padding:             @modal-padding;
 }
 
 mainbox {
     background-color:    transparent;
     children:            [ inputbar, message, listview ];
-    spacing:             12px;
+    spacing:             10px;
 }
 
 inputbar {
     background-color:    @background-alt;
-    border-radius:       8px;
-    padding:             10px 16px;
+    border-radius:       6px;
+    padding:             8px 14px;
     children:            [ prompt, entry ];
-    spacing:             12px;
+    spacing:             10px;
 }
 
 prompt {
     background-color:    transparent;
     text-color:          @accent-bright;
-    font:                "Iosevka Nerd Font Bold 16";
+    font:                @modal-font-bold;
 }
 
 entry {
     background-color:    transparent;
     text-color:          @foreground;
-    placeholder:         "Filter clipboard history...";
+    placeholder:         "Filter entries...";
     placeholder-color:   @foreground-alt;
-    font:                "Iosevka Nerd Font 16";
+    font:                @modal-font;
 }
 
 message {
     background-color:    @background-alt;
-    border-radius:       6px;
-    padding:             6px 12px;
+    border-radius:       5px;
+    padding:             4px 8px;
 }
 
 textbox {
     background-color:    transparent;
     text-color:          @accent-bright;
-    font:                "Iosevka Nerd Font SemiBold 14";
+    font:                @modal-font-bold;
 }
 
 listview {
     background-color:    transparent;
     columns:             1;
-    lines:               12;
-    spacing:             6px;
+    lines:               8;
+    spacing:             4px;
     cycle:               true;
     dynamic:             true;
     layout:              vertical;
@@ -72,8 +73,8 @@ listview {
 element {
     background-color:    transparent;
     text-color:          @foreground;
-    border-radius:       6px;
-    padding:             8px 14px;
+    border-radius:       5px;
+    padding:             6px 12px;
     children:            [ element-text ];
 }
 
@@ -85,5 +86,5 @@ element selected {
 element-text {
     background-color:    inherit;
     text-color:          inherit;
-    font:                "Iosevka Nerd Font 15";
+    font:                @modal-font;
 }

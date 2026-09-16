@@ -15,12 +15,20 @@ CURRENT_STATE=$(cat "$STATE_FILE" 2>/dev/null || echo "false")
 case "$CURRENT_STATE" in
     false|hidden|0|off)
         echo "true" > "$STATE_FILE"
-        "$HOME/.config/polybar/launch.sh" >/dev/null 2>&1 &
+        if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+            swaymsg "bar bar-0 mode dock" >/dev/null 2>&1
+        else
+            "$HOME/.config/polybar/launch.sh" >/dev/null 2>&1 &
+        fi
         ;;
     *)
         echo "false" > "$STATE_FILE"
-        polybar-msg cmd quit 2>/dev/null || true
-        pkill -x polybar 2>/dev/null || true
-        rm -f /run/user/$(id -u)/polybar/ipc.*.sock 2>/dev/null
+        if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+            swaymsg "bar bar-0 mode invisible" >/dev/null 2>&1
+        else
+            polybar-msg cmd quit 2>/dev/null || true
+            pkill -x polybar 2>/dev/null || true
+            rm -f /run/user/$(id -u)/polybar/ipc.*.sock 2>/dev/null
+        fi
         ;;
 esac

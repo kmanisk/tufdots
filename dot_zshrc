@@ -244,12 +244,11 @@ if [[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.
 fi
 
 # -----------------------------------------------------------------------------
-# [9] TTY AUTO-LOGIN (i3 / X11 default)
+# [9] TTY AUTO-LOGIN (Plasma Wayland / i3 X11 via launch-desktop)
 # -----------------------------------------------------------------------------
 # Native variable check avoids expensive $(tty) subshells
 if [[ -z "$DISPLAY" && -z "$WAYLAND_DISPLAY" && "$TTY" == "/dev/tty1" ]]; then
-  export XDG_SESSION_TYPE=x11
-  exec startx
+  exec "$HOME/.local/bin/launch-desktop"
 fi
 
 # =============================================================================

@@ -62,4 +62,8 @@ fi
 
 # Launch in browser and focus workspace 2
 xdg-open "$URL" >/dev/null 2>&1 &
-i3-msg "workspace number 2" >/dev/null 2>&1 || true
+if [ -n "$SWAYSOCK" ]; then
+    swaymsg "workspace number 2" >/dev/null 2>&1 || true
+else
+    i3-msg "workspace number 2" >/dev/null 2>&1 || true
+fi

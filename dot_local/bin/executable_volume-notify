@@ -18,7 +18,17 @@ VOL=$(pamixer --get-volume 2>/dev/null || echo "0")
 MUTE=$(pamixer --get-mute 2>/dev/null || echo "false")
 
 if [ "$MUTE" = "true" ]; then
-    dunstify -a "Volume" -u low -i audio-volume-muted -h string:x-dunst-stack-tag:volume "Volume: Muted"
+    notify-send -a "Volume" -u low -i audio-volume-muted \
+        -h string:x-canonical-private-synchronous:volume \
+        -h string:x-dunst-stack-tag:volume "Volume: Muted" 2>/dev/null || \
+    dunstify -a "Volume" -u low -i audio-volume-muted \
+        -h string:x-dunst-stack-tag:volume "Volume: Muted" 2>/dev/null
 else
-    dunstify -a "Volume" -u low -i audio-volume-high -h string:x-dunst-stack-tag:volume -h int:value:"$VOL" "Volume: ${VOL}%"
+    notify-send -a "Volume" -u low -i audio-volume-high \
+        -h string:x-canonical-private-synchronous:volume \
+        -h string:x-dunst-stack-tag:volume \
+        -h int:value:"$VOL" "Volume: ${VOL}%" 2>/dev/null || \
+    dunstify -a "Volume" -u low -i audio-volume-high \
+        -h string:x-dunst-stack-tag:volume \
+        -h int:value:"$VOL" "Volume: ${VOL}%" 2>/dev/null
 fi

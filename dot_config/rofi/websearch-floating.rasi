@@ -1,5 +1,6 @@
 /**
- * Sleek Medium-Large Floating Modal Theme for Rofi Websearch (Gruvbox Dark)
+ * Sleek Compact Floating Modal Theme for Rofi Websearch & Favorites (Gruvbox Dark)
+ * Fully controlled via central variables in ~/.config/rofi/gruvbox-colors.rasi
  */
 @import "~/.config/rofi/gruvbox-colors.rasi"
 
@@ -12,31 +13,31 @@ window {
     text-color:          @foreground;
     border:              2px;
     border-color:        @border-focus;
-    border-radius:       12px;
-    width:               1050px;
+    border-radius:       @modal-radius;
+    width:               @modal-width;
     location:            center;
     anchor:              center;
-    padding:             20px;
+    padding:             @modal-padding;
 }
 
 mainbox {
     background-color:    transparent;
     children:            [ inputbar, message, listview ];
-    spacing:             14px;
+    spacing:             10px;
 }
 
 inputbar {
     background-color:    @background-alt;
-    border-radius:       8px;
-    padding:             12px 18px;
+    border-radius:       6px;
+    padding:             8px 14px;
     children:            [ prompt, entry ];
-    spacing:             14px;
+    spacing:             10px;
 }
 
 prompt {
     background-color:    transparent;
     text-color:          @accent-bright;
-    font:                "Iosevka Nerd Font Bold 17";
+    font:                @modal-font-bold;
 }
 
 entry {
@@ -44,25 +45,25 @@ entry {
     text-color:          @foreground;
     placeholder:         "Type query or search...";
     placeholder-color:   @foreground-alt;
-    font:                "Iosevka Nerd Font 17";
+    font:                @modal-font;
 }
 
 message {
     background-color:    transparent;
-    padding:             4px 8px;
+    padding:             2px 6px;
 }
 
 textbox {
     background-color:    transparent;
     text-color:          @accent;
-    font:                "Iosevka Nerd Font Italic 15";
+    font:                @modal-font-italic;
 }
 
 listview {
     background-color:    transparent;
     columns:             1;
-    lines:               11;
-    spacing:             6px;
+    lines:               8;
+    spacing:             4px;
     cycle:               true;
     dynamic:             true;
     layout:              vertical;
@@ -71,8 +72,8 @@ listview {
 element {
     background-color:    transparent;
     text-color:          @foreground;
-    border-radius:       6px;
-    padding:             8px 16px;
+    border-radius:       5px;
+    padding:             6px 12px;
     children:            [ element-text ];
 }
 
@@ -84,5 +85,5 @@ element selected {
 element-text {
     background-color:    inherit;
     text-color:          inherit;
-    font:                "Iosevka Nerd Font 16";
+    font:                @modal-font;
 }

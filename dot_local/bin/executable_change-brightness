@@ -9,5 +9,11 @@ brightnessctl set "$STEP" >/dev/null 2>&1
 PERCENT=$(brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d '%')
 
 if [[ -n "$PERCENT" ]]; then
-    dunstify -a "Brightness" -u low -i display-brightness -h string:x-dunst-stack-tag:brightness -h int:value:"$PERCENT" "Brightness: ${PERCENT}%"
+    notify-send -a "Brightness" -u low -i display-brightness \
+        -h string:x-canonical-private-synchronous:brightness \
+        -h string:x-dunst-stack-tag:brightness \
+        -h int:value:"$PERCENT" "Brightness: ${PERCENT}%" 2>/dev/null || \
+    dunstify -a "Brightness" -u low -i display-brightness \
+        -h string:x-dunst-stack-tag:brightness \
+        -h int:value:"$PERCENT" "Brightness: ${PERCENT}%" 2>/dev/null
 fi

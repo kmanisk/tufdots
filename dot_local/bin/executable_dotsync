@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# dotsync - Fast Deployment & Sync Utility for tufx11 (ASUS TUF + i3/X11)
+# dotsync - Fast Deployment & Sync Utility for tufdots (ASUS TUF Dotfiles)
 # ==============================================================================
 set -euo pipefail
 
 CHEZMOI_DIR="${CHEZMOI_DIR:-$HOME/.local/share/chezmoi}"
-REMOTE_REPO="https://github.com/kmanisk/tufx11.git"
+REMOTE_REPO="https://github.com/kmanisk/tufdots.git"
 
 test_scripts() {
     echo "==> Verifying scripts in ~/.local/bin/..."
@@ -92,18 +92,18 @@ case "${1:-apply}" in
         echo "==> Running pre-flight checks before push..."
         test_scripts
         validate_i3
-        echo "==> Committing and pushing to tufx11 ($msg)..."
+        echo "==> Committing and pushing to tufdots ($msg)..."
         git -C "$CHEZMOI_DIR" add -A
         if git -C "$CHEZMOI_DIR" diff --cached --quiet; then
             echo "  No changes to commit in $CHEZMOI_DIR."
         else
             git -C "$CHEZMOI_DIR" commit -m "$msg"
             git -C "$CHEZMOI_DIR" push origin master
-            echo "  [PASS] Pushed cleanly to tufx11/master."
+            echo "  [PASS] Pushed cleanly to tufdots/master."
         fi
         ;;
     pull)
-        echo "==> Pulling latest tufx11 updates..."
+        echo "==> Pulling latest tufdots updates..."
         git -C "$CHEZMOI_DIR" pull --rebase origin master
         chezmoi apply
         test_scripts
@@ -112,13 +112,13 @@ case "${1:-apply}" in
         ;;
     help|-h|--help)
         cat << 'HELP'
-dotsync - Fast deployment & sync utility for tufx11
+dotsync - Fast deployment & sync utility for tufdots
 
 Usage:
   dotsync            Apply pending dotfile updates, verify, and reload i3wm
   dotsync diff       Show git diff between system and repo
   dotsync status     Show modified managed files
-  dotsync push [msg] Run pre-flight tests, commit, and push to tufx11
+  dotsync push [msg] Run pre-flight tests, commit, and push to tufdots
   dotsync pull       Pull remote updates, apply, and reload i3wm
   dotsync test       Verify shell syntax, i3 config & dependencies
 HELP

@@ -1,18 +1,18 @@
-# tufx11 — CachyOS i3/X11 Gaming Laptop Dots
+# tufdots — CachyOS Sway/i3 Gaming Laptop Dots
 
-Fully reproducible [chezmoi](https://www.chezmoi.io/) source for an ASUS TUF F16
-(i5-13450HX + RTX 5050, 1920×1200@165Hz) running **i3wm on X11**: CS2/gaming
-tweaks, CachyOS tuning, asusctl/supergfxctl, xremap, scratchpad dropdowns,
-Polybar, and the blxss ambient wallpaper pack.
+Fully reproducible [chezmoi](https://www.chezmoi.io/) source for an ASUS TUF Gaming Laptop
+(i5-13450HX + RTX 5050 Mobile, 1920×1200@165Hz) running **Sway (Wayland) & i3 (X11)**:
+CachyOS tuning, dual-GPU offloading, xremap, scratchpad dropdowns,
+and ambient wallpaper pack.
 
 ## Install (fresh machine, 2 steps)
 
 ```bash
 # 1/2 - dependencies (git, paru, chezmoi, age) + machine profile pre-seed
-curl -sL https://raw.githubusercontent.com/kmanisk/tufx11/master/install.sh | bash
+curl -sL https://raw.githubusercontent.com/kmanisk/tufdots/master/install.sh | bash
 
 # 2/2 - deploy everything: configs, scripts, packages, services, wallpapers
-chezmoi init --apply https://github.com/kmanisk/tufx11.git
+chezmoi init --apply https://github.com/kmanisk/tufdots.git
 ```
 
 Step 2 reconciles declarative package lists (`packages/*.txt`), systemd units,

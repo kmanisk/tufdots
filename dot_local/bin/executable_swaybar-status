@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# swaybar-status: Ultra-lightweight POSIX status generator for swaybar
+# Zero bloat: reads directly from /proc and /sys, no external polling daemons
+# ==============================================================================
+
+while true; do
+    # CPU usage from /proc/loadavg
+    CPU_LOAD=$(awk '{print $1}' /proc/loadavg)
+
+    # Memory from /proc/meminfo
+    MEM_TOTAL=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+    MEM_AVAIL=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+    MEM_USED_MIB=$(( (MEM_TOTAL - MEM_AVAIL) / 1024 ))
+
+    # CPU Package Temp from /sys
+    TEMP="N/A"
+    for t in /sys/class/thermal/thermal_zone*/temp; do
+        if [ -f "$t" ]; then
+            raw=$(cat "$t" 2>/dev/null)
+            if [ -n "$raw" ] && [ "$raw" -gt 0 ]; then
+                TEMP="$(( raw / 1000 ))°C"
+                break
+            fi
+        fi
+    done
+
+    # Battery
+    BAT_STATUS=""
+    if [ -d /sys/class/power_supply/BAT1 ] || [ -d /sys/class/power_supply/BAT0 ]; then
+        BAT_DIR="/sys/class/power_supply/BAT1"
+        [ ! -d "$BAT_DIR" ] && BAT_DIR="/sys/class/power_supply/BAT0"
+        CAP=$(cat "$BAT_DIR/capacity" 2>/dev/null)
+        STAT=$(cat "$BAT_DIR/status" 2>/dev/null)
+        if [ "$STAT" = "Charging" ]; then
+            BAT_STATUS=" ⚡ ${CAP}% |"
+        else
+            BAT_STATUS=" 󰁹 ${CAP}% |"
+        fi
+    fi
+
+    # Date and Time
+    DATETIME=$(date "+%a %b %d  %H:%M")
+
+    echo "CPU: ${CPU_LOAD} | MEM: ${MEM_USED_MIB}M | TEMP: ${TEMP} |${BAT_STATUS} ${DATETIME}"
+    sleep 2
+done

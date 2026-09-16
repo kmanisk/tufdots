@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Night Light Toggle for i3wm (using Redshift + Dunst OSD)
-# Persistent State: ~/.config/nightlight_state (maintains state across reboots)
+# Night Light Toggle (Persistent, Flicker-Free)
+# Persistent State: ~/.config/nightlight_state
 # Supports: toggle-nightlight [on|off|toggle] [--silent] [--auto]
 # ==============================================================================
-export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
 STATE_FILE="$HOME/.config/nightlight_state"
@@ -12,7 +11,10 @@ TEMP_FILE="$HOME/.config/nightlight_temp"
 
 CURRENT_TEMP=4200
 if [[ -f "$TEMP_FILE" ]]; then
-    CURRENT_TEMP=$(cat "$TEMP_FILE" 2>/dev/null)
+    val=$(cat "$TEMP_FILE" 2>/dev/null)
+    if [[ -n "$val" && "$val" -ge 2000 && "$val" -le 6500 ]]; then
+        CURRENT_TEMP="$val"
+    fi
 fi
 
 ACTION="toggle"
@@ -29,42 +31,66 @@ for arg in "$@"; do
     fi
 done
 
-# If triggered by automated schedule/timer, respect user disabled preference:
-# If persistent state is explicitly "off" (or "disabled"), do NOT enable it automatically.
+# If triggered by automated schedule/timer, respect user disabled preference
 CURRENT_STATE="$(cat "$STATE_FILE" 2>/dev/null || echo "on")"
 if (( IS_AUTO == 1 )); then
     if [[ "$CURRENT_STATE" == "off" || "$CURRENT_STATE" == "disabled" || "$CURRENT_STATE" == "0" ]]; then
-        # User manually turned it off; do nothing on boot/auto schedule
         exit 0
     fi
 fi
 
-turn_on() {
-    pkill -9 redshift >/dev/null 2>&1
-    redshift -r -P -m randr -O "$CURRENT_TEMP" >/dev/null 2>&1
-    echo "on" > "$STATE_FILE"
-    PERCENT=$(( (CURRENT_TEMP - 2000) * 100 / 4500 ))
+notify_osd() {
+    local text="$1"
+    local pct="$2"
     if (( SILENT == 0 )); then
-        dunstify -a "Night Light" -u low -i preferences-desktop-display \
-            -h string:x-dunst-stack-tag:nightlight -h int:value:"$PERCENT" \
-            "Night Light: ON (${CURRENT_TEMP}K)"
+        notify-send -a "Night Light" -u low -i preferences-desktop-display \
+            -h string:x-canonical-private-synchronous:nightlight \
+            -h string:x-dunst-stack-tag:nightlight \
+            -h int:value:"$pct" \
+            "$text"
     fi
 }
 
+turn_on() {
+    if (( CURRENT_TEMP >= 6500 )); then
+        CURRENT_TEMP=4200
+    fi
+    echo "$CURRENT_TEMP" > "$TEMP_FILE"
+
+    if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$SWAYSOCK" ]; then
+        pkill -9 -x gammastep >/dev/null 2>&1 || true
+        if pgrep -x wlsunset >/dev/null 2>&1; then
+            pkill -USR2 -x wlsunset
+        elif [ -n "$SWAYSOCK" ] && command -v swaymsg >/dev/null 2>&1; then
+            swaymsg exec "/home/manisk/.local/bin/wlsunset -m $CURRENT_TEMP" >/dev/null 2>&1
+        else
+            setsid -f /home/manisk/.local/bin/wlsunset -m "$CURRENT_TEMP" </dev/null >/dev/null 2>&1
+        fi
+    else
+        pkill -9 -x gammastep >/dev/null 2>&1 || true
+        redshift -r -P -m randr -O "$CURRENT_TEMP" >/dev/null 2>&1
+    fi
+    echo "on" > "$STATE_FILE"
+    PERCENT=$(( (CURRENT_TEMP - 2000) * 100 / 4500 ))
+    notify_osd "Night Light: ON (${CURRENT_TEMP}K)" "$PERCENT"
+}
+
 turn_off() {
-    pkill -9 redshift >/dev/null 2>&1
-    redshift -x -m randr >/dev/null 2>&1
-    PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
-    [ -z "$PRIMARY_MON" ] && PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"
-    if [ -n "$PRIMARY_MON" ]; then
-        xrandr --output "$PRIMARY_MON" --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+    if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$SWAYSOCK" ]; then
+        pkill -x wlsunset >/dev/null 2>&1 || true
+        pkill -9 -x gammastep >/dev/null 2>&1 || true
+    else
+        pkill -9 -x redshift >/dev/null 2>&1 || true
+        pkill -9 -x gammastep >/dev/null 2>&1 || true
+        redshift -x -m randr >/dev/null 2>&1 || true
+        PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
+        [ -z "$PRIMARY_MON" ] && PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"
+        if [ -n "$PRIMARY_MON" ]; then
+            xrandr --output "$PRIMARY_MON" --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+        fi
     fi
     echo "off" > "$STATE_FILE"
-    if (( SILENT == 0 )); then
-        dunstify -a "Night Light" -u low -i preferences-desktop-display \
-            -h string:x-dunst-stack-tag:nightlight -h int:value:0 \
-            "Night Light: OFF (6500K)"
-    fi
+    notify_osd "Night Light: OFF (6500K)" 100
 }
 
 case "$ACTION" in

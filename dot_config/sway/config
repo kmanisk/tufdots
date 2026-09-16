@@ -1,0 +1,329 @@
+# ==============================================================================
+# Sway Configuration (Wayland) — ASUS TUF Gaming F16
+# Parallel-installed alongside i3wm (X11 default remains active)
+# Hardware: Intel i5-13450HX (iGPU card1) + NVIDIA RTX 5050 Mobile (dGPU card0)
+# Display: eDP-1 1920x1200 @ 165Hz
+# ==============================================================================
+
+# Modifier key: Super / Windows key
+set $mod Mod4
+
+# Font
+font pango:Iosevka Nerd Font 13
+
+# Floating modifier
+floating_modifier $mod normal
+
+# Terminal & Core Launchers
+set $term alacritty
+bindsym Mod1+Return exec $term
+bindsym $mod+Return exec $term
+
+# App Launchers (Native Layer-Shell Fuzzel)
+bindsym Mod1+space exec "pkill fuzzel || fuzzel"
+bindsym $mod+d exec "pkill fuzzel || fuzzel"
+
+# Web Search with bangs (Google, YouTube, ArchWiki, GitHub, Amazon)
+bindsym Mod1+s exec --no-startup-id ~/.local/bin/rofi-websearch
+bindsym $mod+slash exec --no-startup-id ~/.local/bin/rofi-websearch
+bindsym Mod1+Shift+space exec --no-startup-id ~/.local/bin/rofi-websearch --floating
+
+# Clipboard History (Fuzzel + Cliphist)
+bindsym $mod+Shift+v exec --no-startup-id ~/.local/bin/fuzzel-clipboard
+bindsym $mod+y exec --no-startup-id ~/.local/bin/fuzzel-clipboard
+
+# Browser (Windows + b) -> Brave on Intel iGPU
+bindsym $mod+b exec --no-startup-id brave-origin
+bindsym $mod+Shift+b split h
+
+# Wallpaper: Win+Shift+W = instant switch
+bindsym $mod+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper
+
+# Browser on NVIDIA GPU (Windows + Alt + b) -> Brave on RTX 5050
+bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
+
+# Text Editor & File Manager
+bindsym $mod+Shift+t exec alacritty -o font.size=17.5 -e nvim
+bindsym $mod+e exec thunar
+bindsym $mod+t exec --no-startup-id zed
+
+# Process Killer Menu (Windows + Escape)
+bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
+
+# Games Launcher (Windows + g / Alt + g)
+bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
+bindsym Mod1+g exec --no-startup-id ~/.local/bin/rofi-games
+bindsym $mod+Shift+g exec --no-startup-id "prime-run ~/.local/bin/steam-workspace"
+bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
+
+# Spotify scratchpad
+bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
+
+# Task Manager (TMOG in floating window)
+bindsym Control+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
+bindsym $mod+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
+
+# System Utilities
+bindsym $mod+Mod1+1 exec $term --class nmtui -e nmtui
+bindsym $mod+Mod1+2 exec blueman-manager
+bindsym $mod+Mod1+3 exec pavucontrol
+bindsym Mod1+Shift+o exec --no-startup-id ~/.local/bin/toggle-audio-sink
+bindsym Mod1+Shift+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
+bindsym $mod+Control+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
+bindsym Mod1+Shift+b exec --no-startup-id ~/.local/bin/rofi-favorites
+
+# Toggle Bottom Bar (Alt + 0)
+bindsym Mod1+0 exec --no-startup-id ~/.local/bin/toggle-bar
+
+# Night Light Controls
+bindsym Mod1+Shift+n exec --no-startup-id ~/.local/bin/toggle-nightlight
+bindsym Mod1+Shift+bracketleft exec --no-startup-id ~/.local/bin/adjust-nightlight +100
+bindsym Mod1+Shift+bracketright exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+bindsym Mod1+Shift+braceleft exec --no-startup-id ~/.local/bin/adjust-nightlight +100
+bindsym Mod1+Shift+braceright exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+bindsym Control+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+bindsym Control+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+bindsym Control+Shift+semicolon exec --no-startup-id ~/.local/bin/adjust-nightlight +100
+bindsym Control+Shift+colon exec --no-startup-id ~/.local/bin/adjust-nightlight +100
+bindsym Mod1+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+bindsym Mod1+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+
+# Screen Brightness (Hardware keys & xremap)
+bindsym XF86MonBrightnessUp exec --no-startup-id ~/.local/bin/change-brightness +5%
+bindsym XF86MonBrightnessDown exec --no-startup-id ~/.local/bin/change-brightness 5%-
+
+# Audio Volume & Mute (Hardware keys & xremap)
+bindsym XF86AudioRaiseVolume exec --no-startup-id ~/.local/bin/volume-notify up
+bindsym XF86AudioLowerVolume exec --no-startup-id ~/.local/bin/volume-notify down
+bindsym XF86AudioMute exec --no-startup-id ~/.local/bin/volume-notify mute
+bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle
+
+# Screenshots (Win+s interactive region, Win+Shift+s fullscreen)
+bindsym $mod+s exec --no-startup-id ~/.local/bin/screenshot-region
+bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/screenshot-fullscreen
+
+# Screen Lock
+bindsym $mod+Control+l exec swaylock -f -c 000000
+
+# ==============================================================================
+# WINDOW MANAGEMENT
+# ==============================================================================
+bindsym $mod+q kill
+bindsym $mod+Shift+q exec --no-startup-id ~/.local/bin/force-kill-window
+bindsym $mod+f fullscreen toggle
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+bindsym $mod+Shift+a focus parent
+bindsym $mod+w layout tabbed
+bindsym $mod+semicolon exec --no-startup-id ~/.local/bin/smart-layout-toggle
+bindsym $mod+a exec --no-startup-id ~/.local/bin/smart-layout-toggle
+
+# Focus Navigation (hjkl & arrows)
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# Move Containers (hjkl & arrows)
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+# ==============================================================================
+# WORKSPACE MANAGEMENT
+# ==============================================================================
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+set $ws10 "10"
+
+# Top-Row Right-Hand Workspace Switching (Windows + u i o p)
+bindsym $mod+u workspace number $ws1
+bindsym $mod+i workspace number $ws2
+bindsym $mod+o workspace number $ws3
+bindsym $mod+p workspace number $ws4
+
+# Top-Row Right-Hand Move Window + follow (Windows + Shift + u i o p)
+bindsym $mod+Shift+u move container to workspace number $ws1; workspace number $ws1
+bindsym $mod+Shift+i move container to workspace number $ws2; workspace number $ws2
+bindsym $mod+Shift+o move container to workspace number $ws3; workspace number $ws3
+bindsym $mod+Shift+p move container to workspace number $ws4; workspace number $ws4
+
+# Bracket-row Workspaces 5 & 6
+bindsym $mod+bracketleft workspace number $ws5
+bindsym $mod+bracketright workspace number $ws6
+bindsym $mod+Shift+braceleft move container to workspace number $ws5; workspace number $ws5
+bindsym $mod+Shift+braceright move container to workspace number $ws6; workspace number $ws6
+
+# Standard Number Workspace Switching
+bindsym $mod+1 workspace number $ws1
+bindsym $mod+2 workspace number $ws2
+bindsym $mod+3 workspace number $ws3
+bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
+bindsym $mod+9 workspace number $ws9
+bindsym $mod+0 workspace number $ws10
+
+# Move Window to Workspace
+bindsym $mod+Shift+1 move container to workspace number $ws1
+bindsym $mod+Shift+2 move container to workspace number $ws2
+bindsym $mod+Shift+3 move container to workspace number $ws3
+bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+bindsym $mod+Shift+8 move container to workspace number $ws8
+bindsym $mod+Shift+9 move container to workspace number $ws9
+bindsym $mod+Shift+0 move container to workspace number $ws10
+
+# Back and forth workspace toggle
+bindsym $mod+Tab workspace back_and_forth
+bindsym $mod+comma workspace prev
+bindsym $mod+period workspace next
+bindsym $mod+Shift+comma move container to workspace prev; workspace prev
+bindsym $mod+Shift+period move container to workspace next; workspace next
+
+# Scratchpads
+bindsym Control+space exec --no-startup-id ~/.local/bin/scratch-toggle term
+bindsym $mod+n exec --no-startup-id ~/.local/bin/scratch-toggle notes
+
+# Session control
+bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
+bindsym $mod+Shift+c reload
+
+# Input settings
+input type:keyboard {
+    repeat_delay 200
+    repeat_rate 30
+}
+
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+}
+
+# Output Configuration (Internal Display @ 165Hz, 1.2x fractional scale)
+output eDP-1 {
+    mode 1920x1200@165.000Hz
+    scale 1.2
+    scale_filter linear
+    background #1d2021 solid_color
+}
+
+# Notification Daemon
+exec --no-startup-id mako
+
+# Colors (Gruvbox Dark matching i3)
+client.focused          #fabd2f  #282828  #ebdbb2  #8ec07c    #fabd2f
+client.focused_inactive #3c3836  #282828  #a89984  #504945    #3c3836
+client.unfocused        #1d2021  #282828  #928374  #1d2021    #1d2021
+client.urgent           #fb4934  #cc241d  #ebdbb2  #fb4934    #fb4934
+
+default_border pixel 1
+default_floating_border pixel 1
+for_window [class="^.*"] border pixel 1
+for_window [app_id="^.*"] border pixel 1
+
+# Hide outer edge borders when tabs/windows fill the edge
+hide_edge_borders smart
+
+# Floating Window Rules (matched to i3 config)
+for_window [title="Timer"] floating enable
+for_window [app_id="mpv"] floating enable
+for_window [class="mpv"] floating enable
+for_window [app_id="imv"] floating enable
+for_window [class="imv"] floating enable
+for_window [app_id="zenity"] floating enable
+for_window [class="zenity"] floating enable
+for_window [app_id="cachyos-welcome"] floating enable
+for_window [class="cachyos-welcome"] floating enable
+for_window [app_id="pavucontrol"] floating enable
+for_window [class="pavucontrol"] floating enable
+for_window [app_id="blueman-manager"] floating enable
+for_window [class="blueman-manager"] floating enable
+for_window [app_id="(?i)^nvidia-settings$"] floating enable, move position center
+for_window [class="(?i)^nvidia-settings$"] floating enable, move position center
+for_window [app_id="(?i)^btop$"] floating enable, resize set 1820 1100, move position center
+for_window [class="(?i)^btop$"] floating enable, resize set 1820 1100, move position center
+for_window [app_id="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1100, move position center
+for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1100, move position center
+for_window [instance="(?i)^AppRun\.wrapped$"] floating enable, resize set 1200 750, move position center
+for_window [instance="(?i)^pkg-float$"] floating enable, resize set 1250 780, move position center
+for_window [class="^steam_app_.*$"] fullscreen enable
+
+# Scratchpad window rules (floating & centered, auto-hidden to scratchpad)
+for_window [app_id="scratch-term"] floating enable, resize set 1700 1000, move position center, move to scratchpad
+for_window [instance="scratch-term"] floating enable, resize set 1700 1000, move position center, move to scratchpad
+for_window [app_id="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
+for_window [instance="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
+for_window [class="(?i)spotify"] floating enable, resize set 1400 900, move position center, move to scratchpad
+
+# Layout: split by default (tabbed on demand via $mod+w).
+# ws2 (browser) is tabbed — multiple pages stack as tabs there.
+# (Forced tabbed was removed elsewhere: Sway shows a tab bar even for a
+# single window, unlike the i3+autotiling behavior this config came from.)
+workspace 2 layout tabbed
+for_window [workspace="^2$"] layout tabbed
+
+# Web Browser Rules (Workspace 2)
+assign [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] workspace number $ws2
+assign [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] workspace number $ws2
+for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2, floating disable
+for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2, floating disable
+
+# Steam & Gaming Rules (Workspace 3)
+assign [class="(?i)^steam$"] workspace number $ws3
+assign [instance="steamwebhelper"] workspace number $ws3
+for_window [class="(?i)^steam$"] move to workspace number $ws3
+for_window [instance="steamwebhelper"] move to workspace number $ws3
+for_window [instance="steamwebhelper" title="^Steam$"] floating disable
+
+# Autostart Services
+exec alacritty --class scratch-term
+exec alacritty -o font.size=17.5 --class scratch-notes -e nvim "$HOME/notes.md"
+exec --no-startup-id ~/.local/bin/toggle-nightlight --auto --silent
+exec_always --no-startup-id sh -c '[ -f "$HOME/.config/current_wallpaper" ] && swaymsg output "*" bg "$(cat "$HOME/.config/current_wallpaper")" fill'
+
+# Idle Management (swayidle)
+exec swayidle -w \
+    timeout 300 'swaylock -f -c 000000' \
+    timeout 600 'swaymsg "output * dpms off"' \
+    resume 'swaymsg "output * dpms on"' \
+    before-sleep 'swaylock -f -c 000000'
+
+# Status Bar (Swaybar — 0 extra daemons, Gruvbox theme, invisible by default per bar_state)
+bar {
+    id bar-0
+    mode invisible
+    position bottom
+    status_command ~/.local/bin/swaybar-status
+    font pango:Iosevka Nerd Font 11
+    colors {
+        background #1d2021
+        statusline #ebdbb2
+        separator #504945
+        focused_workspace #fabd2f #282828 #fabd2f
+        active_workspace #83a598 #282828 #ebdbb2
+        inactive_workspace #282828 #1d2021 #a89984
+        urgent_workspace #fb4934 #cc241d #ebdbb2
+    }
+}
+exec_always --no-startup-id sh -c '[ "$(cat ~/.config/polybar/bar_state 2>/dev/null)" = "true" ] && swaymsg "bar bar-0 mode dock"'

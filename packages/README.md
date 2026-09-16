@@ -1,4 +1,4 @@
-# Package Manifests (tufx11 / i3-X11)
+# Package Manifests (tufdots / CachyOS)
 
 Declarative package sets, auto-installed by
 `run_onchange_linux-00-reconcile-packages.sh.tmpl` based on the machine profile

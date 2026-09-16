@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# fuzzel-clipboard: Native Wayland layer-shell clipboard selector via cliphist
+# ==============================================================================
+export PATH="$HOME/.local/bin:$PATH"
+
+selected=$(cliphist list 2>/dev/null | fuzzel --dmenu --prompt "📋 " --width 60 --lines 12)
+if [ -n "$selected" ]; then
+    echo "$selected" | cliphist decode | wl-copy
+    notify-send -a "Clipboard" -u low -i edit-paste "Copied to Clipboard" "Selection updated"
+fi

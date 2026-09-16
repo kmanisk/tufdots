@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Adjust Night Light Color Temperature Up/Down with Dunst OSD Notification
-# Range: 2000K (Warm/Amber) - 6500K (Daylight Neutral)
+# Adjust Night Light Color Temperature Up/Down (Flicker-Free)
+# Range: 2000K (Warm Amber) - 6500K (Daylight Neutral)
 # ==============================================================================
-export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
-DELTA="${1:-250}"
+DELTA="${1:-100}"
 STATE_FILE="$HOME/.config/nightlight_state"
 TEMP_FILE="$HOME/.config/nightlight_temp"
 
@@ -30,23 +29,34 @@ echo "$NEW_TEMP" > "$TEMP_FILE"
 # Calculate percentage (2000K = 0%, 6500K = 100%)
 PERCENT=$(( (NEW_TEMP - 2000) * 100 / 4500 ))
 
-if (( NEW_TEMP >= 6500 )); then
-    pkill -9 redshift >/dev/null 2>&1
-    redshift -x -m randr >/dev/null 2>&1
-    PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected primary" | cut -d' ' -f1)"
-    [ -z "$PRIMARY_MON" ] && PRIMARY_MON="$(xrandr --query 2>/dev/null | grep " connected" | cut -d' ' -f1 | head -n1)"
-    if [ -n "$PRIMARY_MON" ]; then
-        xrandr --output "$PRIMARY_MON" --gamma 1.0:1.0:1.0 --brightness 1.0 >/dev/null 2>&1 || true
+if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$SWAYSOCK" ]; then
+    # Kill stale gammastep if present
+    pkill -9 -x gammastep >/dev/null 2>&1 || true
+
+    # Flicker-free dynamic Wayland adjustment via wlsunset
+    if pgrep -x wlsunset >/dev/null 2>&1; then
+        pkill -USR2 -x wlsunset
+    elif [ -n "$SWAYSOCK" ] && command -v swaymsg >/dev/null 2>&1; then
+        swaymsg exec "/home/manisk/.local/bin/wlsunset -m $NEW_TEMP" >/dev/null 2>&1
+    else
+        setsid -f /home/manisk/.local/bin/wlsunset -m "$NEW_TEMP" </dev/null >/dev/null 2>&1
     fi
-    echo "off" > "$STATE_FILE"
-    dunstify -a "Night Light" -u low -i preferences-desktop-display \
-        -h string:x-dunst-stack-tag:nightlight -h int:value:100 \
-        "Night Light: 6500K (Daylight)"
 else
-    pkill -9 redshift >/dev/null 2>&1
+    # X11 atomic update
     redshift -r -P -m randr -O "$NEW_TEMP" >/dev/null 2>&1
-    echo "on" > "$STATE_FILE"
-    dunstify -a "Night Light" -u low -i preferences-desktop-display \
-        -h string:x-dunst-stack-tag:nightlight -h int:value:"$PERCENT" \
-        "Night Light: ${NEW_TEMP}K"
 fi
+
+if (( NEW_TEMP >= 6500 )); then
+    echo "off" > "$STATE_FILE"
+    MSG="Night Light: 6500K (Daylight)"
+else
+    echo "on" > "$STATE_FILE"
+    MSG="Night Light: ${NEW_TEMP}K"
+fi
+
+# Send synchronized OSD notification (supported by Mako and Dunst)
+notify-send -a "Night Light" -u low -i preferences-desktop-display \
+    -h string:x-canonical-private-synchronous:nightlight \
+    -h string:x-dunst-stack-tag:nightlight \
+    -h int:value:"$PERCENT" \
+    "$MSG"

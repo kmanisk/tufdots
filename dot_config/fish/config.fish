@@ -533,10 +533,9 @@ function c --description "Fuzzy find directory and cd into it"
     test -n "$dir"; and cd "$dir"
 end
 
-# Autostart i3/X11 if logging into TTY1
+# Autostart graphical session (Plasma Wayland or i3 X11) if logging into TTY1
 if status is-login
     if test -z "$DISPLAY" -a -z "$WAYLAND_DISPLAY" -a "$XDG_VTNR" = 1
-        set -gx XDG_SESSION_TYPE x11
-        exec startx
+        exec "$HOME/.local/bin/launch-desktop"
     end
 end

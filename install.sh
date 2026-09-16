@@ -1,16 +1,16 @@
 #!/bin/bash
 # ==============================================================================
-# tufx11 step 1/2: install dependencies, then run:
-#   chezmoi init --apply https://github.com/kmanisk/tufx11.git
+# tufdots step 1/2: install dependencies, then run:
+#   chezmoi init --apply https://github.com/kmanisk/tufdots.git
 # (install.sh also pre-seeds ~/.config/chezmoi/chezmoi.toml so the
 # asus-tuf-f16 profile is selected automatically)
 # ==============================================================================
 set -euo pipefail
 
-REPO_URL="https://github.com/kmanisk/tufx11.git"
+REPO_URL="https://github.com/kmanisk/tufdots.git"
 
 if [ ! -f /etc/arch-release ]; then
-    echo "ERROR: tufx11 supports Arch/CachyOS only." >&2
+    echo "ERROR: tufdots supports Arch/CachyOS only." >&2
     exit 1
 fi
 
