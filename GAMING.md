@@ -43,38 +43,44 @@ On 60% keyboards (e.g. Katana S K1), use hardware function layer combinations:
 ## 3. Game-Specific Reproducible Configurations
 
 ### A. Sleeping Dogs: Definitive Edition (AppID `307690`)
-- **Proton Version**: `proton-cachyos-slr` (or Proton Experimental)
+- **Proton Version**: `proton-cachyos-slr`
 - **Launch Options**:
   ```text
-  PRESSURE_VESSEL_FILESYSTEMS_RW="/mnt/Games" gamemoderun prime-run mangohud %command%
+  DISABLE_LSFG=1 PRESSURE_VESSEL_FILESYSTEMS_RW="/mnt/Games" gamemoderun prime-run %command%
   ```
-- **White Screen Prevention**:
-  Sleeping Dogs DE has a bug where exclusive fullscreen handshake fails on 16:10 high-refresh (165Hz) displays. To prevent this, ensure `data/DisplaySettings.xml` contains:
-  ```xml
-  <Fullscreen>0</Fullscreen>
-  ```
-  This forces borderless windowed mode at native `1920x1200` resolution.
+- **White / Black Screen Prevention**:
+  1. **Fullscreen & VSync Deadlock**: In `data/DisplaySettings.xml` and root `DisplaySettings.xml`, set:
+     ```xml
+     <Fullscreen>0</Fullscreen>
+     <VSync>0</VSync>
+     ```
+     This forces borderless windowed mode at `1920x1200 @ 165Hz` and eliminates the DXVK swapchain presentation deadlock.
+  2. **Framegen Isolation**: Global `DISABLE_LSFG=1` ensures no implicit Vulkan layer intercepts the presentation queue while framegen is disabled.
 
-### B. Elden Ring (AppID `1245620`)
-- **Proton Version**: `Proton - Experimental`
-- **Launch Command**: `eldenring-run` or Steam Launch Options:
+### B. Elden Ring (SteamRip / Non-Steam AppID `1245620`)
+- **Proton Version**: `proton-cachyos-slr`
+- **Target Exe**: `"/mnt/Games/Games/ELDEN RING/Game/eldenring.exe"` (quoted in `shortcuts.vdf` to prevent path splitting)
+- **AppID Config**: `steam_appid.txt` placed in `Game/` containing `1245620` to guarantee offline RUNE crack bypass without anti-cheat.
+- **Launch Options**:
   ```text
-  VKD3D_CONFIG="no_upload_hvv,force_host_cached" PROTON_ENABLE_NVAPI=0 gamemoderun prime-run %command%
+  PRESSURE_VESSEL_FILESYSTEMS_RW="/mnt/Games" VKD3D_CONFIG="no_upload_hvv,force_host_cached" PROTON_ENABLE_NVAPI=0 gamemoderun prime-run %command%
   ```
-- **Rationale**:
-  - `no_upload_hvv,force_host_cached`: Resolves VKD3D host-visible buffer allocation traps on Blackwell architectures.
-  - `PROTON_ENABLE_NVAPI=0`: Bypasses NVAPI crashes with Anti-Cheat/DX12 hooks on hybrid architectures.
+- **White Screen / Black Screen Rationale**:
+  - `no_upload_hvv,force_host_cached`: Resolves VKD3D host-visible buffer allocation traps on Blackwell architectures (RTX 5050 Mobile).
+  - `PROTON_ENABLE_NVAPI=0`: Bypasses NVAPI crashes with Anti-Cheat and DX12 hooks.
+  - **No Overlay Injection on Startup**: MangoHud should NOT be injected on startup as DX12 buffer creation on Blackwell hangs when hooked by early overlays.
 
 ### C. Grand Theft Auto IV: The Complete Edition (AppID `12210`)
 - **Proton Version**: `proton-cachyos-slr`
 - **Launch Options**:
   ```text
-  PRESSURE_VESSEL_FILESYSTEMS_RW="/mnt/Games" WINEDLLOVERRIDES="dinput8=n,b" gamemoderun prime-run mangohud %command% -norestrictions -nomemrestrict -availablevidmem 3072
+  PRESSURE_VESSEL_FILESYSTEMS_RW="/mnt/Games" WINEDLLOVERRIDES="dinput8=n,b" PROTON_NO_ESYNC=1 gamemoderun prime-run %command%
   ```
-- **Fixes Applied**:
-  - `availablevidmem 3072`: Caps VRAM reported to 3 GB to prevent 32-bit integer overflow crash.
-  - Gillian's Various Fixes modpack installed under `GTAIV/update/`.
-  - Liberty's Legacy trainer active via `CapsLock + -` (`F11`) or gamepad `RB + X`.
+- **Fixes Applied & White Screen Resolution**:
+  - **Rockstar Launcher CEF White Screen Fix**: The white window is caused by MangoHud or overlay hooks intercepting Chromium Embedded Framework (`Launcher.exe` / `socialclub_helper.exe`). Solved by adding `blacklist=Launcher.exe,RockstarService.exe,socialclub_helper.exe,PlayGTAIV.exe,xalia.exe` to `MangoHud.conf` and clearing corrupted CEF cache at `drive_c/users/steamuser/AppData/Local/Rockstar Games`.
+  - `PROTON_NO_ESYNC=1`: Prevents Social Club IPC `OnChannelError` thread synchronization deadlocks.
+  - `commandline.txt`: Arguments (`-nomemrestrict`, `-norestrictions`, `-availablevidmem 3072`) must reside in `GTAIV/commandline.txt` rather than Steam launch options to prevent parameter spacing corruption.
+  - Gillian's Various Fixes modpack active via `WINEDLLOVERRIDES="dinput8=n,b"`.
 
 ---
 
