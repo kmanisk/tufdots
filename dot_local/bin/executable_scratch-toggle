@@ -16,17 +16,24 @@ set -u
 mode="${1:?usage: scratch-toggle <term|notes|spotify>}"
 
 case "$mode" in
+    # CANONICAL SCRATCHPAD GEOMETRY (single source of truth).
+    # These MUST match the for_window rules in sway config:
+    #   term 1400x850 | notes 1200x750 | spotify 1400x850.
+    # Order on show is always: resize set W H, then move position center.
     term)
         instance="scratch-term"
         spawn="alacritty --class scratch-term"
+        geom="1400 850"
         ;;
     notes)
         instance="scratch-notes"
         spawn="alacritty -o font.size=17.5 --class scratch-notes -e nvim $HOME/notes.md"
+        geom="1200 750"
         ;;
     spotify)
         instance="spotify"
         spawn="spotify"
+        geom="1400 850"
         ;;
     *)
         echo "unknown mode: $mode" >&2
@@ -37,6 +44,40 @@ esac
 IPC_CMD="i3-msg"
 if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
     IPC_CMD="swaymsg"
+fi
+
+# Game guard: bindings that collide with gameplay (e.g. Control+space =
+# crouch-jump in FPS games) set SCRATCH_GAME_GUARD=1. When set, the toggle
+# is a silent no-op while a game window is focused. Deterministic and
+# compositor-independent (does not rely on shortcuts_inhibitor timing).
+# Game patterns mirror the fullscreen/game for_window rules in sway config.
+if [ -n "$SCRATCH_GAME_GUARD" ]; then
+    if $IPC_CMD -t get_tree 2>/dev/null | python3 -c '
+import json, sys
+pats = ("steam_app_", "cs2", "gamescope", "eldenring", "steam_proton",
+        "farcry3", "gtaiv")
+try:
+    tree = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+stack, focused = [tree], None
+while stack:
+    n = stack.pop()
+    if isinstance(n, dict):
+        if n.get("focused"):
+            focused = n
+        stack.extend(n.get("nodes", []) + n.get("floating_nodes", []))
+if not isinstance(focused, dict):
+    sys.exit(1)
+wp = focused.get("window_properties") or {}
+hay = " ".join((focused.get("app_id") or "", wp.get("class") or "",
+                wp.get("instance") or "")).lower()
+if any(p in hay for p in pats) or focused.get("fullscreen_mode"):
+    sys.exit(0)
+sys.exit(1)
+'; then
+        exit 0
+    fi
 fi
 
 # Reports where the window is: missing | visible | hidden (scratchpad).
@@ -79,6 +120,11 @@ show_it() {
         swaymsg "[app_id=\"$instance\"] scratchpad show" >/dev/null 2>&1 || \
         swaymsg "[class=\"(?i)$instance\"] scratchpad show" >/dev/null 2>&1 || \
         swaymsg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1
+        # for_window resize is unreliable at map time (Alacritty size hints
+        # win the race) — enforce geometry here, after the window is shown.
+        # shellcheck disable=SC2086
+        swaymsg "[app_id=\"$instance\"] resize set $geom, move position center" >/dev/null 2>&1 || \
+        swaymsg "[class=\"(?i)$instance\"] resize set $geom, move position center" >/dev/null 2>&1
     else
         i3-msg "[instance=\"$instance\"] scratchpad show" >/dev/null 2>&1 || \
         i3-msg "[class=\"(?i)$instance\"] scratchpad show" >/dev/null 2>&1

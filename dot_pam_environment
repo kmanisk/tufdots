@@ -1,0 +1,5 @@
+# Per-user login environment (loaded by pam_env at graphical login).
+# Single Qt theming variable: qt6ct covers all Qt6 apps (present and future).
+# Qt5 apps are rare here; qdirstat keeps its own explicit qt5ct override in
+# its .desktop file, so nothing regresses.
+QT_QPA_PLATFORMTHEME=qt6ct

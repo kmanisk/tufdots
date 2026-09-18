@@ -10,12 +10,22 @@ set -u
 
 WS=3
 
+# Compositor IPC: swaymsg on Wayland, i3-msg on X11
+IPC_CMD="i3-msg"
+if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    IPC_CMD="swaymsg"
+fi
+
 has_window() {
-    i3-msg -t get_tree 2>/dev/null | grep -qE '"instance": ?"steamwebhelper"'
+    $IPC_CMD -t get_tree 2>/dev/null | grep -qE '"instance": ?"steamwebhelper"'
 }
 
+if [ -n "${SWAYSOCK:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    export STEAM_FORCE_DESKTOPUI_SCALING="${STEAM_FORCE_DESKTOPUI_SCALING:-1}"
+fi
+
 # Always switch to workspace 3
-i3-msg "workspace number $WS" >/dev/null 2>&1
+$IPC_CMD "workspace number $WS" >/dev/null 2>&1
 
 if ! pgrep -x steam >/dev/null 2>&1; then
     # 1. Cold boot: Steam process is not running at all
@@ -24,7 +34,7 @@ if ! pgrep -x steam >/dev/null 2>&1; then
         for _ in $(seq 1 30); do
             sleep 0.5
             if has_window; then
-                i3-msg "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
+                $IPC_CMD "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
                 break
             fi
         done
@@ -36,12 +46,12 @@ elif ! has_window; then
         for _ in $(seq 1 15); do
             sleep 0.2
             if has_window; then
-                i3-msg "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
+                $IPC_CMD "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
                 break
             fi
         done
     ) &
 else
     # 3. Window already exists: focus immediately
-    i3-msg "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
+    $IPC_CMD "[instance=\"steamwebhelper\"] focus; workspace number $WS" >/dev/null 2>&1
 fi

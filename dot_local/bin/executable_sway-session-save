@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""sway-session-save: on-demand Sway session save. No daemon, stdlib only.
+
+Usage: sway-session-save [--all] [--quiet]
+  --all    save every active workspace (except gaming ws4, scratchpad)
+  bare     save only the focused workspace
+  --quiet  suppress desktop notification (status still goes to stdout/journal)
+
+Writes ~/.config/sway/session/session.json atomically, rotating the
+previous valid snapshot to session.json.prev. A failed, empty, or
+unusable snapshot NEVER replaces a valid session file.
+
+Exit codes: 0 saved (or nothing new to save), 1 aborted to protect
+the existing session (no Sway, bad tree, empty snapshot, write error).
+"""
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+SAVE_DIR = Path.home() / ".config" / "sway" / "session"
+SESSION = SAVE_DIR / "session.json"
+PREV = SAVE_DIR / "session.json.prev"
+STEAM_KILLED = SAVE_DIR / "steam_was_killed"
+SKIP_WS = {"4", "__i3_scratch"}
+FORMAT_VERSION = 1
+
+
+def log(msg):
+    print(f"[session] {msg}", flush=True)
+
+
+def runtime_dir():
+    d = os.environ.get("XDG_RUNTIME_DIR")
+    if d:
+        return Path(d)
+    return Path(f"/run/user/{os.getuid()}")
+
+
+def discover_socket():
+    """Find a live Sway IPC socket without hardcoding UID/PID paths."""
+    tried = []
+    for cand in (os.environ.get("SWAYSOCK"), os.environ.get("I3SOCK")):
+        if cand:
+            tried.append(cand)
+    try:
+        tried.extend(sorted(str(p) for p in runtime_dir().glob("sway-ipc.*.sock")))
+    except OSError:
+        pass
+    for sock in tried:
+        if not sock:
+            continue
+        try:
+            subprocess.check_output(
+                ["swaymsg", "-s", sock, "-t", "get_version"],
+                stderr=subprocess.DEVNULL, timeout=5)
+            return sock
+        except Exception:
+            continue
+    return None
+
+
+def msg(sock, *args):
+    try:
+        out = subprocess.check_output(
+            ["swaymsg", "-s", sock, "-t", *args],
+            stderr=subprocess.DEVNULL, timeout=10)
+        return json.loads(out)
+    except Exception:
+        return None
+
+
+def walk(node, cur_ws, out):
+    if node.get("type") == "workspace":
+        cur_ws = str(node.get("num") or node.get("name"))
+        out.setdefault(cur_ws, [])
+    if node.get("window") and cur_ws and cur_ws not in SKIP_WS:
+        props = node.get("window_properties", {}) or {}
+        out[cur_ws].append({
+            "pid": node.get("pid"),
+            "app_id": (node.get("app_id") or "").lower(),
+            "class": str(props.get("class", "") or "").lower(),
+            "instance": str(props.get("instance", "") or "").lower(),
+        })
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        walk(child, cur_ws, out)
+
+
+def cmdline_of(pid):
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+        return [p.decode(errors="replace") for p in raw if p]
+    except Exception:
+        return []
+
+
+def cwd_of(pid):
+    try:
+        p = Path(f"/proc/{pid}/cwd")
+        return str(p.resolve()) if p.exists() else str(Path.home())
+    except Exception:
+        return str(Path.home())
+
+
+def normalize(cmd):
+    if not cmd:
+        return []
+    s = " ".join(cmd).lower()
+    if "scratch-term" in s or "scratch-notes" in s:
+        return []
+    if "steam" in s:
+        return ["steam"]
+    if "brave" in s:
+        return ["brave-origin"]
+    if "zed" in s:
+        return ["zed"]
+    if "alacritty" in s:
+        return ["alacritty"]
+    base = Path(cmd[0]).name
+    kept = [base] + [a for a in cmd[1:]
+                     if "/tmp/" not in a and "socket" not in a.lower()]
+    return kept
+
+
+def fallback_launch(win):
+    for key, launch in (("brave", ["brave-origin"]),
+                        ("firefox", ["firefox"]),
+                        ("librewolf", ["librewolf"]),
+                        ("zed", ["zed"]),
+                        ("alacritty", ["alacritty"]),
+                        ("ghostty", ["ghostty"]),
+                        ("thunar", ["thunar"]),
+                        ("steam", ["steam"])):
+        if key in win["app_id"] or key in win["class"] or key in win["instance"]:
+            return launch
+    return []
+
+
+def notify(summary, body):
+    try:
+        subprocess.call(["notify-send", "-i", "document-save", summary, body],
+                        timeout=5)
+    except Exception:
+        pass
+
+
+def main():
+    quiet = "--quiet" in sys.argv
+    sock = discover_socket()
+    if not sock:
+        log("no running Sway session, keeping previous session")
+        return 1
+    tree = msg(sock, "get_tree")
+    if not isinstance(tree, dict) or "nodes" not in tree:
+        log("invalid: swaymsg tree unusable, keeping previous session")
+        return 1
+
+    ws_map = {}
+    walk(tree, None, ws_map)
+
+    # Steam lifecycle (ports i3 steam_was_killed): record whether Steam is
+    # alive at save time so restore won't resurrect a deliberately killed
+    # Steam. Updated on --all saves with a valid tree only.
+    if "--all" in sys.argv:
+        SAVE_DIR.mkdir(parents=True, exist_ok=True)
+        steam_alive = any("steam" in (w["app_id"] + w["class"] + w["instance"])
+                          for wins in ws_map.values() for w in wins)
+        if steam_alive:
+            STEAM_KILLED.unlink(missing_ok=True)
+        else:
+            STEAM_KILLED.touch()
+    if "--all" in sys.argv:
+        targets = {w: v for w, v in ws_map.items() if v}
+    else:
+        workspaces = msg(sock, "get_workspaces") or []
+        focused = next((str(w.get("num") or w.get("name"))
+                        for w in workspaces if w.get("focused")), None)
+        targets = {focused: ws_map.get(focused, [])} if focused else {}
+
+    snapshot = {"version": FORMAT_VERSION, "workspaces": {}}
+    for ws, wins in targets.items():
+        entries, seen = [], set()
+        for w in wins:
+            cmd = normalize(cmdline_of(w["pid"])) if w["pid"] else []
+            if not cmd:
+                cmd = fallback_launch(w)
+            if not cmd or tuple(cmd) in seen:
+                continue
+            seen.add(tuple(cmd))
+            entries.append({
+                "command": cmd,
+                "working_directory": cwd_of(w["pid"]) if w["pid"] else str(Path.home()),
+                "app_id": w["app_id"], "class": w["class"],
+            })
+        if entries:
+            snapshot["workspaces"][ws] = entries
+
+    if not snapshot["workspaces"]:
+        log("skipped: snapshot empty, keeping previous session")
+        return 1
+
+    try:
+        SAVE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = SAVE_DIR / "session.json.tmp"
+        with open(tmp, "w") as f:
+            json.dump(snapshot, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        if SESSION.exists():
+            os.replace(SESSION, PREV)
+        os.replace(tmp, SESSION)
+    except OSError as e:
+        log(f"invalid: write failed ({e}), keeping previous session")
+        return 1
+
+    # One-time migration: drop legacy per-workspace files after a good save.
+    for f in SAVE_DIR.glob("workspace_*.json"):
+        try:
+            f.unlink()
+        except OSError:
+            pass
+
+    names = ", ".join(sorted(snapshot["workspaces"]))
+    log(f"saved workspaces: {names}")
+    if not quiet:
+        notify("Sway Session", f"Saved workspaces: {names}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

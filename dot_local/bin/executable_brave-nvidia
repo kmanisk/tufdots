@@ -6,8 +6,17 @@ if [ -z "$BRAVE_BIN" ]; then
     exit 1
 fi
 
+if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    exec prime-run "$BRAVE_BIN" \
+        --ozone-platform=wayland \
+        --force-device-scale-factor=1.25 \
+        --enable-features=Vulkan \
+        --use-angle=vulkan \
+        "$@"
+fi
+
 exec prime-run "$BRAVE_BIN" \
-    --force-device-scale-factor=1.40 \
+    --force-device-scale-factor=1.0 \
     --enable-features=Vulkan \
     --use-angle=vulkan \
     "$@"

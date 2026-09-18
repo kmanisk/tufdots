@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Brave Browser Launcher (VA-API / NVDEC hardware decode support)
-export LIBVA_DRIVER_NAME=nvidia
-export NVD_BACKEND=direct
+# Brave Browser Launcher (Intel iGPU VA-API hardware decode support)
+export LIBVA_DRIVER_NAME=iHD
 
 BRAVE_BIN=$(command -v /usr/bin/brave-origin || command -v /usr/sbin/brave-origin || command -v /usr/bin/brave)
 if [ -z "$BRAVE_BIN" ]; then
@@ -9,4 +8,10 @@ if [ -z "$BRAVE_BIN" ]; then
     exit 1
 fi
 
-exec "$BRAVE_BIN" --force-device-scale-factor=1.40 "$@"
+if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    # Native Wayland: 1.25 device scale (middle ground; 1.0 too small, 1.33 too big).
+    # Page zoom stays per-site (Ctrl +/-); UI follows toolkit text scaling.
+    exec "$BRAVE_BIN" --ozone-platform=wayland --force-device-scale-factor=1.25 "$@"
+fi
+
+exec "$BRAVE_BIN" --force-device-scale-factor=1.0 "$@"

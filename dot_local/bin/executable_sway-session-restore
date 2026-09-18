@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""sway-session-restore: on-demand Sway session restore. No daemon, stdlib only.
+
+Usage: sway-session-restore [--all] [--dry-run] [--quiet] [--wait-ready[=SECS]]
+  --all         restore every saved workspace, land on ws2
+  bare          restore the file matching the focused workspace
+  --dry-run     print actions without launching
+  --quiet       no desktop notification (status still goes to stdout/journal)
+  --wait-ready  bounded wait (default 5s) for Sway IPC before restoring,
+                then exit. Never blocks startup indefinitely.
+
+Reads ~/.config/sway/session/session.json (falls back to legacy
+workspace_*.json files). Missing/malformed sessions are reported and
+skipped with exit 0 so Sway startup is never blocked. Applications
+already running are never duplicated. Exits after completing.
+"""
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+SAVE_DIR = Path.home() / ".config" / "sway" / "session"
+SESSION = SAVE_DIR / "session.json"
+STEAM_KILLED = SAVE_DIR / "steam_was_killed"
+
+
+def log(msg):
+    print(f"[session] {msg}", flush=True)
+
+
+def runtime_dir():
+    d = os.environ.get("XDG_RUNTIME_DIR")
+    if d:
+        return Path(d)
+    return Path(f"/run/user/{os.getuid()}")
+
+
+def discover_socket():
+    tried = []
+    for cand in (os.environ.get("SWAYSOCK"), os.environ.get("I3SOCK")):
+        if cand:
+            tried.append(cand)
+    try:
+        tried.extend(sorted(str(p) for p in runtime_dir().glob("sway-ipc.*.sock")))
+    except OSError:
+        pass
+    for sock in tried:
+        if not sock:
+            continue
+        try:
+            subprocess.check_output(
+                ["swaymsg", "-s", sock, "-t", "get_version"],
+                stderr=subprocess.DEVNULL, timeout=5)
+            return sock
+        except Exception:
+            continue
+    return None
+
+
+def msg(sock, *args):
+    try:
+        out = subprocess.check_output(
+            ["swaymsg", "-s", sock, "-t", *args],
+            stderr=subprocess.DEVNULL, timeout=10)
+        return json.loads(out)
+    except Exception:
+        return None
+
+
+def run(sock, command):
+    try:
+        subprocess.call(["swaymsg", "-s", sock, command],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL, timeout=10)
+    except Exception:
+        pass
+
+
+def current_classes(sock):
+    """Classes/app_ids of windows actually present (nodes with a window).
+
+    Ghost containers (app_id but no window) must NOT count, or
+    duplicate-prevention would skip apps that are not really running.
+    """
+    tree = msg(sock, "get_tree") or {}
+    found = set()
+    stack = [tree]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, dict):
+            if n.get("window"):
+                props = n.get("window_properties", {}) or {}
+                for k in ("class", "instance"):
+                    if props.get(k):
+                        found.add(str(props[k]).lower())
+                if n.get("app_id"):
+                    found.add(str(n["app_id"]).lower())
+            stack.extend(n.get("nodes", []) + n.get("floating_nodes", []))
+    return found
+
+
+def clean_ghosts(sock, only_ws=None):
+    """Kill dead placeholder containers (app identity, no window, no
+    swallows). Ports i3's unfilled-placeholder pruning; keeps the tree
+    truthful for duplicate checks and the cold-boot fallback."""
+    tree = msg(sock, "get_tree") or {}
+    victims = []
+    stack = [(tree, None)]
+    while stack:
+        n, ws = stack.pop()
+        if isinstance(n, dict):
+            if n.get("type") == "workspace":
+                ws = str(n.get("num") or n.get("name"))
+            if (not n.get("window") and not n.get("swallows")
+                    and (n.get("app_id") or (n.get("window_properties") or {}).get("class"))
+                    and n.get("type") not in ("workspace", "output", "root")
+                    and (only_ws is None or ws in only_ws)):
+                victims.append(n.get("id"))
+            for c in n.get("nodes", []) + n.get("floating_nodes", []):
+                stack.append((c, ws))
+    for cid in victims:
+        run(sock, f'[con_id="{cid}"] kill')
+    return len(victims)
+
+
+def load_session():
+    """Returns (workspaces_dict, source) or (None, reason)."""
+    if SESSION.exists():
+        try:
+            data = json.loads(SESSION.read_text())
+        except (OSError, json.JSONDecodeError) as e:
+            return None, f"invalid: session.json unreadable ({e})"
+        ws = data.get("workspaces") if isinstance(data, dict) else None
+        if not isinstance(ws, dict) or not ws:
+            return None, "invalid: session.json has no workspaces"
+        return ws, "session.json"
+    legacy = {}
+    for f in sorted(SAVE_DIR.glob("workspace_*.json")):
+        try:
+            entries = json.loads(f.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if entries:
+            legacy[f.stem.split("_", 1)[1]] = entries
+    if legacy:
+        return legacy, "legacy workspace files"
+    return None, "no saved session"
+
+
+def restore_ws(sock, ws, entries, present, dry, steam_killed=False):
+    launched = 0
+    for e in entries:
+        cmd = e.get("command", []) if isinstance(e, dict) else []
+        if not cmd:
+            continue
+        base = Path(cmd[0]).name.lower()
+        # Never resurrect a deliberately killed Steam (ports i3 lifecycle).
+        if "steam" in base and steam_killed:
+            continue
+        key = "brave" if "brave" in base else base
+        if any(key in c or base in c for c in present):
+            continue
+        workdir = e.get("working_directory") or str(Path.home())
+        if not Path(workdir).is_dir():
+            workdir = str(Path.home())
+        line = " ".join(cmd)
+        if workdir != str(Path.home()):
+            exec_cmd = (f'workspace number {ws}; exec --no-startup-id '
+                        f'sh -c "cd {json.dumps(workdir)} && exec {line}"')
+        else:
+            exec_cmd = f"workspace number {ws}; exec --no-startup-id {line}"
+        if dry:
+            print(exec_cmd)
+        else:
+            run(sock, exec_cmd)
+        present.add(base)
+        launched += 1
+    return launched
+
+
+def main():
+    args = sys.argv[1:]
+    dry = "--dry-run" in args
+    quiet = "--quiet" in args
+    wait_secs = 0
+    for a in args:
+        if a == "--wait-ready":
+            wait_secs = 5
+        elif a.startswith("--wait-ready="):
+            try:
+                wait_secs = min(max(int(a.split("=", 1)[1]), 0), 30)
+            except ValueError:
+                wait_secs = 5
+
+    sock, waited = None, 0.0
+    if wait_secs:
+        deadline = time.monotonic() + wait_secs
+        while time.monotonic() < deadline:
+            sock = discover_socket()
+            if sock and msg(sock, "get_workspaces") is not None:
+                break
+            sock = None
+            time.sleep(0.2)
+        waited = wait_secs - max(deadline - time.monotonic(), 0.0)
+    else:
+        sock = discover_socket()
+    if not sock:
+        log("no running Sway session, nothing restored")
+        return 0
+
+    workspaces, source = load_session()
+    if workspaces is None:
+        log(f"{source}, nothing restored")
+        return 0
+
+    if "--all" in args:
+        targets = sorted(workspaces.items())
+    else:
+        all_ws = msg(sock, "get_workspaces") or []
+        focused = next((str(w.get("num") or w.get("name"))
+                        for w in all_ws if w.get("focused")), None)
+        targets = [(focused, workspaces[focused])] \
+            if focused in workspaces else []
+
+    if not targets:
+        log("skipped: no matching workspace session")
+        return 0
+
+    if not dry:
+        scope = None if "--all" in args else {w for w, _ in targets}
+        ghosts = clean_ghosts(sock, scope)
+        if ghosts:
+            log(f"cleaned {ghosts} ghost container(s)")
+
+    present = current_classes(sock)
+    steam_killed = STEAM_KILLED.exists()
+    total = 0
+    restored_ws = set()
+    for ws, entries in targets:
+        total += restore_ws(sock, ws, entries, present, dry, steam_killed)
+        restored_ws.add(ws)
+
+    # Cold-boot fallback (ports i3): guarantee a terminal on ws1 and a
+    # browser on ws2 when no session covered them. Global presence check
+    # so we never duplicate an app open elsewhere.
+    if "--all" in args and not dry:
+        if "1" not in restored_ws and not any(
+                t in c for c in present for t in ("alacritty", "ghostty")):
+            run(sock, "workspace number 1; exec --no-startup-id alacritty")
+            total += 1
+        if "2" not in restored_ws and not any(
+                b in c for c in present
+                for b in ("brave", "firefox", "librewolf")):
+            run(sock, "workspace number 2; exec --no-startup-id brave-origin")
+            total += 1
+
+    if "--all" in args and not dry:
+        run(sock, "workspace number 2")
+    if dry:
+        log(f"dry-run from {source}: {total} launch(es) planned")
+    elif total:
+        log(f"restored {total} application(s) from {source}"
+            + (f" (ipc ready after {waited:.1f}s)" if wait_secs else ""))
+        if not quiet:
+            try:
+                subprocess.call(["notify-send", "-i", "view-restore",
+                                 "Sway Session",
+                                 f"Restored {total} application(s)"],
+                                timeout=5)
+            except Exception:
+                pass
+    else:
+        log("skipped: all saved applications already running")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

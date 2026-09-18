@@ -1,11 +1,19 @@
+# DO NOT EDIT! This file will be overwritten by nwg-look.
+# Any customization should be done in ~/.gtkrc-2.0.mine instead.
+
+include "/home/manisk/.gtkrc-2.0.mine"
 gtk-theme-name="Gruvbox-Dark"
-gtk-enable-animations=1
-gtk-primary-button-warps-slider=0
-gtk-toolbar-style=3
-gtk-menu-images=1
-gtk-button-images=1
-gtk-cursor-theme-size=40
-gtk-cursor-theme-name="phinger-cursors-gruvbox-material"
 gtk-icon-theme-name="Gruvbox-Plus-Dark"
-gtk-font-name="Fira Sans, 10"
-gtk-modules="canberra-gtk-module"
+gtk-font-name="Iosevka Nerd Font 16.5"
+gtk-cursor-theme-name="phinger-cursors-gruvbox-material"
+gtk-cursor-theme-size=50
+gtk-toolbar-style=3
+gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
+gtk-button-images=0
+gtk-menu-images=0
+gtk-enable-event-sounds=0
+gtk-enable-input-feedback-sounds=0
+gtk-xft-antialias=1
+gtk-xft-hinting=1
+gtk-xft-hintstyle="hintslight"
+gtk-xft-rgba="rgb"

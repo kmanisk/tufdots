@@ -4,6 +4,15 @@
 # ==============================================================================
 export PATH="$HOME/.local/bin:$PATH"
 
+# Best-effort session save for the active compositor (never blocks the action).
+save_session() {
+    if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+        ~/.local/bin/sway-session-save --all --quiet 2>/dev/null || :
+    else
+        ~/.local/bin/i3-session-save --all 2>/dev/null || :
+    fi
+}
+
 # Options with icons
 shutdown='⏻   Shutdown'
 reboot='   Restart'
@@ -21,11 +30,11 @@ chosen=$(printf "%s\n%s\n%s\n%s\n%s" "$shutdown" "$reboot" "$lock" "$suspend" "$
 
 case "$chosen" in
     *"Shutdown"*)
-        ~/.local/bin/i3-session-save --all 2>/dev/null || :
+        save_session
         systemctl poweroff
         ;;
     *"Restart"*)
-        ~/.local/bin/i3-session-save --all 2>/dev/null || :
+        save_session
         systemctl reboot
         ;;
     *"Lock"*)
@@ -35,7 +44,7 @@ case "$chosen" in
         systemctl suspend
         ;;
     *"Logout"*)
-        ~/.local/bin/i3-session-save --all
+        save_session
         i3-msg exit
         ;;
 esac

@@ -9,6 +9,9 @@
 .config/chezmoi/key.txt
 key.txt
 
+# --- Volatile runtime state (reproducible scripts, never the session data) ---
+.config/sway/session/**
+
 # --- Internal Repository Paths (never deploy to $HOME) ---
 README.md
 install.sh

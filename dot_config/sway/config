@@ -47,8 +47,9 @@ bindsym $mod+Shift+t exec alacritty -o font.size=17.5 -e nvim
 bindsym $mod+e exec thunar
 bindsym $mod+t exec --no-startup-id zed
 
-# Process Killer Menu (Windows + Escape)
+# Process Killer Menu (Windows + Escape & Alt + Escape)
 bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
+bindsym Mod1+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 
 # Games Launcher (Windows + g / Alt + g)
 bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
@@ -59,16 +60,16 @@ bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
 # Spotify scratchpad
 bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
 
-# Task Manager (TMOG in floating window)
+# Task Manager (btop in floating window: Ctrl+Shift+Esc, Win+Shift+Esc, Alt+Shift+Esc)
 bindsym Control+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
 bindsym $mod+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
+bindsym Mod1+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
 
 # System Utilities
 bindsym $mod+Mod1+1 exec $term --class nmtui -e nmtui
 bindsym $mod+Mod1+2 exec blueman-manager
 bindsym $mod+Mod1+3 exec pavucontrol
 bindsym Mod1+Shift+o exec --no-startup-id ~/.local/bin/toggle-audio-sink
-bindsym Mod1+Shift+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 bindsym $mod+Control+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 bindsym Mod1+Shift+b exec --no-startup-id ~/.local/bin/rofi-favorites
 
@@ -98,9 +99,13 @@ bindsym XF86AudioLowerVolume exec --no-startup-id ~/.local/bin/volume-notify dow
 bindsym XF86AudioMute exec --no-startup-id ~/.local/bin/volume-notify mute
 bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle
 
-# Screenshots (Win+s interactive region, Win+Shift+s fullscreen)
+# Screenshots:
+# - Win+s: Interactive region selection -> clipboard
+# - Win+Shift+s / Print / Win+Print: Fullscreen direct to clipboard (no select)
 bindsym $mod+s exec --no-startup-id ~/.local/bin/screenshot-region
 bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/screenshot-fullscreen
+bindsym Print exec --no-startup-id ~/.local/bin/screenshot-fullscreen
+bindsym $mod+Print exec --no-startup-id ~/.local/bin/screenshot-fullscreen
 
 # Screen Lock
 bindsym $mod+Control+l exec swaylock -f -c 000000
@@ -196,23 +201,36 @@ bindsym $mod+Shift+0 move container to workspace number $ws10
 
 # Back and forth workspace toggle
 bindsym $mod+Tab workspace back_and_forth
+# Instant toggle between ws2 (browser) and ws4 (games) only
+bindsym $mod+grave exec --no-startup-id ~/.local/bin/ws-toggle-2-4
 bindsym $mod+comma workspace prev
 bindsym $mod+period workspace next
 bindsym $mod+Shift+comma move container to workspace prev; workspace prev
 bindsym $mod+Shift+period move container to workspace next; workspace next
 
 # Scratchpads
-bindsym Control+space exec --no-startup-id ~/.local/bin/scratch-toggle term
+# Mod1+grave & Control+space both toggle scratchpad terminal.
+# (Control+space is a silent no-op while a game is focused: SCRATCH_GAME_GUARD,
+# checked inside scratch-toggle. shortcuts_inhibitor rules remain as backup.)
+bindsym Mod1+grave exec --no-startup-id ~/.local/bin/scratch-toggle term
+# Guarded: silent no-op while a game window is focused (see scratch-toggle)
+bindsym Control+space exec --no-startup-id env SCRATCH_GAME_GUARD=1 ~/.local/bin/scratch-toggle term
 bindsym $mod+n exec --no-startup-id ~/.local/bin/scratch-toggle notes
 
 # Session control
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
 bindsym $mod+Shift+c reload
 
+# Session save/restore (on-demand, no daemon, stdlib-only)
+bindsym Mod1+Shift+7 exec --no-startup-id ~/.local/bin/sway-session-save --all
+bindsym Mod1+Shift+8 exec --no-startup-id ~/.local/bin/sway-session-restore --all
+bindsym Mod1+Control+7 exec --no-startup-id ~/.local/bin/sway-session-save
+bindsym Mod1+Control+8 exec --no-startup-id ~/.local/bin/sway-session-restore
+
 # Input settings
 input type:keyboard {
-    repeat_delay 200
-    repeat_rate 30
+    repeat_delay 500
+    repeat_rate 25
 }
 
 input type:touchpad {
@@ -220,11 +238,19 @@ input type:touchpad {
     natural_scroll enabled
 }
 
-# Output Configuration (Internal Display @ 165Hz, 1.2x fractional scale)
+# Cursor: explicit theme + size (37 -> 48); without this Sway falls back
+# to theme defaults and ignores Xcursor.size for Wayland surfaces
+seat seat0 xcursor_theme phinger-cursors-gruvbox-material 33
+
+# Output Configuration (Internal Display @ 165Hz, Native 1:1 hardware pixels)
+# Baseline: Adaptive Sync (VRR) enabled for tear-free, low-latency sync.
+# To test raw immediate-tearing instead: set adaptive_sync off, allow_tearing yes, max_render_time off.
 output eDP-1 {
     mode 1920x1200@165.000Hz
-    scale 1.2
-    scale_filter linear
+    scale 1.0
+    adaptive_sync on
+    allow_tearing yes
+    max_render_time 1
     background #1d2021 solid_color
 }
 
@@ -243,9 +269,10 @@ for_window [class="^.*"] border pixel 1
 for_window [app_id="^.*"] border pixel 1
 
 # Hide outer edge borders when tabs/windows fill the edge
-hide_edge_borders smart
+hide_edge_borders --i3 smart
 
 # Floating Window Rules (matched to i3 config)
+for_window [app_id="(?i)^dusky_audio_studio.*"] floating enable, move position center
 for_window [title="Timer"] floating enable
 for_window [app_id="mpv"] floating enable
 for_window [class="mpv"] floating enable
@@ -259,6 +286,7 @@ for_window [app_id="pavucontrol"] floating enable
 for_window [class="pavucontrol"] floating enable
 for_window [app_id="blueman-manager"] floating enable
 for_window [class="blueman-manager"] floating enable
+for_window [app_id="peazip"] floating enable
 for_window [app_id="(?i)^nvidia-settings$"] floating enable, move position center
 for_window [class="(?i)^nvidia-settings$"] floating enable, move position center
 for_window [app_id="(?i)^btop$"] floating enable, resize set 1820 1100, move position center
@@ -267,21 +295,46 @@ for_window [app_id="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1
 for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1100, move position center
 for_window [instance="(?i)^AppRun\.wrapped$"] floating enable, resize set 1200 750, move position center
 for_window [instance="(?i)^pkg-float$"] floating enable, resize set 1250 780, move position center
-for_window [class="^steam_app_.*$"] fullscreen enable
+
+# Desktop Portal, File Chooser & Dialog rules (prevents getting swallowed into tabbed layouts)
+for_window [app_id="(?i)xdg-desktop-portal.*"] floating enable, move position center
+for_window [app_id="(?i)portal"] floating enable, move position center
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="bubble"] floating enable
+for_window [window_role="dialog"] floating enable
+for_window [window_role="task_dialog"] floating enable
+for_window [window_type="dialog"] floating enable
+for_window [window_type="menu"] floating enable
+for_window [title="(?i)browse"] floating enable, move position center
+for_window [title="(?i)select a file"] floating enable, move position center
+for_window [title="(?i)choose an application"] floating enable, move position center
+for_window [title="(?i)open file"] floating enable, move position center
+for_window [class="^steam_app_.*$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
+for_window [app_id="(?i)^(cs2|gamescope)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
 
 # Scratchpad window rules (floating & centered, auto-hidden to scratchpad)
-for_window [app_id="scratch-term"] floating enable, resize set 1700 1000, move position center, move to scratchpad
-for_window [instance="scratch-term"] floating enable, resize set 1700 1000, move position center, move to scratchpad
-for_window [app_id="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
-for_window [instance="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
-for_window [class="(?i)spotify"] floating enable, resize set 1400 900, move position center, move to scratchpad
+# Geometry MUST match the canonical per-mode size in scratch-toggle show_it()
+# (term 1400x850, notes 1200x750, spotify 1400x850). for_window sizes the
+# first map; show_it() re-enforces resize+center on every show, so any
+# mismatch here causes a visible size jump on first toggle.
+for_window [app_id="scratch-term"] floating enable, resize set 1400 850, move position center, move to scratchpad
+for_window [instance="scratch-term"] floating enable, resize set 1400 850, move position center, move to scratchpad
+for_window [app_id="scratch-notes"] floating enable, resize set 1200 750, move position center, move to scratchpad
+for_window [instance="scratch-notes"] floating enable, resize set 1200 750, move position center, move to scratchpad
+for_window [class="(?i)spotify"] floating enable, resize set 1400 850, move position center, move to scratchpad
 
-# Layout: split by default (tabbed on demand via $mod+w).
-# ws2 (browser) is tabbed — multiple pages stack as tabs there.
-# (Forced tabbed was removed elsewhere: Sway shows a tab bar even for a
-# single window, unlike the i3+autotiling behavior this config came from.)
+# Layout: ws1/2/3 forced tabbed (user policy: tab strip always
+# visible, including single-window "[T|...]" bars). `workspace layout`
+# alone only applies at startup, so for_window rules re-assert tabbed
+# on every new window to hold it across restarts and moves.
+workspace 1 layout tabbed
 workspace 2 layout tabbed
+workspace 3 layout tabbed
+for_window [workspace="^1$"] layout tabbed
 for_window [workspace="^2$"] layout tabbed
+for_window [workspace="^3$"] layout tabbed
+
 
 # Web Browser Rules (Workspace 2)
 assign [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] workspace number $ws2
@@ -295,11 +348,34 @@ assign [instance="steamwebhelper"] workspace number $ws3
 for_window [class="(?i)^steam$"] move to workspace number $ws3
 for_window [instance="steamwebhelper"] move to workspace number $ws3
 for_window [instance="steamwebhelper" title="^Steam$"] floating disable
+# Steam Settings + game Properties open as tabs (tiled on tabbed ws3)
+for_window [class="(?i)^steam$" title="^Settings$"] floating disable
+for_window [class="(?i)^steam$" title=".*[Pp]roperties.*"] floating disable
+for_window [class="(?i)^steam$" title="^Steam$"] floating disable
+# Steam Friends list floats
+for_window [class="(?i)^steam$" title="^Friends List$"] floating enable, resize set 360 700
+# Games go to ws4 only (native XWayland + gamescope-nested + native Wayland cs2)
+# Any other window attempting to launch on ws4 is evicted to ws1
+for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
+for_window [class="^steam_app_.*$"] move to workspace number $ws4, workspace number $ws4
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] move to workspace number $ws4, workspace number $ws4
+for_window [app_id="(?i)^(cs2|gamescope)$"] move to workspace number $ws4, workspace number $ws4
 
 # Autostart Services
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway SWAYSOCK
+exec systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK
+exec_always --no-startup-id xrdb -merge "$HOME/.Xresources"
+# Autotab DISABLED under forced-tabbed policy (would untab singles).
+#exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'
 exec alacritty --class scratch-term
 exec alacritty -o font.size=17.5 --class scratch-notes -e nvim "$HOME/notes.md"
+# One-shot session restore (bounded IPC wait, exits immediately, no daemon)
+exec --no-startup-id ~/.local/bin/sway-session-restore --all --quiet --wait-ready
 exec --no-startup-id ~/.local/bin/toggle-nightlight --auto --silent
+# Polkit authentication agent (required for root GUI apps like GParted)
+exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+# Bluetooth tray (blueman-applet was missing on sway: GUI toggle did nothing)
+exec --no-startup-id blueman-applet
 exec_always --no-startup-id sh -c '[ -f "$HOME/.config/current_wallpaper" ] && swaymsg output "*" bg "$(cat "$HOME/.config/current_wallpaper")" fill'
 
 # Idle Management (swayidle)

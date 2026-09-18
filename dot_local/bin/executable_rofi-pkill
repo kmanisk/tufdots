@@ -11,7 +11,12 @@ export PATH="$HOME/.local/bin:$PATH"
 THEME="$HOME/.config/rofi/clipboard-floating.rasi"
 
 notify() {
-    command -v dunstify >/dev/null 2>&1 && dunstify -a "Process Killer" -u low -i process-stop -r 8833 "$1" "$2"
+    if command -v dunstify >/dev/null 2>&1; then
+        dunstify -a "Process Killer" -u low -i process-stop -r 8833 "$1" "$2"
+    else
+        notify-send -a "Process Killer" -u low -i process-stop \
+            -h string:x-canonical-private-synchronous:pkill "$1" "$2"
+    fi
 }
 
 # Processes to protect from accidental termination

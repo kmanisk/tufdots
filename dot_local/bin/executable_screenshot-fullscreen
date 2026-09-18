@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Fullscreen Screenshot -> ~/Pictures/Screenshots + Clipboard (X11)
-# Bound to Win+Shift+S in i3
-# Uses maim (feh is an image viewer and cannot capture the screen)
+# Fullscreen Screenshot -> ~/Pictures/Screenshots + Clipboard (X11 & Wayland)
+# Keybind: Win+Shift+S (Sway & i3)
+# Features:
+#   - Atomic flock (FD 200): prevents multi-keybind spamming
+#   - Zero memory footprint: runs ephemerally, exits immediately
 # ==============================================================================
-export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+set -euo pipefail
+
+LOCK_FILE="/tmp/screenshot-fullscreen.lock"
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+    exit 0
+fi
+
+export LD_LIBRARY_PATH="$HOME/.local/lib:${LD_LIBRARY_PATH:-}"
 export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
 export DISPLAY="${DISPLAY:-:0}"
 
@@ -12,14 +22,24 @@ DIR="$HOME/Pictures/Screenshots"
 mkdir -p "$DIR"
 FILE="$DIR/screenshot-$(date +%Y-%m-%d_%H-%M-%S)_$$.png"
 
-if maim "$FILE" 2>/dev/null && [ -s "$FILE" ]; then
-    if [ -n "$WAYLAND_DISPLAY" ] && command -v wl-copy >/dev/null 2>&1; then
+if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${SWAYSOCK:-}" ]; then
+    if grim "$FILE" 2>/dev/null && [ -s "$FILE" ]; then
+        flock -u 200 2>/dev/null || true
+        exec 200>&-
         wl-copy -t image/png < "$FILE"
+        notify-send -t 1500 -i camera-photo "Screenshot" "Fullscreen copied to clipboard"
     else
-        xclip -selection clipboard -t image/png -i "$FILE"
+        notify-send -t 1500 -i dialog-error "Screenshot Failed"
+        rm -f "$FILE"
     fi
-    notify-send -t 2000 -i camera-photo "Screenshot Saved" "$(basename "$FILE")"
 else
-    notify-send -t 2000 -i dialog-error "Screenshot Failed"
-    rm -f "$FILE"
+    if maim "$FILE" 2>/dev/null && [ -s "$FILE" ]; then
+        flock -u 200 2>/dev/null || true
+        exec 200>&-
+        xclip -selection clipboard -t image/png -i "$FILE"
+        notify-send -t 1500 -i camera-photo "Screenshot" "Fullscreen copied to clipboard"
+    else
+        notify-send -t 1500 -i dialog-error "Screenshot Failed"
+        rm -f "$FILE"
+    fi
 fi

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=PeaZip, add to archive
+NoDisplay=true
+Comment=Add files and folders to archive with PeaZip
+Exec=env QT_QPA_PLATFORMTHEME=qt6ct peazip -add2archive %F
+TryExec=peazip
+Icon=peazip_add
+Type=Application
+Terminal=false
+Categories=Utility;Archiving;Compression;
+Keywords=zip;rar;tar;extract;unpack;
+MimeType=application/octet-stream;

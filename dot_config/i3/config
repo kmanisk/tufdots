@@ -36,8 +36,9 @@ bindsym $mod+Shift+t exec alacritty -o font.size=17.5 -e nvim
 # File Manager
 bindsym $mod+e exec thunar
 
-# Process Killer Menu (Windows + Escape)
+# Process Killer Menu (Windows + Escape & Alt + Escape)
 bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
+bindsym Mod1+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 
 # Games Launcher (Windows + g) -> Steam workspace
 bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
@@ -53,9 +54,10 @@ bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
 bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
 bindsym $mod+t exec --no-startup-id zed
 
-# Task Manager (TMOG in floating window)
+# Task Manager (btop in floating window: Ctrl+Shift+Esc, Win+Shift+Esc, Alt+Shift+Esc)
 bindsym Control+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
 bindsym $mod+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
+bindsym Mod1+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
 
 # ==============================================================================
 # SYSTEM UTILITIES
@@ -64,8 +66,10 @@ bindsym $mod+Mod1+1 exec $term --class nmtui -e nmtui
 bindsym $mod+Mod1+2 exec blueman-manager
 bindsym $mod+Mod1+3 exec pavucontrol
 bindsym $mod+s exec --no-startup-id ~/.local/bin/screenshot-region
-# Fullscreen screenshot to ~/Pictures/Screenshots + clipboard (Win+Shift+S)
+# Fullscreen screenshot to clipboard + ~/Pictures/Screenshots (Win+Shift+S / Print)
 bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/screenshot-fullscreen
+bindsym Print exec --no-startup-id ~/.local/bin/screenshot-fullscreen
+bindsym $mod+Print exec --no-startup-id ~/.local/bin/screenshot-fullscreen
 bindsym Mod1+Shift+o exec --no-startup-id ~/.local/bin/toggle-audio-sink
 bindsym Mod1+Shift+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
 bindsym $mod+Control+m exec --no-startup-id ~/.local/bin/toggle-headset-mic
@@ -326,10 +330,12 @@ for_window [instance="scratch-term"] floating enable, resize set 1700 1000, move
 for_window [instance="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
 # Hide outer edge borders when tabs/windows fill the edge
 hide_edge_borders smart
-# Workspaces 1-3 use Tabbed mode by default.
-for_window [workspace="^1$"] layout tabbed
-for_window [workspace="^2$"] layout tabbed
-for_window [workspace="^3$"] layout tabbed
+# NOTE: do NOT force `layout tabbed` via for_window here.
+# A single window inside a tabbed container still draws the
+# "[T|...]" tab bar (wasted ~25px, what you saw on ws2 with
+# only brave-origin open). Tabbed is applied dynamically by
+# i3-autotab (tabbed when >=2 tiled windows, splith when 1)
+# and manually via $mod+w / smart-layout-toggle.
 
 # ==============================================================================
 # Web Browser Rules (Workspace 2)
@@ -360,6 +366,8 @@ for_window [title=".*Launcher.*"] floating enable
 # Game window rules (tiled on Games Workspace 4, reached via Win+4.
 # Steam client stays on ws3; dialogs stay floating above. No forced
 # fullscreen: it would trap focus. Single game fills the workspace.)
+# Any other window attempting to launch on ws4 is evicted to ws1
+for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
 assign [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] workspace number $ws4
 assign [class="^steam_app_.*"] workspace number $ws4
 for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] move to workspace number $ws4, floating disable, border none
@@ -428,6 +436,7 @@ exec_always --no-startup-id sh -c 'sleep 0.5 && ~/.fehbg'
 
 exec_always --no-startup-id sh -c 'pkill -x dunst; sleep 0.1; exec dunst -config ~/.config/dunst/dunstrc --verbosity crit'
 # exec --no-startup-id picom -b # Disabled globally
+exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec --no-startup-id blueman-applet
 # Alacritty scratch terminal - spawns once on login straight into scratchpad
 exec --no-startup-id alacritty --class Alacritty,scratch-term
@@ -435,6 +444,8 @@ exec --no-startup-id alacritty --class Alacritty,scratch-term
 exec --no-startup-id sh -c 'exec alacritty -o font.size=17.5 --class Alacritty,scratch-notes -e nvim "$HOME/notes.md"'
 # Autotiling: automatically switch horizontal/vertical splits based on focused window dimensions
 exec_always --no-startup-id sh -c 'pkill -x autotiling; sleep 0.2; exec autotiling'
+# Autotab: tabbed layout only when >=2 tiled windows (no single "[T|...]" bar)
+exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'
 # CS2 Window Restack Hook: RETIRED (tiled game tabs can't bleed through;
 # its force-fullscreen breaks Win+h/l tab switching)
 #exec_always --no-startup-id sh -c 'pkill -f cs2-restack-hook; sleep 0.2; exec ~/.local/bin/cs2-restack-hook'
