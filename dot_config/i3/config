@@ -343,10 +343,10 @@ hide_edge_borders smart
 assign [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] workspace number $ws2
 for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2, floating disable
 # Browser popups, web app logins/dialogs float instead of being swallowed into tabbed view
-for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_role="pop-up"] floating enable, resize set 560 860, move position center
-for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_role="bubble"] floating enable, resize set 560 860, move position center
-for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_type="dialog"] floating enable, resize set 560 860, move position center
-for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" title="(?i).*(sign in|log in|login|oauth|authorize|authenticat).*"] floating enable, resize set 560 860, move position center
+for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_role="pop-up"] floating enable, move position center
+for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_role="bubble"] floating enable, move position center
+for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_type="dialog"] floating enable, move position center
+for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" title="(?i).*(sign in|log in|login|oauth|authorize|authenticat).*"] floating enable, move position center
 
 # ==============================================================================
 # Steam & Gaming Rules
