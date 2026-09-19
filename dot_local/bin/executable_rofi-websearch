@@ -5,16 +5,16 @@
 export PATH="$HOME/.local/bin:$PATH"
 
 HINTS=$(cat <<'HINT_EOF'
-!yt <query>     YouTube
-!aw <query>     ArchWiki
-!gh <query>     GitHub
-!w <query>      Wikipedia
-!a <query>      Amazon
-!rd <query>     Reddit
-!so <query>     StackOverflow
-!pdb <query>    ProtonDB
-!ddg <query>    DuckDuckGo
-<query>         Google (Default)
+YouTube
+ArchWiki
+GitHub
+Wikipedia
+Amazon
+Reddit
+StackOverflow
+ProtonDB
+DuckDuckGo
+Google (Default)
 HINT_EOF
 )
 

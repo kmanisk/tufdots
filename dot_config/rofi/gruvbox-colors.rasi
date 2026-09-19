@@ -48,10 +48,10 @@
 
     /* Central Control: Typography & Modal Dimensions */
     font:                "Iosevka Nerd Font 13";
-    modal-font:          "Iosevka Nerd Font 13";
-    modal-font-bold:     "Iosevka Nerd Font Bold 13";
-    modal-font-italic:   "Iosevka Nerd Font Italic 12";
-    modal-width:         650px;
+    modal-font:          "Noto Sans 15";
+    modal-font-bold:     "Noto Sans Bold 15";
+    modal-font-italic:   "Noto Sans Italic 14";
+    modal-width:         720px;
     modal-radius:        8px;
     modal-padding:       14px;
 }
