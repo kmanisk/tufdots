@@ -10,6 +10,7 @@ set -gx VISUAL nvim
 
 # Ensure user binaries are prioritized in PATH
 fish_add_path -m ~/.local/bin
+test -d "$HOME/.cargo/bin" && fish_add_path -m "$HOME/.cargo/bin"
 
 # Cursor Style: Line / Beam cursor instead of block
 set -g fish_cursor_default line
