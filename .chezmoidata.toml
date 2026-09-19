@@ -65,6 +65,7 @@ development = true
 asus_ctl = true
 bluetooth = true
 i3 = true
+sway = true
 snapper = true
 hdr = false
 tearing_opt = true

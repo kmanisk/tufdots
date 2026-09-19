@@ -11,6 +11,11 @@ key.txt
 
 # --- Volatile runtime state (reproducible scripts, never the session data) ---
 .config/sway/session/**
+.config/fish/fish_variables
+.local/share/Steam/userdata/**
+.local/share/Steam/steamapps/**
+.local/share/Steam/config/**
+.steam/**
 
 # --- Internal Repository Paths (never deploy to $HOME) ---
 README.md
@@ -18,6 +23,7 @@ install.sh
 packages/**
 systemd/**
 wallpapers/**
+docs/**
 
 # --- Machine Resolution (defaults to generic-linux) ---
 {{- $machineKey := "" -}}

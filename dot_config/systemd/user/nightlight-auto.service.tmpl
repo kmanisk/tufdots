@@ -5,8 +5,8 @@ Documentation=man:toggle-nightlight(1)
 [Service]
 Type=oneshot
 Environment="DISPLAY=:0"
-Environment="PATH=/home/manisk/.local/bin:/usr/local/bin:/usr/bin"
-ExecStart=/home/manisk/.local/bin/nightlight-check-rule
+Environment="PATH={{ .chezmoi.homeDir }}/.local/bin:/usr/local/bin:/usr/bin"
+ExecStart={{ .chezmoi.homeDir }}/.local/bin/nightlight-check-rule
 
 [Install]
 WantedBy=default.target

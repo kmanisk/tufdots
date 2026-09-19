@@ -1,0 +1,19 @@
+# ==============================================================================
+# Sway / Wayland Desktop Stack
+# Active when: features.sway = true
+# ==============================================================================
+sway
+swaylock
+swayidle
+mako
+fuzzel
+wlsunset
+wl-clipboard
+cliphist
+grim
+slurp
+xdg-desktop-portal-wlr
+alacritty
+pamixer
+brightnessctl
+pavucontrol

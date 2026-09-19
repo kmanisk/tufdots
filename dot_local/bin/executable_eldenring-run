@@ -4,7 +4,7 @@ set -e
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 export STEAM_COMPAT_DATA_PATH="$HOME/.local/share/Steam/steamapps/compatdata/1245620"
 
-# Offload directly to RTX 5050 Mobile
+# Offload directly to discrete GPU
 export __NV_PRIME_RENDER_OFFLOAD=1
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export __VK_LAYER_NV_optimus=NVIDIA_only
@@ -13,13 +13,55 @@ export __VK_LAYER_NV_optimus=NVIDIA_only
 export VKD3D_CONFIG="no_upload_hvv,force_host_cached"
 export PROTON_ENABLE_NVAPI=0
 
-# Focus Workspace 4 automatically
-i3-msg "workspace 4" >/dev/null 2>&1 || true
+# Focus Games Workspace (Workspace 4)
+if command -v swaymsg >/dev/null 2>&1 && [ -n "${SWAYSOCK:-}" ]; then
+    swaymsg "workspace 4" >/dev/null 2>&1 || true
+elif command -v i3-msg >/dev/null 2>&1; then
+    i3-msg "workspace 4" >/dev/null 2>&1 || true
+fi
 
-GAME_DIR="/mnt/Games/Games/ELDEN RING/Game"
+# Resolve games root dynamically
+GAMES_ROOT="$("$HOME/.local/bin/tuf-games-root" 2>/dev/null || echo "/mnt/Games")"
+
+GAME_DIR=""
+candidates=(
+    "$GAMES_ROOT/Games/ELDEN RING/Game"
+    "$GAMES_ROOT/steamapps/common/ELDEN RING/Game"
+    "$HOME/.local/share/Steam/steamapps/common/ELDEN RING/Game"
+)
+
+for c in "${candidates[@]}"; do
+    if [ -f "$c/eldenring.exe" ]; then
+        GAME_DIR="$c"
+        break
+    fi
+done
+
+if [ -z "$GAME_DIR" ]; then
+    echo "ERROR: Could not locate eldenring.exe in $GAMES_ROOT or standard Steam locations." >&2
+    echo "Set TUF_GAMES_ROOT to point to your games folder." >&2
+    exit 1
+fi
+
 GAME_EXE="$GAME_DIR/eldenring.exe"
-PROTON_BIN="$HOME/.local/share/Steam/steamapps/common/Proton - Experimental/proton"
+
+# Resolve Proton executable
+PROTON_BIN=""
+proton_candidates=(
+    "$HOME/.local/share/Steam/compatibilitytools.d/proton-cachyos-slr/proton"
+    "$HOME/.local/share/Steam/steamapps/common/Proton - Experimental/proton"
+    "$HOME/.local/share/Steam/steamapps/common/Proton 9.0 (Beta)/proton"
+)
+for p in "${proton_candidates[@]}"; do
+    if [ -x "$p" ]; then
+        PROTON_BIN="$p"
+        break
+    fi
+done
+
+if [ -z "$PROTON_BIN" ]; then
+    PROTON_BIN="proton"
+fi
 
 cd "$GAME_DIR"
 exec "$PROTON_BIN" run "$GAME_EXE" "$@"
-

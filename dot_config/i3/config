@@ -41,14 +41,14 @@ bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 bindsym Mod1+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 
 # Games Launcher (Windows + g) -> Steam workspace
-bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
+bindsym $mod+g exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
 # Games Rofi Menu (Alt + g) -> Elden Ring (Proton), Steam, Kill game
 bindsym Mod1+g exec --no-startup-id ~/.local/bin/rofi-games
 # Games Launcher with GPU offload (Windows + Shift + g) -> Steam on NVIDIA
 bindsym $mod+Shift+g exec --no-startup-id "prime-run ~/.local/bin/steam-workspace"
 
 # Steam (Alt + Shift + S / Win + G) -> Workspace 3 (spawns, unhides from tray, or focuses)
-bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
+bindsym Mod1+Shift+s exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
 
 # Spotify scratchpad (Windows + m toggle, spawns if closed)
 bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
@@ -353,13 +353,18 @@ assign [class="steam"] workspace number $ws3
 for_window [instance="steamwebhelper"] move to workspace number $ws3
 for_window [class="steam"] move to workspace number $ws3
 # Steam main window tiled, all dialogs float
+# Steam browser/links/file-pickers/dialogs float: otherwise they open as
+# hidden tabs inside ws3's tabbed container and clicks appear to do nothing.
+for_window [instance="steamwebhelper"] floating enable
 for_window [instance="steamwebhelper" title="^Steam$"] floating disable
+for_window [instance="steamwebhelper" title="^Add Non-Steam Game$"] floating disable
 for_window [instance="steamwebhelper" title="^Friends List$"] floating enable, resize set 320 700
 for_window [instance="steamwebhelper" title=".* - Chat$"] floating enable
 for_window [instance="steamwebhelper" title="^Settings$"] floating enable
 for_window [instance="steamwebhelper" title="^Steam - News.*"] floating enable
 for_window [instance="steamwebhelper" title="^Screenshot Uploader$"] floating enable
 for_window [instance="steamwebhelper" title="^Steam Guard.*"] floating enable
+for_window [title="^Pick game to add.*"] floating enable
 for_window [title="^Rockstar Games.*"] floating enable
 for_window [title=".*Launcher.*"] floating enable
 

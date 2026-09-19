@@ -7,6 +7,7 @@
 # asus.txt hash: {{ include "packages/asus.txt" | sha256sum }}
 # audio.txt hash: {{ include "packages/audio.txt" | sha256sum }}
 # i3.txt hash: {{ include "packages/i3.txt" | sha256sum }}
+# sway.txt hash: {{ include "packages/sway.txt" | sha256sum }}
 # development.txt hash: {{ include "packages/development.txt" | sha256sum }}
 # aur-explicit.txt hash: {{ include "packages/aur-explicit.txt" | sha256sum }}
 
@@ -113,6 +114,10 @@ LISTS+=("{{ .chezmoi.sourceDir }}/packages/asus.txt")
 
 {{ if $m.features.i3 -}}
 LISTS+=("{{ .chezmoi.sourceDir }}/packages/i3.txt")
+{{ end -}}
+
+{{ if (and (hasKey $m.features "sway") $m.features.sway) -}}
+LISTS+=("{{ .chezmoi.sourceDir }}/packages/sway.txt")
 {{ end -}}
 
 {{ if hasPrefix "pipewire" $m.providers.audio -}}

@@ -35,56 +35,56 @@
     "system-metrics": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/sysmetrics-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/sysmetrics-mcp"
       ],
       "enabled": true
     },
     "gpu-tuning": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/gpu-tuning-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/gpu-tuning-mcp"
       ],
       "enabled": true
     },
     "systemd": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/systemd-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/systemd-mcp"
       ],
       "enabled": true
     },
     "desktop": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/desktop-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/desktop-mcp"
       ],
       "enabled": true
     },
     "chezmoi": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/chezmoi-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/chezmoi-mcp"
       ],
       "enabled": true
     },
     "i3": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/i3-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/i3-mcp"
       ],
       "enabled": true
     },
     "x11": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/x11-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/x11-mcp"
       ],
       "enabled": true
     },
     "input-stack": {
       "type": "local",
       "command": [
-        "/home/manisk/.local/bin/input-stack-mcp"
+        "{{ .chezmoi.homeDir }}/.local/bin/input-stack-mcp"
       ],
       "enabled": true
     }

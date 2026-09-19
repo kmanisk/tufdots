@@ -1,0 +1,8 @@
+# vkBasalt: per-game post-processing (CS2 vibrance).
+# Effects run inside the game's Vulkan submission: no extra present hop,
+# fullscreen direct scanout stays eligible.
+effects = vibrance
+vibrance = {{ .chezmoi.homeDir }}/.config/vkBasalt/reshade-shaders/Shaders/Vibrance.fx
+reshadeTexturePath = {{ .chezmoi.homeDir }}/.config/vkBasalt/reshade-shaders/Textures
+reshadeIncludePath = {{ .chezmoi.homeDir }}/.config/vkBasalt/reshade-shaders/Shaders
+toggleKey = Home

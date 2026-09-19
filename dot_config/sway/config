@@ -52,10 +52,10 @@ bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 bindsym Mod1+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 
 # Games Launcher (Windows + g / Alt + g)
-bindsym $mod+g exec --no-startup-id ~/.local/bin/steam-workspace
+bindsym $mod+g exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
 bindsym Mod1+g exec --no-startup-id ~/.local/bin/rofi-games
 bindsym $mod+Shift+g exec --no-startup-id "prime-run ~/.local/bin/steam-workspace"
-bindsym Mod1+Shift+s exec --no-startup-id ~/.local/bin/steam-workspace
+bindsym Mod1+Shift+s exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
 
 # Spotify scratchpad
 bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
@@ -315,14 +315,14 @@ for_window [app_id="(?i)^(cs2|gamescope)$"] fullscreen enable, allow_tearing yes
 
 # Scratchpad window rules (floating & centered, auto-hidden to scratchpad)
 # Geometry MUST match the canonical per-mode size in scratch-toggle show_it()
-# (term 1400x850, notes 1200x750, spotify 1400x850). for_window sizes the
+# (term 1700x1050, notes 1700x1050, spotify 1700x1050). for_window sizes the
 # first map; show_it() re-enforces resize+center on every show, so any
 # mismatch here causes a visible size jump on first toggle.
-for_window [app_id="scratch-term"] floating enable, resize set 1400 850, move position center, move to scratchpad
-for_window [instance="scratch-term"] floating enable, resize set 1400 850, move position center, move to scratchpad
-for_window [app_id="scratch-notes"] floating enable, resize set 1200 750, move position center, move to scratchpad
-for_window [instance="scratch-notes"] floating enable, resize set 1200 750, move position center, move to scratchpad
-for_window [class="(?i)spotify"] floating enable, resize set 1400 850, move position center, move to scratchpad
+for_window [app_id="scratch-term"] floating enable, resize set 1700 1050, move position center, move to scratchpad
+for_window [instance="scratch-term"] floating enable, resize set 1700 1050, move position center, move to scratchpad
+for_window [app_id="scratch-notes"] floating enable, resize set 1700 1050, move position center, move to scratchpad
+for_window [instance="scratch-notes"] floating enable, resize set 1700 1050, move position center, move to scratchpad
+for_window [class="(?i)spotify"] floating enable, resize set 1700 1050, move position center, move to scratchpad
 
 # Layout: ws1/2/3 forced tabbed (user policy: tab strip always
 # visible, including single-window "[T|...]" bars). `workspace layout`
@@ -348,18 +348,26 @@ assign [instance="steamwebhelper"] workspace number $ws3
 for_window [class="(?i)^steam$"] move to workspace number $ws3
 for_window [instance="steamwebhelper"] move to workspace number $ws3
 for_window [instance="steamwebhelper" title="^Steam$"] floating disable
+# Steam browser/links/file-pickers/dialogs float: otherwise they open as
+# hidden tabs inside ws3's tabbed container and clicks appear to do nothing.
+for_window [instance="steamwebhelper" title="^Steam$"] floating disable
+# Steam Add Non-Steam Game opens as a tab / tiled (not floating)
+for_window [instance="steamwebhelper" title="^Add Non-Steam Game$"] floating disable
+for_window [class="(?i)^steam$" title="^Add Non-Steam Game$"] floating disable
 # Steam Settings + game Properties open as tabs (tiled on tabbed ws3)
 for_window [class="(?i)^steam$" title="^Settings$"] floating disable
 for_window [class="(?i)^steam$" title=".*[Pp]roperties.*"] floating disable
 for_window [class="(?i)^steam$" title="^Steam$"] floating disable
 # Steam Friends list floats
 for_window [class="(?i)^steam$" title="^Friends List$"] floating enable, resize set 360 700
+for_window [instance="steamwebhelper" title="^Friends List$"] floating enable, resize set 360 700
+for_window [instance="steamwebhelper" title=".* - Chat$"] floating enable
 # Games go to ws4 only (native XWayland + gamescope-nested + native Wayland cs2)
 # Any other window attempting to launch on ws4 is evicted to ws1
 for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
-for_window [class="^steam_app_.*$"] move to workspace number $ws4, workspace number $ws4
-for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] move to workspace number $ws4, workspace number $ws4
-for_window [app_id="(?i)^(cs2|gamescope)$"] move to workspace number $ws4, workspace number $ws4
+for_window [class="^steam_app_.*$"] move to workspace number $ws4
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] move to workspace number $ws4
+for_window [app_id="(?i)^(cs2|gamescope)$"] move to workspace number $ws4
 
 # Autostart Services
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway SWAYSOCK

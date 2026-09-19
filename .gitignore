@@ -1,0 +1,18 @@
+# Secrets & credentials
+.config/chezmoi/key.txt
+key.txt
+*.key
+*.token
+
+# Volatile Steam state & personal library cache
+.local/share/Steam/
+.steam/
+
+# Fish runtime variables (managed via config.fish)
+.config/fish/fish_variables
+
+# Temporary files & histories
+**/*history*
+**/*.tmp
+**/*.log
+.DS_Store

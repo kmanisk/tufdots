@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# tuf-games-root: Resolve games root directory dynamically
+# Supports machine-level override TUF_GAMES_ROOT, mounts, or standard ~/.local/share/Steam
+# ==============================================================================
+set -euo pipefail
+
+find_games_root() {
+    # 1. User/Machine explicit environment override
+    if [[ -n "${TUF_GAMES_ROOT:-}" ]] && [[ -d "${TUF_GAMES_ROOT}" ]]; then
+        printf '%s\n' "$TUF_GAMES_ROOT"
+        return 0
+    fi
+
+    # 2. Known local mount points
+    local mount_candidates=(
+        "/mnt/Games"
+        "/media/Games"
+        "/run/media/$USER/Games"
+    )
+    for m in "${mount_candidates[@]}"; do
+        if [[ -d "$m" ]]; then
+            printf '%s\n' "$m"
+            return 0
+        fi
+    done
+
+    # 3. Standard Steam library locations in user home
+    local steam_candidates=(
+        "$HOME/.local/share/Steam"
+        "$HOME/.steam/steam"
+        "$HOME/.steam/root"
+    )
+    for s in "${steam_candidates[@]}"; do
+        if [[ -d "$s" ]]; then
+            printf '%s\n' "$s"
+            return 0
+        fi
+    done
+
+    printf '%s\n' "$HOME"
+    return 0
+}
+
+find_games_root
