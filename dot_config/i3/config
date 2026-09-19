@@ -116,7 +116,7 @@ bindsym $mod+a exec --no-startup-id ~/.local/bin/smart-layout-toggle
 bindsym $mod+w layout tabbed
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+space floating toggle
-bindsym $mod+space focus mode_toggle
+# bindsym $mod+space focus mode_toggle (disabled: collided with xremap RightCtrl/Space input in scratchpad)
 bindsym $mod+Shift+a focus parent
 
 # Split orientation (Vertical split via Win+Shift+v is replaced by autotiling; Win+v is reserved for Universal Paste)

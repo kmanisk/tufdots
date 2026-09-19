@@ -56,7 +56,7 @@ done
 
 # 1. First prompt: user types query
 # Control+Return (custom-1) triggers suggestions; Enter triggers instant search
-QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "󰖟 Search" \
+QUERY=$(echo "$HINTS" | rofi -dmenu -i -p "Search" \
     -kb-accept-custom "" \
     -kb-accept-alt "" \
     -kb-custom-1 "Control+Return" \
@@ -84,6 +84,7 @@ case "$QUERY" in
     *"StackOverflow"*)  PREFIX="!so " ;;
     *"ProtonDB"*)       PREFIX="!pdb " ;;
     *"DuckDuckGo"*)     PREFIX="!ddg " ;;
+    *"SteamDB"*)        PREFIX="!sdb " ;;
     *"Google"*)         PREFIX="" ;;
     *)                  PREFIX="" ;;
 esac
@@ -154,6 +155,10 @@ case "$QUERY" in
         ENGINE="duckduckgo"
         RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!ddg|ddg:|ddg|duck)[[:space:]]+//')"
         ;;
+    \!sdb\ *|sdb:\ *|sdb\ *|steamdb\ *)
+        ENGINE="steamdb"
+        RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!sdb|sdb:|sdb|steamdb)[[:space:]]+//')"
+        ;;
     \!so\ *|so:\ *|so\ *|stackoverflow\ *)
         ENGINE="stackoverflow"
         RAW_QUERY="$(echo "$QUERY" | sed -E 's/^(!so|so:|so|stackoverflow)[[:space:]]+//')"
@@ -215,6 +220,9 @@ case "$ENGINE" in
         ;;
     duckduckgo)
         URL="https://duckduckgo.com/?q=${ENCODED_QUERY}"
+        ;;
+    steamdb)
+        URL="https://steamdb.info/search/?a=all&q=${ENCODED_QUERY}"
         ;;
     stackoverflow)
         URL="https://stackoverflow.com/search?q=${ENCODED_QUERY}"

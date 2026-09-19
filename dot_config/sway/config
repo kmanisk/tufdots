@@ -117,7 +117,7 @@ bindsym $mod+q kill
 bindsym $mod+Shift+q exec --no-startup-id ~/.local/bin/force-kill-window
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+space floating toggle
-bindsym $mod+space focus mode_toggle
+# bindsym $mod+space focus mode_toggle (disabled: collided with xremap RightCtrl/Space input in scratchpad)
 bindsym $mod+Shift+a focus parent
 bindsym $mod+w layout tabbed
 bindsym $mod+semicolon exec --no-startup-id ~/.local/bin/smart-layout-toggle
