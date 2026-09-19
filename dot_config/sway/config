@@ -43,7 +43,7 @@ bindsym $mod+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper
 bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
 
 # Text Editor & File Manager
-bindsym $mod+Shift+t exec alacritty -o font.size=18 -e nvim
+bindsym $mod+Shift+t exec alacritty -o font.size=20.5 -e nvim
 bindsym $mod+e exec thunar
 bindsym $mod+t exec --no-startup-id zed
 
@@ -341,6 +341,12 @@ assign [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alp
 assign [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] workspace number $ws2
 for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2, floating disable
 for_window [class="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$"] move to workspace number $ws2, floating disable
+# Browser popups, web app logins/dialogs float instead of being swallowed into tabbed view
+for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_role="pop-up"] floating enable, move position center
+for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_role="bubble"] floating enable, move position center
+for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" window_type="dialog"] floating enable, move position center
+for_window [app_id="(?i)^brave-.*"] floating enable, move position center
+for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" title="(?i).*(sign in|log in|login|oauth|authorize|authenticat).*"] floating enable, move position center
 
 # Steam & Gaming Rules (Workspace 3)
 assign [class="(?i)^steam$"] workspace number $ws3
@@ -376,7 +382,7 @@ exec_always --no-startup-id xrdb -merge "$HOME/.Xresources"
 # Autotab DISABLED under forced-tabbed policy (would untab singles).
 #exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'
 exec alacritty --class scratch-term
-exec alacritty -o font.size=18 --class scratch-notes -e nvim "$HOME/notes.md"
+exec alacritty -o font.size=20.5 --class scratch-notes -e nvim "$HOME/notes.md"
 # One-shot session restore (bounded IPC wait, exits immediately, no daemon)
 exec --no-startup-id ~/.local/bin/sway-session-restore --all --quiet --wait-ready
 exec --no-startup-id ~/.local/bin/toggle-nightlight --auto --silent

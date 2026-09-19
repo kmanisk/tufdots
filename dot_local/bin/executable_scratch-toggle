@@ -27,7 +27,7 @@ case "$mode" in
         ;;
     notes)
         instance="scratch-notes"
-        spawn="alacritty -o font.size=18 --class scratch-notes -e nvim $HOME/notes.md"
+        spawn="alacritty -o font.size=20.5 --class scratch-notes -e nvim $HOME/notes.md"
         geom="1700 1050"
         ;;
     spotify)
