@@ -66,7 +66,7 @@ Prefer official, narrow servers over large custom ones — lower token overhead,
     "official-filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem",
-                "~/.local/share/chezmoi", "~/.config"]
+                "/home/manisk/.local/share/chezmoi", "/home/manisk/.config"]
     },
     "official-git": {
       "command": "npx",
@@ -77,7 +77,7 @@ Prefer official, narrow servers over large custom ones — lower token overhead,
       "args": ["-y", "@modelcontextprotocol/server-fetch"]
     },
     "official-github": {
-      "command": "~/.local/bin/github-mcp-wrapper",
+      "command": "/home/manisk/.local/bin/github-mcp-wrapper",
       "args": []
     }
   }

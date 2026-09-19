@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
+# Wallpaper genre menu (unbound; Win+Shift+W is the single wallpaper keybind)
 export PATH="$HOME/.local/bin:$PATH"
 
-options="🎲 Random (Cached - Instant)\n🎮 Gaming (Cached - Instant)\n💀 Creepy & Dark (Cached - Instant)\n🌐 Fetch New Online Wallpaper (Download)"
-chosen=$(echo -e "$options" | rofi -dmenu -i -p "Wallpaper")
+options="🎲 Random\n🎮 Gaming\n💀 Creepy & Dark\n⬜ Minimal\n👾 Pixel Art\n🐧 Linux / Logos"
+chosen=$(echo -e "$options" | rofi -dmenu -i -p "Wallpaper genre")
 
 case "$chosen" in
-    *"Random"*)
-        ~/.local/bin/random-wallpaper random
-        ;;
-    *"Gaming"*)
-        ~/.local/bin/random-wallpaper gaming
-        ;;
-    *"Creepy"*)
-        ~/.local/bin/random-wallpaper creepy
-        ;;
-    *"Fetch New"*)
-        ~/.local/bin/random-wallpaper --new random
-        ;;
+    *"Random"*)  ~/.local/bin/random-wallpaper random ;;
+    *"Gaming"*)  ~/.local/bin/random-wallpaper gaming ;;
+    *"Creepy"*)  ~/.local/bin/random-wallpaper creepy ;;
+    *"Minimal"*) ~/.local/bin/random-wallpaper minimal ;;
+    *"Pixel"*)   ~/.local/bin/random-wallpaper pixel ;;
+    *"Linux"*)   ~/.local/bin/random-wallpaper linux ;;
 esac

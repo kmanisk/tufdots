@@ -31,3 +31,4 @@ xrandr --addmode "$PRIMARY_OUT" "1600x1200_165.00" 2>/dev/null || true
 
 # 2. Set native resolution @ 165Hz as primary
 xrandr --output "$PRIMARY_OUT" --primary --mode 1920x1200 --rate 165.00 2>/dev/null || true
+

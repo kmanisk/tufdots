@@ -37,9 +37,9 @@ if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$SWAYSOCK" ]; then
     if pgrep -x wlsunset >/dev/null 2>&1; then
         pkill -USR2 -x wlsunset
     elif [ -n "$SWAYSOCK" ] && command -v swaymsg >/dev/null 2>&1; then
-        swaymsg exec "wlsunset -m $NEW_TEMP" >/dev/null 2>&1
+        swaymsg exec "/home/manisk/.local/bin/wlsunset -m $NEW_TEMP" >/dev/null 2>&1
     else
-        setsid -f wlsunset -m "$NEW_TEMP" </dev/null >/dev/null 2>&1
+        setsid -f /home/manisk/.local/bin/wlsunset -m "$NEW_TEMP" </dev/null >/dev/null 2>&1
     fi
 else
     # X11 atomic update

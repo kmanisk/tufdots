@@ -222,3 +222,8 @@
 #    summary = *twitter.com*
 #    urgency = normal
 #
+
+[ignore_keyboard_battery]
+    appname = blueman
+    summary = "Katana*"
+    format = ""

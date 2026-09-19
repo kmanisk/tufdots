@@ -86,11 +86,13 @@ keymap:
       CapsLock-x: x
       CapsLock-z: z
 
-  # --- Katana Sub-legends on Windows key (Super / RightMeta) ---
+  # --- Katana Sub-legends on Right Alt (brightness) ---
+  # NOTE: `M-` means EITHER Alt, which is why Left Alt+Q/W was also
+  # firing brightness. RightAlt- restricts to Right Alt only.
   - name: Katana sub-legends
     remap:
-      M-q: BrightnessDown
-      M-w: BrightnessUp
+      RightAlt-q: BrightnessDown
+      RightAlt-w: BrightnessUp
 
   # --- Misc ---
   - name: Misc

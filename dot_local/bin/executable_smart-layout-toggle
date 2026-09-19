@@ -9,18 +9,21 @@ Seamlessly toggles between Tiling (splith) and Tabbed mode (horizontal left-and-
 - Instant, hot-reloaded in place without switching workspaces or reopening windows.
 """
 import json
+import os
 import subprocess
 import sys
+
+IPC_CMD = "swaymsg" if os.environ.get("SWAYSOCK") else "i3-msg"
 
 
 def i3_msg(*cmds):
     cmd = "; ".join(cmds)
-    res = subprocess.run(["i3-msg", cmd], capture_output=True, text=True)
+    res = subprocess.run([IPC_CMD, cmd], capture_output=True, text=True)
     return res.stdout
 
 
 def get_tree():
-    res = subprocess.run(["i3-msg", "-t", "get_tree"], capture_output=True, text=True)
+    res = subprocess.run([IPC_CMD, "-t", "get_tree"], capture_output=True, text=True)
     return json.loads(res.stdout)
 
 
@@ -66,8 +69,10 @@ def find_parent_container(root, target_id):
 
 def get_tiled_leaves(node):
     leaves = []
-    # Only consider non-floating windows
-    if node.get("type") == "con" and node.get("window") is not None:
+    # Only consider non-floating windows.
+    # Sway-native Wayland views have window=None + app_id set;
+    # X11/XWayland views have window set. Count both.
+    if node.get("type") == "con" and (node.get("window") is not None or node.get("app_id")):
         floating = node.get("floating", "")
         if not floating or floating in ("auto_off", "user_off"):
             return [node]

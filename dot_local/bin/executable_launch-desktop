@@ -11,13 +11,10 @@ if [ -f "$SESSION_FILE" ]; then
     [ -n "$CHOICE" ] && SESSION="$CHOICE"
 fi
 
-if [ "$SESSION" = "i3" ]; then
-    echo "==> Starting i3 (X11)..."
-    export XDG_SESSION_TYPE=x11
-    export XDG_CURRENT_DESKTOP=i3
-    export DESKTOP_SESSION=i3
-    exec startx
-else
+if [ "$SESSION" = "sway" ]; then
+    echo "==> Starting Sway (Wayland)..."
+    exec "$HOME/.local/bin/sway-run"
+elif [ "$SESSION" = "plasma" ] && [ -x /usr/bin/startplasma-wayland ]; then
     echo "==> Starting KDE Plasma (Wayland)..."
     export XDG_SESSION_TYPE=wayland
     export XDG_CURRENT_DESKTOP=KDE
@@ -36,4 +33,10 @@ else
     fi
 
     exec /usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland
+else
+    echo "==> Starting i3 (X11)..."
+    export XDG_SESSION_TYPE=x11
+    export XDG_CURRENT_DESKTOP=i3
+    export DESKTOP_SESSION=i3
+    exec startx
 fi

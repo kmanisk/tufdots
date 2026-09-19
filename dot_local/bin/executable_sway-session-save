@@ -23,8 +23,11 @@ SAVE_DIR = Path.home() / ".config" / "sway" / "session"
 SESSION = SAVE_DIR / "session.json"
 PREV = SAVE_DIR / "session.json.prev"
 STEAM_KILLED = SAVE_DIR / "steam_was_killed"
+NL_STATE = Path.home() / ".config" / "nightlight_state"
+BAR_STATE = Path.home() / ".config" / "polybar" / "bar_state"
+TOGGLE_NL = Path.home() / ".local" / "bin" / "toggle-nightlight"
 SKIP_WS = {"4", "__i3_scratch"}
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 
 def log(msg):
@@ -75,7 +78,10 @@ def walk(node, cur_ws, out):
     if node.get("type") == "workspace":
         cur_ws = str(node.get("num") or node.get("name"))
         out.setdefault(cur_ws, [])
-    if node.get("window") and cur_ws and cur_ws not in SKIP_WS:
+    # NOTE: on Sway, `window` is the X11 window ID and is None for
+    # Wayland-native views. A live view always has a `pid`, so pid (or
+    # window) is the correct presence test. True placeholders have neither.
+    if (node.get("window") or node.get("pid")) and cur_ws and cur_ws not in SKIP_WS:
         props = node.get("window_properties", {}) or {}
         out[cur_ws].append({
             "pid": node.get("pid"),
@@ -137,6 +143,47 @@ def fallback_launch(win):
     return []
 
 
+def proc_running(name):
+    try:
+        subprocess.check_output(["pgrep", "-x", name],
+                                stderr=subprocess.DEVNULL, timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+def capture_system_state(sock):
+    """Best-effort snapshot of desktop state from LIVE authoritative
+    sources (never stale config alone). Returns {} on total failure;
+    never raises, never aborts the workspace save."""
+    state = {}
+    try:
+        # Night light: what the user sees == wlsunset actually running.
+        # The state file is the toggle's persistent preference; the
+        # process is the ground truth (a crash leaves file stale).
+        nl_on = proc_running("wlsunset")
+        state["night_light"] = {"enabled": nl_on}
+    except Exception:
+        pass
+    try:
+        # Bottom bar: live swaybar mode first, state file as fallback.
+        bar_on = None
+        cfg = msg(sock, "get_bar_config", "bar-0")
+        if isinstance(cfg, dict) and cfg.get("mode"):
+            bar_on = cfg["mode"] == "dock"
+        if bar_on is None:
+            try:
+                bar_on = BAR_STATE.read_text().strip().lower() in (
+                    "true", "1", "shown", "on")
+            except OSError:
+                bar_on = None
+        if bar_on is not None:
+            state["bottom_bar"] = {"enabled": bar_on}
+    except Exception:
+        pass
+    return state
+
+
 def notify(summary, body):
     try:
         subprocess.call(["notify-send", "-i", "document-save", summary, body],
@@ -179,6 +226,9 @@ def main():
         targets = {focused: ws_map.get(focused, [])} if focused else {}
 
     snapshot = {"version": FORMAT_VERSION, "workspaces": {}}
+    sys_state = capture_system_state(sock)
+    if sys_state:
+        snapshot["system_state"] = sys_state
     for ws, wins in targets.items():
         entries, seen = [], set()
         for w in wins:
@@ -223,6 +273,12 @@ def main():
 
     names = ", ".join(sorted(snapshot["workspaces"]))
     log(f"saved workspaces: {names}")
+    for key, label, on_word, off_word in (
+            ("night_light", "night-light", "on", "off"),
+            ("bottom_bar", "bottom-bar", "shown", "hidden")):
+        sub = sys_state.get(key, {}) if isinstance(sys_state, dict) else {}
+        if isinstance(sub, dict) and isinstance(sub.get("enabled"), bool):
+            log(f"{label}: {on_word if sub['enabled'] else off_word}")
     if not quiet:
         notify("Sway Session", f"Saved workspaces: {names}")
     return 0

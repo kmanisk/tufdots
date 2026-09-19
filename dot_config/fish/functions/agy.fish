@@ -1,3 +1,3 @@
-function agy --wraps='agy --dangerously-skip-permissions' --description 'Run agy with auto-proceed permissions as user'
-    command agy --dangerously-skip-permissions $argv
+function agy --wraps='/home/manisk/.local/bin/agy --dangerously-skip-permissions' --description 'Run agy with auto-proceed permissions as user'
+    /home/manisk/.local/bin/agy --dangerously-skip-permissions $argv
 end

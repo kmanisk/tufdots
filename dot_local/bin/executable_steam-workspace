@@ -29,6 +29,16 @@ $IPC_CMD "workspace number $WS" >/dev/null 2>&1
 
 if ! pgrep -x steam >/dev/null 2>&1; then
     # 1. Cold boot: Steam process is not running at all
+    # If launched under prime-run (Win+Shift+G), keep the offload env
+    # instead of letting the steam wrapper strip it.
+    if [ -n "${__NV_PRIME_RENDER_OFFLOAD:-}" ]; then
+        export STEAM_DGPU=1
+    fi
+    # STEAM_DGPU=1 without prime-run (rofi NVIDIA entry): apply the
+    # offload env here, same values as prime-run.
+    if [ "${STEAM_DGPU:-0}" = "1" ]; then
+        export __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia
+    fi
     nohup steam >/dev/null 2>&1 &
     (
         for _ in $(seq 1 30); do

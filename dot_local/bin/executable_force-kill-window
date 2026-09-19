@@ -5,7 +5,12 @@
 export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
-# First send immediate force-kill via i3-msg (WM level)
+# Send immediate kill via WM IPC (Sway or i3)
+if [ -n "$SWAYSOCK" ]; then
+    swaymsg -q 'kill' 2>/dev/null
+    exit 0
+fi
+
 i3-msg -q 'kill' 2>/dev/null
 
 # Also fallback to xdotool windowkill for stubborn/frozen clients

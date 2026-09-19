@@ -12,7 +12,7 @@
 # - CPU Pinning: Intel Raptor Lake P-Cores 0-11 (Threads 0-11, excludes E-cores 12-15)
 #
 # Steam Launch Option usage:
-#   cs2launch %command%
+#   /home/manisk/.local/bin/cs2launch %command%
 # Or terminal launch:
 #   cs2launch
 #

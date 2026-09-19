@@ -24,6 +24,9 @@ from pathlib import Path
 SAVE_DIR = Path.home() / ".config" / "sway" / "session"
 SESSION = SAVE_DIR / "session.json"
 STEAM_KILLED = SAVE_DIR / "steam_was_killed"
+NL_STATE = Path.home() / ".config" / "nightlight_state"
+BAR_STATE = Path.home() / ".config" / "polybar" / "bar_state"
+TOGGLE_NL = Path.home() / ".local" / "bin" / "toggle-nightlight"
 
 
 def log(msg):
@@ -90,7 +93,9 @@ def current_classes(sock):
     while stack:
         n = stack.pop()
         if isinstance(n, dict):
-            if n.get("window"):
+            # Same rule as save walk: Wayland-native views have pid but
+            # no X11 window id. Only count live views, never placeholders.
+            if n.get("window") or n.get("pid"):
                 props = n.get("window_properties", {}) or {}
                 for k in ("class", "instance"):
                     if props.get(k):
@@ -102,9 +107,11 @@ def current_classes(sock):
 
 
 def clean_ghosts(sock, only_ws=None):
-    """Kill dead placeholder containers (app identity, no window, no
-    swallows). Ports i3's unfilled-placeholder pruning; keeps the tree
-    truthful for duplicate checks and the cold-boot fallback."""
+    """Kill dead placeholder containers: app identity but NO live view
+    (no pid, no X11 window) and no swallows. The pid requirement is
+    critical — on Sway every Wayland-native window has pid but no
+    `window` id, so pid-less-ness is what distinguishes a true
+    placeholder. Ports i3's unfilled-placeholder pruning."""
     tree = msg(sock, "get_tree") or {}
     victims = []
     stack = [(tree, None)]
@@ -113,7 +120,7 @@ def clean_ghosts(sock, only_ws=None):
         if isinstance(n, dict):
             if n.get("type") == "workspace":
                 ws = str(n.get("num") or n.get("name"))
-            if (not n.get("window") and not n.get("swallows")
+            if (not n.get("window") and not n.get("pid") and not n.get("swallows")
                     and (n.get("app_id") or (n.get("window_properties") or {}).get("class"))
                     and n.get("type") not in ("workspace", "output", "root")
                     and (only_ws is None or ws in only_ws)):
@@ -147,6 +154,104 @@ def load_session():
     if legacy:
         return legacy, "legacy workspace files"
     return None, "no saved session"
+
+
+def proc_running(name):
+    try:
+        subprocess.check_output(["pgrep", "-x", name],
+                                stderr=subprocess.DEVNULL, timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+def current_desktop_state(sock):
+    """Live desktop state from the same authoritative sources the save
+    path uses. Values may be None when undetectable (never raises)."""
+    cur = {"night_light": None, "bottom_bar": None}
+    try:
+        cur["night_light"] = proc_running("wlsunset")
+    except Exception:
+        pass
+    try:
+        cfg = msg(sock, "get_bar_config", "bar-0")
+        if isinstance(cfg, dict) and cfg.get("mode"):
+            cur["bottom_bar"] = cfg["mode"] == "dock"
+        else:
+            try:
+                cur["bottom_bar"] = BAR_STATE.read_text().strip().lower() in (
+                    "true", "1", "shown", "on")
+            except OSError:
+                pass
+    except Exception:
+        pass
+    return cur
+
+
+def load_system_state():
+    """Returns saved system_state dict, {} when absent (backward compat),
+    or None when present-but-malformed."""
+    try:
+        data = json.loads(SESSION.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict) or "system_state" not in data:
+        return {}
+    sys_state = data["system_state"]
+    return sys_state if isinstance(sys_state, dict) else None
+
+
+def valid_flag(sub):
+    return isinstance(sub, dict) and isinstance(sub.get("enabled"), bool)
+
+
+def restore_system_state(sock, saved, dry):
+    """Idempotent desktop-state restore: query current, change only what
+    differs. Returns True if anything was (or would be, dry-run) changed.
+    A failure here never aborts the workspace restore."""
+    try:
+        cur = current_desktop_state(sock)
+    except Exception:
+        log("invalid: desktop state unreadable, keeping current")
+        return False
+    changed = False
+    try:
+        nl = saved.get("night_light")
+        if valid_flag(nl) and cur["night_light"] is not None:
+            if nl["enabled"] != cur["night_light"]:
+                want = "on" if nl["enabled"] else "off"
+                if dry:
+                    print(f"night-light: set {want}")
+                else:
+                    subprocess.call([str(TOGGLE_NL), want, "--silent"],
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL, timeout=15)
+                    log(f"night-light: {want}")
+                changed = True
+        elif "night_light" in saved:
+            log("invalid: night-light state ignored, keeping current")
+
+        bar = saved.get("bottom_bar")
+        if valid_flag(bar) and cur["bottom_bar"] is not None:
+            if bar["enabled"] != cur["bottom_bar"]:
+                mode = "dock" if bar["enabled"] else "invisible"
+                word = "shown" if bar["enabled"] else "hidden"
+                if dry:
+                    print(f"bottom-bar: set {word}")
+                else:
+                    run(sock, f"bar bar-0 mode {mode}")
+                    try:
+                        BAR_STATE.parent.mkdir(parents=True, exist_ok=True)
+                        BAR_STATE.write_text("true" if bar["enabled"] else "false")
+                    except OSError:
+                        pass
+                    log(f"bottom-bar: {word}")
+                changed = True
+        elif "bottom_bar" in saved:
+            log("invalid: bottom-bar state ignored, keeping current")
+    except Exception as e:
+        log(f"invalid: desktop restore failed ({e}), continuing")
+    return changed
 
 
 def restore_ws(sock, ws, entries, present, dry, steam_killed=False):
@@ -227,6 +332,17 @@ def main():
     if not targets:
         log("skipped: no matching workspace session")
         return 0
+
+    # Global desktop state first (chrome before apps), --all only: a
+    # focused-workspace restore must not flip global light/bar state.
+    if "--all" in args:
+        saved_sys = load_system_state()
+        if saved_sys is None:
+            log("invalid: desktop state ignored, keeping current")
+        elif not saved_sys:
+            log("no saved desktop state, keeping current")
+        else:
+            restore_system_state(sock, saved_sys, dry)
 
     if not dry:
         scope = None if "--all" in args else {w for w, _ in targets}

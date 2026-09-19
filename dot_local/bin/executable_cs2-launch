@@ -1,74 +1,126 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# CS2 High-FPS Native Launcher (ASUS TUF F16 + RTX 5050 Laptop)
+# CS2 High-FPS Native X11 Launcher
+# ASUS TUF F16 | i5-13450HX | RTX 5050 Laptop
 # ==============================================================================
-# - Hardware: ASUS TUF F16 (i5-13450HX + RTX 5050)
-# - Rendering: Direct Native Vulkan on dedicated NVIDIA RTX 5050 (250+ FPS)
-# - Stretched 4:3: Zero-lag Hardware Panel Scaling via Intel Display Controller
-# - CPU Pinning: Physical P-cores 0-11 (Bypasses E-cores to eliminate micro-stutters)
-# - Audio: Low-latency PulseAudio streaming (30ms) & SBC-XQ Bluetooth codec
-export DISPLAY="${DISPLAY:-:0}"
-export SDL_VIDEO_DRIVER=x11
-export SDL_VIDEODRIVER=x11
-export __NV_PRIME_RENDER_OFFLOAD=1
-export __GLX_VENDOR_LIBRARY_NAME=nvidia
-export __VK_LAYER_NV_optimus=NVIDIA_only
+#
+# Environment overrides:
+#   CS2_RES=1344x1008 | 1440x1080 | 1280x960 | 1024x768 | native
+#   CS2_CPUSET=0-11
+#   CS2_FPS_MAX=0
+#   CS2_FPS_MAX_UI=120
+#   CS2_NOJOY=1
+#
+# Examples:
+#   CS2_RES=1440x1080 "$HOME/.local/bin/cs2-launch"
+#   CS2_CPUSET=0-11 CS2_FPS_MAX=400 "$HOME/.local/bin/cs2-launch"
+# ==============================================================================
 
-# Ensure picom is killed if lingering
-killall -9 picom 2>/dev/null || pkill -9 -x picom 2>/dev/null || true
+set -u
 
-# 1. Polybar, Display & Hook cleanup handler on exit
-cleanup() {
-    trap - EXIT INT TERM HUP
-    echo "==> Restoring native display resolution (1920x1200 @ 165Hz)..."
-    [ -n "$HOOK_PID" ] && kill "$HOOK_PID" 2>/dev/null || true
-    xrandr --output eDP-1 --set "scaling mode" "Full aspect" 2>/dev/null || true
-    xrandr --output eDP-1 --mode "1920x1200" --rate 165.00 2>/dev/null || xrandr --output eDP-1 --auto 2>/dev/null || true
-    sh "$HOME/.fehbg" 2>/dev/null || true
-    "$HOME/.local/bin/bar-apply" 2>/dev/null || true
-}
-trap cleanup EXIT INT TERM HUP
-
-# 2. Hide status bar
-polybar-msg cmd hide 2>/dev/null || true
-
-# 3. Set Intel display controller hardware scaling to Full (Zero-lag stretched 4:3)
-xrandr --output eDP-1 --set "scaling mode" "Full" 2>/dev/null || true
-
-# 4. Switch to 4:3 165Hz mode (default 1344x1008: best perf/clarity balance)
-TARGET_RES="${CS2_RES:-1344x1008}"
-case "$TARGET_RES" in
-    1344|1344x1008)
-        xrandr --output eDP-1 --mode "1344x1008_165.00" --rate 164.89 2>/dev/null || true
-        ;;
-    1280|1280x960)
-        xrandr --output eDP-1 --mode "1280x960_165.00" --rate 164.80 2>/dev/null || true
-        ;;
-    1024|1024x768)
-        xrandr --output eDP-1 --mode "1024x768_165.00" --rate 164.78 2>/dev/null || true
-        ;;
-    native|1920|1920x1200)
-        xrandr --output eDP-1 --mode "1920x1200" --rate 165.00 2>/dev/null || true
-        ;;
-    1440|1440x1080|*)
-        xrandr --output eDP-1 --mode "1440x1080" --rate 164.85 2>/dev/null || xrandr --output eDP-1 --mode "1440x1080_165.00" 2>/dev/null || true
-        ;;
-esac
-
-# 5. Restack hook retired: tiled game tabs can't bleed through, and its
-# force-fullscreen would trap focus (breaks Win+h/l tab switching).
-HOOK_PID=""
-
-# 6. Fallback to local game binary if invoked without Steam %command% arguments
-if [ $# -eq 0 ] || [[ "$1" == -* ]]; then
-    if [ -f "$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh" ]; then
-        set -- "$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh" "$@"
+# ---- 1. Wayland dispatcher ----
+if [ -n "${WAYLAND_DISPLAY:-}" ] || [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+    if [ -x "$HOME/.local/bin/cs2-launch-wayland" ]; then
+        exec "$HOME/.local/bin/cs2-launch-wayland" "$@"
     fi
 fi
 
-# 7. Launch natively on dedicated NVIDIA RTX 5050 pinned to P-cores 0-11
-# Uncapped FPS (+fps_max 0 +fps_max_ui 0), skip intro (-novid), disable joystick/velocity overhead
-taskset -c 0-11 gamemoderun "$@" -vulkan -novelocity -nojoy -novid +fps_max 0 +fps_max_ui 0
-GAME_EXIT=$?
+# ---- 2. X11 / NVIDIA Vulkan environment ----
+export DISPLAY="${DISPLAY:-:0}"
+export SDL_VIDEODRIVER=x11
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __VK_LAYER_NV_optimus=NVIDIA_only
+export __GLX_VENDOR_LIBRARY_NAME=nvidia   # inert for CS2 (Vulkan-only, no EAC) — do not reuse in EAC-game launchers
+export LIBVA_DRIVER_NAME=iHD
+# No hardcoded VK_DRIVER_FILES — the optimus layer above already selects NVIDIA.
 
-exit ${GAME_EXIT:-0}
+# ---- 3. User-tunable settings ----
+PRIMARY_OUT="$(xrandr --query 2>/dev/null | awk '/ connected/ {print $1; exit}')"
+PRIMARY_OUT="${PRIMARY_OUT:-eDP-1}"
+
+TARGET_RES="${CS2_RES:-1440x1080}"   # Upgraded 4:3 high-clarity resolution (1440x1080 @ 165Hz)
+CPUSET="${CS2_CPUSET:-0-11}"
+FPS_MAX="${CS2_FPS_MAX:-0}"
+FPS_MAX_UI="${CS2_FPS_MAX_UI:-120}"
+NOJOY="${CS2_NOJOY:-1}"
+
+# ---- 4. Stop desktop compositor (graceful) ----
+if pgrep -x picom >/dev/null 2>&1; then
+    pkill -TERM -x picom 2>/dev/null || true
+    sleep 0.15
+fi
+
+# ---- 5. Register display modes ----
+[ -x "$HOME/.local/bin/setup-display" ] && "$HOME/.local/bin/setup-display" >/dev/null 2>&1 || true
+
+# ---- 6. Restore desktop state on exit ----
+cleanup() {
+    trap - EXIT INT TERM HUP
+    echo "==> Restoring native display: 1920x1200 @ 165 Hz..."
+    xrandr --output "$PRIMARY_OUT" --mode "1920x1200" --rate 165.00 2>/dev/null || \
+    xrandr --output "$PRIMARY_OUT" --auto 2>/dev/null || true
+    [ -f "$HOME/.fehbg" ] && sh "$HOME/.fehbg" 2>/dev/null || true
+    [ -x "$HOME/.local/bin/bar-apply" ] && "$HOME/.local/bin/bar-apply" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM HUP
+
+# ---- 7. Hide Polybar ----
+polybar-msg cmd hide 2>/dev/null || true
+
+# ---- 8. Enable full hardware scaling ----
+xrandr --output "$PRIMARY_OUT" --set "scaling mode" "Full" 2>/dev/null || true
+
+# ---- 9. Switch display to requested 4:3 mode ----
+case "$TARGET_RES" in
+    1600|1600x1200)
+        xrandr --output "$PRIMARY_OUT" --mode "1600x1200_165.00" --rate 164.88 2>/dev/null || true ;;
+    1440|1440x1080)
+        xrandr --output "$PRIMARY_OUT" --mode "1440x1080_165.00" --rate 164.85 2>/dev/null || \
+        xrandr --output "$PRIMARY_OUT" --mode "1440x1080" --rate 164.85 2>/dev/null || true ;;
+    1344|1344x1008)
+        xrandr --output "$PRIMARY_OUT" --mode "1344x1008_165.00" --rate 164.89 2>/dev/null || true ;;
+    1280|1280x960)
+        xrandr --output "$PRIMARY_OUT" --mode "1280x960_165.00" --rate 164.80 2>/dev/null || true ;;
+    1024|1024x768)
+        xrandr --output "$PRIMARY_OUT" --mode "1024x768_165.00" --rate 164.78 2>/dev/null || true ;;
+    native|1920|1920x1200)
+        xrandr --output "$PRIMARY_OUT" --mode "1920x1200" --rate 165.00 2>/dev/null || true ;;
+    *)
+        xrandr --output "$PRIMARY_OUT" --mode "1440x1080_165.00" --rate 164.85 2>/dev/null || \
+        xrandr --output "$PRIMARY_OUT" --mode "1440x1080" --rate 164.85 2>/dev/null || true ;;
+esac
+
+# ---- 10. Resolve game executable ----
+if [ $# -eq 0 ] || [[ "${1:-}" == -* ]]; then
+    STEAM_GAME="/mnt/Games/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh"
+    if [ -f "$STEAM_GAME" ]; then
+        set -- "$STEAM_GAME" "$@"
+    elif [ -f "$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh" ]; then
+        set -- "$HOME/.local/share/Steam/steamapps/common/Counter-Strike Global Offensive/game/cs2.sh" "$@"
+    fi
+fi
+if [ $# -eq 0 ]; then
+    echo "ERROR: Could not locate CS2 executable." >&2
+    exit 1
+fi
+
+# ---- 11. Build CS2 arguments (FIXED: flag and value as separate argv tokens) ----
+CS2_ARGS=(
+    -vulkan
+    -novid
+    +fps_max "$FPS_MAX"
+    +fps_max_ui "$FPS_MAX_UI"
+)
+[ "$NOJOY" = "1" ] && CS2_ARGS+=(-nojoy)
+
+# ---- 12. Diagnostics ----
+echo "============================================================"
+echo " CS2 Native X11 Launcher"
+echo " Resolution: $TARGET_RES | CPU: $CPUSET | FPS max: $FPS_MAX / $FPS_MAX_UI | NoJoy: $NOJOY"
+echo "============================================================"
+
+# ---- 13. Launch ----
+taskset -c "$CPUSET" gamemoderun "$@" "${CS2_ARGS[@]}"
+GAME_EXIT=$?
+echo "==> CS2 exited with status: $GAME_EXIT"
+exit "$GAME_EXIT"

@@ -4,27 +4,85 @@
 # ==============================================================================
 
 SESSION_FILE="$HOME/.session_choice"
+ACTION=""
+TARGET=""
 
-case "$1" in
-    plasma|kde|wayland)
-        echo "plasma" > "$SESSION_FILE"
-        echo "Default desktop set to: KDE Plasma (Wayland)"
-        echo "Log out or restart session to switch."
-        ;;
-    i3|x11|i3wm)
-        echo "i3" > "$SESSION_FILE"
-        echo "Default desktop set to: i3 (X11)"
-        echo "Log out or restart session to switch."
-        ;;
-    status|"")
-        CURRENT="plasma"
-        [ -f "$SESSION_FILE" ] && CURRENT=$(tr -d '[:space:]' < "$SESSION_FILE")
-        echo "Current default session: $CURRENT"
-        echo "Usage: switch-desktop [plasma|i3]"
-        ;;
-    *)
-        echo "Unknown session: $1"
-        echo "Usage: switch-desktop [plasma|i3]"
-        exit 1
-        ;;
-esac
+for arg in "$@"; do
+    case "$arg" in
+        -r|--reboot) ACTION="reboot" ;;
+        -e|--exit)   ACTION="exit" ;;
+        plasma|kde|wayland) TARGET="plasma" ;;
+        sway|swaywm)        TARGET="sway" ;;
+        i3|x11|i3wm)        TARGET="i3" ;;
+        status)             TARGET="status" ;;
+        *)
+            echo "Unknown argument: $arg"
+            echo "Usage: switch-desktop [i3|sway|plasma] [-r|--reboot | -e|--exit]"
+            exit 1
+            ;;
+    esac
+done
+
+if [ -z "$TARGET" ]; then
+    CURRENT="plasma"
+    [ -f "$SESSION_FILE" ] && CURRENT=$(tr -d '[:space:]' < "$SESSION_FILE")
+    ACTIVE="X11 ($XDG_CURRENT_DESKTOP)"
+    [ -n "$WAYLAND_DISPLAY" ] && ACTIVE="Wayland ($XDG_CURRENT_DESKTOP)"
+    echo "Current default target: $CURRENT"
+    echo "Currently running:      $ACTIVE"
+    echo ""
+    echo "Usage: switch-desktop [plasma|i3] [-r|--reboot | -e|--exit]"
+    exit 0
+fi
+
+if [ "$TARGET" = "status" ]; then
+    CURRENT="plasma"
+    [ -f "$SESSION_FILE" ] && CURRENT=$(tr -d '[:space:]' < "$SESSION_FILE")
+    echo "Current default target: $CURRENT"
+    exit 0
+fi
+
+echo "$TARGET" > "$SESSION_FILE"
+echo "✔ Default desktop session set to: $TARGET"
+
+# Handle immediate action if requested
+if [ "$ACTION" = "reboot" ]; then
+    echo "==> Rebooting system into $TARGET..."
+    systemctl reboot
+    exit 0
+elif [ "$ACTION" = "exit" ]; then
+    echo "==> Exiting current session to launch $TARGET..."
+    if [ "$XDG_CURRENT_DESKTOP" = "i3" ] || [ -n "$DISPLAY" -a -z "$WAYLAND_DISPLAY" ]; then
+        i3-msg exit
+    elif [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+        swaymsg exit
+    elif [ -n "$WAYLAND_DISPLAY" ]; then
+        qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null || pkill -u "$USER" kwin_wayland
+    fi
+    exit 0
+fi
+
+if [ -t 0 ]; then
+    read -rp "Switch to $TARGET now? ([e]xit desktop / [r]eboot / [N]o): " CHOICE
+    case "$CHOICE" in
+        e|E|exit)
+            echo "==> Exiting current session..."
+            if [ "$XDG_CURRENT_DESKTOP" = "i3" ] || [ -n "$DISPLAY" -a -z "$WAYLAND_DISPLAY" ]; then
+                i3-msg exit
+            elif [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+                swaymsg exit
+            elif [ -n "$WAYLAND_DISPLAY" ]; then
+                qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null || pkill -u "$USER" kwin_wayland
+            fi
+            ;;
+        r|R|reboot)
+            echo "==> Rebooting system..."
+            systemctl reboot
+            ;;
+        *)
+            echo "Changes saved. Session will switch on next logout or reboot."
+            ;;
+    esac
+else
+    echo "Log out or reboot to apply."
+fi
