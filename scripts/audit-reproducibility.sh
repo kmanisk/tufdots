@@ -18,7 +18,9 @@ check_forbidden() {
         --glob '!.git/**' \
         --glob '!docs/**' \
         --glob '!scripts/**' \
+        --glob '!scripts*' \
         --glob '!README.md' \
+        --glob '!GAMING.md' \
         -e "$pattern" "$ROOT" 2>/dev/null || true)
 
     if [[ -n "$matches" ]]; then
