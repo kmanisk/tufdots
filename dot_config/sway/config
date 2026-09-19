@@ -43,7 +43,7 @@ bindsym $mod+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper
 bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
 
 # Text Editor & File Manager
-bindsym $mod+Shift+t exec alacritty -o font.size=17.5 -e nvim
+bindsym $mod+Shift+t exec alacritty -o font.size=18 -e nvim
 bindsym $mod+e exec thunar
 bindsym $mod+t exec --no-startup-id zed
 
@@ -376,7 +376,7 @@ exec_always --no-startup-id xrdb -merge "$HOME/.Xresources"
 # Autotab DISABLED under forced-tabbed policy (would untab singles).
 #exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'
 exec alacritty --class scratch-term
-exec alacritty -o font.size=17.5 --class scratch-notes -e nvim "$HOME/notes.md"
+exec alacritty -o font.size=18 --class scratch-notes -e nvim "$HOME/notes.md"
 # One-shot session restore (bounded IPC wait, exits immediately, no daemon)
 exec --no-startup-id ~/.local/bin/sway-session-restore --all --quiet --wait-ready
 exec --no-startup-id ~/.local/bin/toggle-nightlight --auto --silent

@@ -31,7 +31,7 @@ bindsym $mod+Shift+b split h
 bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
 
 # Text Editor
-bindsym $mod+Shift+t exec alacritty -o font.size=17.5 -e nvim
+bindsym $mod+Shift+t exec alacritty -o font.size=18 -e nvim
 
 # File Manager
 bindsym $mod+e exec thunar
@@ -446,7 +446,7 @@ exec --no-startup-id blueman-applet
 # Alacritty scratch terminal - spawns once on login straight into scratchpad
 exec --no-startup-id alacritty --class Alacritty,scratch-term
 # Notes scratchpad - nvim with notes.md, spawns once on login straight into scratchpad
-exec --no-startup-id sh -c 'exec alacritty -o font.size=17.5 --class Alacritty,scratch-notes -e nvim "$HOME/notes.md"'
+exec --no-startup-id sh -c 'exec alacritty -o font.size=18 --class Alacritty,scratch-notes -e nvim "$HOME/notes.md"'
 # Autotiling: automatically switch horizontal/vertical splits based on focused window dimensions
 exec_always --no-startup-id sh -c 'pkill -x autotiling; sleep 0.2; exec autotiling'
 # Autotab: tabbed layout only when >=2 tiled windows (no single "[T|...]" bar)
