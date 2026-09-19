@@ -8,3 +8,4 @@ rnnoise
 pavucontrol
 sof-firmware
 gst-plugin-pipewire
+swh-plugins

@@ -26,6 +26,7 @@ display_resolution = "1920x1200@165Hz"
 display_scale = "1.0"
 storage_type = "nvme"
 filesystem = "btrfs"
+games_root = "/mnt/Games"
 
 [hardware.generic-laptop]
 type = "generic"

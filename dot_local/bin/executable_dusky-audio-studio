@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 # Wrapper for Dusky Audio Studio GTK3 Control Studio & CLI
 export PYTHONUNBUFFERED=1
-exec python3 "$HOME/.local/share/dusky/dusky_audio_studio/dusky_audio_studio.py" "$@"
+exec python3 "$HOME/.local/bin/dusky_audio_studio.py" "$@"

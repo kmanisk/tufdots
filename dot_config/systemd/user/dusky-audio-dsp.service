@@ -1,15 +1,14 @@
 [Unit]
-Description=Dusky Audio Studio RNNoise DSP Daemon
-After=pipewire.service wireplumber.service
-Wants=pipewire.service wireplumber.service
+Description=Dusky Audio Studio DSP
+After=pipewire.service pipewire-pulse.service
+Wants=pipewire.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 ExecStart=%h/.local/bin/dusky-audio-studio --autostart
 ExecStop=%h/.local/bin/dusky-audio-studio --off
-StandardOutput=null
-StandardError=journal
+Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=default.target
