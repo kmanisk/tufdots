@@ -18,22 +18,22 @@ mode="${1:?usage: scratch-toggle <term|notes|spotify>}"
 case "$mode" in
     # CANONICAL SCRATCHPAD GEOMETRY (single source of truth).
     # These MUST match the for_window rules in sway config:
-    #   term 1400x850 | notes 1200x750 | spotify 1400x850.
+    #   term 1700x1050 | notes 1700x1050 | spotify 1700x1050.
     # Order on show is always: resize set W H, then move position center.
     term)
         instance="scratch-term"
         spawn="alacritty --class scratch-term"
-        geom="1400 850"
+        geom="1700 1050"
         ;;
     notes)
         instance="scratch-notes"
         spawn="alacritty -o font.size=17.5 --class scratch-notes -e nvim $HOME/notes.md"
-        geom="1200 750"
+        geom="1700 1050"
         ;;
     spotify)
         instance="spotify"
         spawn="spotify"
-        geom="1400 850"
+        geom="1700 1050"
         ;;
     *)
         echo "unknown mode: $mode" >&2
@@ -42,7 +42,7 @@ case "$mode" in
 esac
 
 IPC_CMD="i3-msg"
-if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+if [ -n "${SWAYSOCK:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
     IPC_CMD="swaymsg"
 fi
 
@@ -51,7 +51,7 @@ fi
 # is a silent no-op while a game window is focused. Deterministic and
 # compositor-independent (does not rely on shortcuts_inhibitor timing).
 # Game patterns mirror the fullscreen/game for_window rules in sway config.
-if [ -n "$SCRATCH_GAME_GUARD" ]; then
+if [ -n "${SCRATCH_GAME_GUARD:-}" ]; then
     if $IPC_CMD -t get_tree 2>/dev/null | python3 -c '
 import json, sys
 pats = ("steam_app_", "cs2", "gamescope", "eldenring", "steam_proton",
