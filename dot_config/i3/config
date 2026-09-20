@@ -330,12 +330,14 @@ for_window [instance="scratch-term"] floating enable, resize set 1700 1000, move
 for_window [instance="scratch-notes"] floating enable, resize set 1400 900, move position center, move to scratchpad
 # Hide outer edge borders when tabs/windows fill the edge
 hide_edge_borders smart
-# NOTE: do NOT force `layout tabbed` via for_window here.
-# A single window inside a tabbed container still draws the
-# "[T|...]" tab bar (wasted ~25px, what you saw on ws2 with
-# only brave-origin open). Tabbed is applied dynamically by
-# i3-autotab (tabbed when >=2 tiled windows, splith when 1)
-# and manually via $mod+w / smart-layout-toggle.
+
+# Layout: ws1/2/3 forced tabbed (tab strip always visible)
+workspace 1 layout tabbed
+workspace 2 layout tabbed
+workspace 3 layout tabbed
+for_window [workspace="^1$"] layout tabbed
+for_window [workspace="^2$"] layout tabbed
+for_window [workspace="^3$"] layout tabbed
 
 # ==============================================================================
 # Web Browser Rules (Workspace 2)
@@ -454,8 +456,8 @@ exec --no-startup-id alacritty --class Alacritty,scratch-term
 exec --no-startup-id sh -c 'exec alacritty -o font.size=18 --class Alacritty,scratch-notes -e nvim "$HOME/notes.md"'
 # Autotiling: automatically switch horizontal/vertical splits based on focused window dimensions
 exec_always --no-startup-id sh -c 'pkill -x autotiling; sleep 0.2; exec autotiling'
-# Autotab: tabbed layout only when >=2 tiled windows (no single "[T|...]" bar)
-exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'
+# Autotab DISABLED under forced-tabbed policy (would untab singles on ws1/2/3).
+#exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'
 # CS2 Window Restack Hook: RETIRED (tiled game tabs can't bleed through;
 # its force-fullscreen breaks Win+h/l tab switching)
 #exec_always --no-startup-id sh -c 'pkill -f cs2-restack-hook; sleep 0.2; exec ~/.local/bin/cs2-restack-hook'
@@ -467,7 +469,7 @@ exec_always --no-startup-id gsettings set org.gnome.desktop.interface color-sche
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface gtk-theme 'Gruvbox-Dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface icon-theme 'Gruvbox-Plus-Dark'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
-exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-theme 'phinger-cursors-gruvbox-material'
+exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-theme 'phinger-cursors-gruvbox-material-light'
 exec_always --no-startup-id gsettings set org.gnome.desktop.interface cursor-size 37
 exec_always --no-startup-id xsetroot -cursor_name left_ptr
 exec_always --no-startup-id xrdb -merge ~/.Xresources

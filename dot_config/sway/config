@@ -255,7 +255,7 @@ input type:touchpad {
 
 # Cursor: explicit theme + size (37 -> 48); without this Sway falls back
 # to theme defaults and ignores Xcursor.size for Wayland surfaces
-seat seat0 xcursor_theme phinger-cursors-gruvbox-material 37
+seat seat0 xcursor_theme phinger-cursors-gruvbox-material-light 37
 
 # Output Configuration (Internal Display @ 165Hz, Native 1:1 hardware pixels)
 # Baseline: Adaptive Sync (VRR) enabled for tear-free, low-latency sync.
@@ -385,9 +385,10 @@ for_window [class="(?i)spotify"] floating enable, resize set 1700 1050, move pos
 # alone only applies at startup, so for_window rules re-assert tabbed
 # on every new window to hold it across restarts and moves.
 workspace 1 layout tabbed
-workspace 2 layout default
+workspace 2 layout tabbed
 workspace 3 layout tabbed
 for_window [workspace="^1$"] layout tabbed
+for_window [workspace="^2$"] layout tabbed
 for_window [workspace="^3$"] layout tabbed
 
 
