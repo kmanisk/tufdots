@@ -38,6 +38,8 @@ bindsym $mod+Shift+b split h
 
 # Wallpaper: Win+Shift+W = instant switch
 bindsym $mod+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper
+# Minecraft wallpapers only, from r/MinecraftWallpapers (Alt + Shift + W)
+bindsym Mod1+Shift+w exec --no-startup-id ~/.local/bin/minecraft-wallpaper
 
 # Browser on NVIDIA GPU (Windows + Alt + b) -> Brave on RTX 5050
 bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
@@ -46,6 +48,12 @@ bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
 bindsym $mod+Shift+t exec alacritty -o font.size=20.5 -e nvim
 bindsym $mod+e exec thunar
 bindsym $mod+t exec --no-startup-id zed
+
+# Time/date notification (Win + c)
+bindsym $mod+c exec notify-send "Clock" "$(date '+%A, %B %d%n%I:%M %P')"
+
+# Bluetooth battery notification (Win + v)
+bindsym $mod+v exec --no-startup-id ~/.local/bin/bt-battery-notify
 
 # Process Killer Menu (Windows + Escape & Alt + Escape)
 bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
@@ -88,6 +96,13 @@ bindsym Control+Shift+semicolon exec --no-startup-id ~/.local/bin/adjust-nightli
 bindsym Control+Shift+colon exec --no-startup-id ~/.local/bin/adjust-nightlight +100
 bindsym Mod1+Shift+apostrophe exec --no-startup-id ~/.local/bin/adjust-nightlight -100
 bindsym Mod1+Shift+quotedbl exec --no-startup-id ~/.local/bin/adjust-nightlight -100
+
+# Cursor Theme & Size Controls (Alt + Shift + c to toggle, Alt + Shift + = / - to resize)
+bindsym Mod1+Shift+c exec --no-startup-id ~/.local/bin/toggle-cursor-theme
+bindsym Mod1+Shift+equal exec --no-startup-id ~/.local/bin/adjust-cursor-size +4
+bindsym Mod1+Shift+minus exec --no-startup-id ~/.local/bin/adjust-cursor-size -4
+bindsym Mod1+Shift+plus exec --no-startup-id ~/.local/bin/adjust-cursor-size +4
+bindsym Mod1+Shift+underscore exec --no-startup-id ~/.local/bin/adjust-cursor-size -4
 
 # Screen Brightness (Hardware keys & xremap)
 bindsym XF86MonBrightnessUp exec --no-startup-id ~/.local/bin/change-brightness +5%
@@ -240,7 +255,7 @@ input type:touchpad {
 
 # Cursor: explicit theme + size (37 -> 48); without this Sway falls back
 # to theme defaults and ignores Xcursor.size for Wayland surfaces
-seat seat0 xcursor_theme phinger-cursors-gruvbox-material 33
+seat seat0 xcursor_theme phinger-cursors-gruvbox-material 37
 
 # Output Configuration (Internal Display @ 165Hz, Native 1:1 hardware pixels)
 # Baseline: Adaptive Sync (VRR) enabled for tear-free, low-latency sync.
@@ -295,6 +310,8 @@ for_window [app_id="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1
 for_window [class="(?i)^Task Manager TMOG$"] floating enable, resize set 1820 1100, move position center
 for_window [instance="(?i)^AppRun\.wrapped$"] floating enable, resize set 1200 750, move position center
 for_window [instance="(?i)^pkg-float$"] floating enable, resize set 1250 780, move position center
+for_window [app_id="(?i)^lsfg-vk-ui$"] floating enable, resize set 1250 820, move position center
+for_window [class="(?i)^lsfg-vk-ui$"] floating enable, resize set 1250 820, move position center
 
 # Desktop Portal, File Chooser & Dialog rules (prevents getting swallowed into tabbed layouts)
 for_window [app_id="(?i)xdg-desktop-portal.*"] floating enable, move position center
@@ -309,9 +326,48 @@ for_window [title="(?i)browse"] floating enable, move position center
 for_window [title="(?i)select a file"] floating enable, move position center
 for_window [title="(?i)choose an application"] floating enable, move position center
 for_window [title="(?i)open file"] floating enable, move position center
+
+# Thunar Dialog Rules (floating, never full tile/tab)
+for_window [app_id="(?i)^thunar$" title="(?i)^Rename.*"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^Rename.*"] floating enable
+for_window [app_id="(?i)^thunar$" title="(?i)^Create.*"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^Create.*"] floating enable
+for_window [app_id="(?i)^thunar$" title="(?i)^File Operation Progress$"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^File Operation Progress$"] floating enable
+for_window [app_id="(?i)^thunar$" title="(?i)^Confirm.*"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^Confirm.*"] floating enable
+for_window [app_id="(?i)^thunar$" title="(?i)^Preferences$"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^Preferences$"] floating enable
+for_window [app_id="(?i)^thunar$" title="(?i)^Properties.*"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^Properties.*"] floating enable
+for_window [app_id="(?i)^thunar$" title="(?i)^Attention$"] floating enable
+for_window [class="(?i)^thunar$" title="(?i)^Attention$"] floating enable
+for_window [app_id="(?i)^thunar$" window_type="dialog"] floating enable
+for_window [class="(?i)^thunar$" window_type="dialog"] floating enable
+
+# PeaZip Archive Manager (floating)
+for_window [app_id="(?i)^peazip.*"] floating enable
+for_window [class="(?i)^peazip.*"] floating enable
 for_window [class="^steam_app_.*$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
-for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
-for_window [app_id="(?i)^(cs2|gamescope)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
+for_window [app_id="(?i)^(cs2|gamescope|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
+
+# Steam Games (Workspace 4) — every game window goes to ws4, never the
+# focused workspace. Dying Light can map outside steam_app_*, so its native
+# classes are covered too. assign handles initial placement, for_window is
+# backup for windows whose class is set at map time.
+assign [class="^steam_app_.*$"] workspace number $ws4
+assign [app_id="^steam_app_.*$"] workspace number $ws4
+assign [class="(?i)^dyinglight.*$"] workspace number $ws4
+assign [app_id="(?i)^dyinglight.*$"] workspace number $ws4
+assign [class="(?i)^gamescope$"] workspace number $ws4
+assign [app_id="(?i)^gamescope$"] workspace number $ws4
+for_window [class="^steam_app_.*$"] move to workspace number $ws4
+for_window [app_id="^steam_app_.*$"] move to workspace number $ws4
+for_window [class="(?i)^dyinglight.*$"] move to workspace number $ws4
+for_window [app_id="(?i)^dyinglight.*$"] move to workspace number $ws4
+for_window [class="(?i)^gamescope$"] move to workspace number $ws4
+for_window [app_id="(?i)^gamescope$"] move to workspace number $ws4
 
 # Scratchpad window rules (floating & centered, auto-hidden to scratchpad)
 # Geometry MUST match the canonical per-mode size in scratch-toggle show_it()
@@ -329,10 +385,9 @@ for_window [class="(?i)spotify"] floating enable, resize set 1700 1050, move pos
 # alone only applies at startup, so for_window rules re-assert tabbed
 # on every new window to hold it across restarts and moves.
 workspace 1 layout tabbed
-workspace 2 layout tabbed
+workspace 2 layout default
 workspace 3 layout tabbed
 for_window [workspace="^1$"] layout tabbed
-for_window [workspace="^2$"] layout tabbed
 for_window [workspace="^3$"] layout tabbed
 
 
@@ -372,12 +427,12 @@ for_window [instance="steamwebhelper" title=".* - Chat$"] floating enable
 # Any other window attempting to launch on ws4 is evicted to ws1
 for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
 for_window [class="^steam_app_.*$"] move to workspace number $ws4
-for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] move to workspace number $ws4
-for_window [app_id="(?i)^(cs2|gamescope)$"] move to workspace number $ws4
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|dyinglight.*)$"] move to workspace number $ws4
+for_window [app_id="(?i)^(cs2|gamescope|dyinglight.*)$"] move to workspace number $ws4
 
 # Autostart Services
-exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway SWAYSOCK
-exec systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway SWAYSOCK QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE
+exec systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE
 exec_always --no-startup-id xrdb -merge "$HOME/.Xresources"
 # Autotab DISABLED under forced-tabbed policy (would untab singles).
 #exec_always --no-startup-id sh -c 'pkill -f "i3-autota[b]"; sleep 0.2; exec ~/.local/bin/i3-autotab'

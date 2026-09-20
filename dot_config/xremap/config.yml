@@ -15,6 +15,7 @@ keymap:
   - name: Alacritty Universal Clipboard
     application:
       only: ["Alacritty"]
+    exact_match: true
     remap:
       M-c: C-S-c # Win+C -> Ctrl+Shift+C (safe copy without killing running processes)
       M-v: C-S-v # Win+V -> Ctrl+Shift+V (safe paste)
@@ -26,6 +27,7 @@ keymap:
   - name: Universal Copy Paste
     application:
       not: ["Alacritty"]
+    exact_match: true
     remap:
       M-c: C-c # Win+C -> Ctrl+C (Universal Copy)
       M-v: C-v # Win+V -> Ctrl+V (Universal Paste)
@@ -96,6 +98,7 @@ keymap:
 
   # --- Misc ---
   - name: Misc
+    exact_match: true
     remap:
       Alt-BackSpace: A-Left
       PageUp: Home
