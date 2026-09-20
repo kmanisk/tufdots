@@ -386,8 +386,12 @@ for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv)$"] 
 for_window [class="^steam_app_.*"] move to workspace number $ws4, floating disable, border none
 # Elden Ring native fullscreen (input-focus FPS fix: true fullscreen stops
 # X11 pointer-boundary/focus events from interrupting the event pipeline)
-for_window [title="ELDEN RING™"] fullscreen enable
-for_window [title="^Rockstar Games.*"] floating enable, move to workspace number $ws3
+assign [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] workspace number $ws4
+assign [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] workspace number $ws4
+assign [title="(?i)^(rockstar games|grand theft auto iv).*$"] workspace number $ws4
+for_window [title="(?i)^rockstar games.*"] floating enable, move to workspace number $ws4
+for_window [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] floating enable, move to workspace number $ws4
+for_window [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] floating enable, move to workspace number $ws4
 for_window [window_role="pop-up"] floating enable
 focus_on_window_activation none
 mouse_warping none

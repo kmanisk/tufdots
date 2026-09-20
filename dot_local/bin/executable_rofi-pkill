@@ -1,91 +1,218 @@
-#!/usr/bin/env bash
-# ==============================================================================
-# rofi-pkill: Interactive Process Killer Menu
-# Shows UNIQUE user processes with instance count, CPU %, and Memory %
-# Enter: Gracefully terminate (SIGTERM / pkill)
-# Alt+d / Shift+Del: Force kill (SIGKILL / pkill -9)
-# ==============================================================================
-export DISPLAY="${DISPLAY:-:0}"
-export PATH="$HOME/.local/bin:$PATH"
+#!/usr/bin/env python3
+"""rofi-pkill: app-level process killer for Sway.
 
-THEME="$HOME/.config/rofi/clipboard-floating.rasi"
+Groups processes by APPLICATION (not raw comm), so Steam + steamwebhelper +
+game helpers show as one entry. Window-backed apps resolve via Sway IPC
+(app_id/class); windowless stragglers attach through an alias map.
 
-notify() {
-    if command -v dunstify >/dev/null 2>&1; then
-        dunstify -a "Process Killer" -u low -i process-stop -r 8833 "$1" "$2"
-    else
-        notify-send -a "Process Killer" -u low -i process-stop \
-            -h string:x-canonical-private-synchronous:pkill "$1" "$2"
-    fi
-}
+Enter: graceful SIGTERM to the whole group.  Alt+d / Shift+Del: SIGKILL.
+Protected system processes are never listed.
+"""
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
 
-# Processes to protect from accidental termination
-PROTECTED="^(systemd|sd-pam|dbus-broker.*|pipewire.*|wireplumber|Xorg|i3|xremap|dunst|polybar|autotiling|clipnotify|bash|fish|zsh|sh|agy|ps|grep|rofi|cat|sort|head|sed|awk|python.*)$"
+THEME = os.path.expanduser("~/.config/rofi/clipboard-floating.rasi")
 
-list_procs() {
-    python3 -c "
-import subprocess, re
+# Never list or kill these (regex, matched against comm).
+PROTECTED = re.compile(
+    r"^(systemd|sd-pam|dbus-broker.*|dbus-daemon|pipewire.*|wireplumber"
+    r"|sway(bg|idle|lock|bar|msg|nag)?|Xwayland|xremap|mako|waybar|foot"
+    r"|bash|fish|zsh|sh|dash|ps|grep|rofi|agy|opencode|node-mainthread"
+    r"|python3(\.\d+)?|uwsm|seatd|polkit.*|at-spi.*|xdg-.*|dconf.*"
+    r"|gvfs.*|tumbler.*)$"
+)
 
-my_user = subprocess.check_output(['whoami']).decode().strip()
-raw = subprocess.check_output(['ps', '-u', my_user, '-o', 'pid,%cpu,%mem,comm']).decode().splitlines()
+# Windowless helpers fold into their parent app (regex on comm/args).
+ALIASES = [
+    (re.compile(r"^steamwebhelper"), "steam"),
+    (re.compile(r"^steam$"), "steam"),
+    (re.compile(r"pressure-vessel|bwrap|steam-runtime|reaper"), "steam"),
+    (re.compile(r"^brave$|^brave-origin$|chrome.*zygote"), "brave"),
+    (re.compile(r"^firefox$|Isolated Web Co"), "firefox"),
+    (re.compile(r"^chrome_crashpad"), "browser"),
+    (re.compile(r"wineserver|wine.*preloader|.*\.exe$"), "wine-game"),
+    (re.compile(r"gamescope.*|gamescopereaper"), "gamescope"),
+    (re.compile(r"MangoHud|mangohud"), "mangohud"),
+]
 
-protected_re = re.compile(r'$PROTECTED')
 
-procs = {}
-for line in raw[1:]:
-    parts = line.strip().split(None, 3)
-    if len(parts) == 4:
-        pid, cpu, mem, comm = parts
-        if protected_re.match(comm):
+def sway_tree():
+    for cmd in ("swaymsg", "i3-msg"):
+        try:
+            out = subprocess.check_output(
+                [cmd, "-t", "get_tree"], stderr=subprocess.DEVNULL, timeout=5)
+            return json.loads(out)
+        except Exception:
             continue
-        if comm not in procs:
-            procs[comm] = {'count': 0, 'cpu': 0.0, 'mem': 0.0, 'pids': []}
-        procs[comm]['count'] += 1
-        procs[comm]['cpu'] += float(cpu)
-        procs[comm]['mem'] += float(mem)
-        procs[comm]['pids'].append(pid)
+    return {}
 
-# Sort by RAM % descending
-for comm, d in sorted(procs.items(), key=lambda x: (x[1]['mem'], x[1]['cpu']), reverse=True):
-    count_str = f'({d[\"count\"]} instances)' if d['count'] > 1 else '(1 instance) '
-    print(f'{comm:<24} {count_str:<15} │ CPU: {d[\"cpu\"]:4.1f}% │ RAM: {d[\"mem\"]:4.1f}%')
-" 2>/dev/null
-}
 
-while true; do
-    chosen=$(list_procs | rofi -dmenu \
-        -p "🛑 Kill Process" \
-        -mesg "Enter: Terminate (SIGTERM)  |  Alt+d: Force Kill (SIGKILL)  |  Esc: Cancel" \
-        -kb-delete-entry "" \
-        -kb-custom-1 "Alt+d,Shift+Delete" \
-        -theme "$THEME" \
-        "$@")
-    exit_code=$?
+def ps_table():
+    try:
+        out = subprocess.check_output(
+            ["ps", "-u", str(os.getuid()), "-o", "pid=,%cpu=,%mem=,comm=,args="],
+            stderr=subprocess.DEVNULL, timeout=5).decode(errors="replace")
+    except Exception:
+        return {}
+    table = {}
+    for line in out.splitlines():
+        parts = line.split(None, 4)
+        if len(parts) == 5:
+            try:
+                pid = int(parts[0])
+                table[pid] = (float(parts[1]), float(parts[2]),
+                              parts[3], parts[4])
+            except ValueError:
+                continue
+    return table
 
-    # Esc or window cancel
-    [ -z "$chosen" ] && exit 0
-    [ "$exit_code" -eq 1 ] && exit 0
 
-    # Extract clean process name (first column)
-    proc_name=$(echo "$chosen" | awk '{print $1}')
-    [ -z "$proc_name" ] && exit 0
+def collect():
+    """Returns {group: {'pids': {pid: (cpu,mem)}, 'wins': int, 'titles': []}}."""
+    tree, pst = sway_tree(), ps_table()
+    groups = {}
 
-    # Safety check
-    if echo "$proc_name" | grep -Eq "$PROTECTED"; then
-        notify "Protected Process" "$proc_name cannot be killed"
-        continue
-    fi
+    def grp(name):
+        return groups.setdefault(
+            name, {"pids": {}, "wins": 0, "titles": []})
 
-    if [ "$exit_code" -eq 10 ]; then
-        # Force Kill (SIGKILL -9)
-        pkill -9 -u "$USER" -x "$proc_name" 2>/dev/null
-        notify "Force Killed" "SIGKILL (-9) sent to all instances of $proc_name"
-    else
-        # Graceful Kill (SIGTERM -15)
-        pkill -u "$USER" -x "$proc_name" 2>/dev/null
-        notify "Terminated" "SIGTERM sent to $proc_name"
-    fi
+    def walk(node, cur_ws=None):
+        if isinstance(node, dict):
+            if node.get("type") == "workspace":
+                cur_ws = node.get("name")
+            props = node.get("window_properties") or {}
+            app = (node.get("app_id")
+                   or props.get("class")
+                   or props.get("instance") or "")
+            pid = node.get("pid")
+            if app and (pid or node.get("window")):
+                g = grp(display_name(str(app)))
+                g["wins"] += 1
+                title = str(props.get("title") or node.get("name") or "")
+                if title and len(g["titles"]) < 2:
+                    g["titles"].append(title[:48])
+                if pid and pid in pst:
+                    g["pids"][pid] = pst[pid][:2]
+            for c in node.get("nodes", []) + node.get("floating_nodes", []):
+                walk(c, cur_ws)
+    walk(tree)
 
-    # Small delay for process table to refresh before re-rendering loop
-    sleep 0.2
-done
+    for pid, (cpu, mem, comm, args) in pst.items():
+        if PROTECTED.match(comm):
+            continue
+        blob = f"{comm} {args}".lower()
+        target = next(
+            (n for rx, n in ALIASES
+             if rx.search(comm.lower()) or rx.search(blob)), None)
+        if target is None:
+            if any(pid in g["pids"] for g in groups.values()):
+                continue  # already counted via its window
+            target = display_name(comm)
+        g = grp(target)
+        if pid not in g["pids"]:
+            g["pids"][pid] = (cpu, mem)
+    return groups
+
+
+def display_name(raw):
+    s = re.sub(r"[-_.]?(bin|x86_64|appimage)$", "", raw.strip().lower())
+    return {"brave-origin": "brave"}.get(s, s) or raw
+
+
+def rows(groups):
+    out = []
+    agg = []
+    for name, g in groups.items():
+        if not g["pids"]:
+            continue
+        cpu = sum(c for c, _ in g["pids"].values())
+        mem = sum(m for _, m in g["pids"].values())
+        agg.append((mem, cpu, name, g))
+    for mem, cpu, name, g in sorted(agg, reverse=True):
+        n = len(g["pids"])
+        det = f"{n} procs" + (f", {g['wins']} wins" if g["wins"] else "")
+        titles = (" — " + " / ".join(g["titles"])) if g["titles"] else ""
+        out.append(f"{name}\t({det}) │ CPU {cpu:4.1f}% │ RAM {mem:4.1f}%{titles}")
+    return out
+
+
+def notify(title, body):
+    try:
+        subprocess.call(["notify-send", "-a", "Process Killer", "-u", "low",
+                         "-i", "process-stop",
+                         "-h", "string:x-canonical-private-synchronous:pkill",
+                         title, body],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL, timeout=5)
+    except Exception:
+        pass
+
+
+def kill_group(name, groups, force):
+    g = groups.get(name)
+    if not g:
+        return
+    sig = signal.SIGKILL if force else signal.SIGTERM
+    done, protected = 0, 0
+    for pid in list(g["pids"]):
+        try:
+            if PROTECTED.match(proc_comm(pid)):
+                protected += 1
+                continue
+            os.kill(pid, sig)
+            done += 1
+        except (ProcessLookupError, PermissionError):
+            continue
+    what = "SIGKILL (-9)" if force else "SIGTERM"
+    notify("Force Killed" if force else "Terminated",
+           f"{what} → {done} procs of {name}"
+           + (f" ({protected} protected skipped)" if protected else ""))
+
+
+def proc_comm(pid):
+    try:
+        with open(f"/proc/{pid}/comm") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def main():
+    if os.environ.get("ROFI_PKILL_TEST") == "1":
+        print("\n".join(rows(collect())[:15]))
+        return 0
+    while True:
+        groups = collect()
+        lines = rows(groups)
+        if not lines:
+            notify("Process Killer", "No killable processes")
+            return 0
+        try:
+            p = subprocess.run(
+                ["rofi", "-dmenu", "-i", "-p", "\U0001f6d1 Kill App",
+                 "-mesg", "Enter: Terminate group (SIGTERM) | Alt+d: Force Kill (SIGKILL) | Esc: Cancel",
+                 "-kb-delete-entry", "", "-kb-custom-1", "Alt+d,Shift+Delete",
+                 "-theme", THEME],
+                input="\n".join(lines).encode(), stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, timeout=300)
+        except Exception:
+            return 0
+        if p.returncode == 1 or not p.stdout.strip():
+            return 0
+        name = p.stdout.decode(errors="replace").split("\t")[0].strip()
+        if not name:
+            return 0
+        kill_group(name, groups, force=(p.returncode == 10))
+        try:
+            subprocess.call(["sleep", "0.2"], timeout=5)
+        except Exception:
+            pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

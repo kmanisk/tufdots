@@ -55,9 +55,10 @@ bindsym $mod+c exec notify-send "Clock" "$(date '+%A, %B %d%n%I:%M %P')"
 # Bluetooth battery notification (Win + v)
 bindsym $mod+v exec --no-startup-id ~/.local/bin/bt-battery-notify
 
-# Process Killer Menu (Windows + Escape & Alt + Escape)
-bindsym $mod+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
+# Process Killer Menu (Alt + Escape)
 bindsym Mod1+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
+# Power menu on Win+Esc
+bindsym $mod+Escape exec --no-startup-id ~/.local/bin/powermenu
 
 # Games Launcher (Windows + g / Alt + g)
 bindsym $mod+g exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
@@ -232,8 +233,8 @@ bindsym Mod1+grave exec --no-startup-id ~/.local/bin/scratch-toggle term
 bindsym Control+space exec --no-startup-id env SCRATCH_GAME_GUARD=1 ~/.local/bin/scratch-toggle term
 bindsym $mod+n exec --no-startup-id ~/.local/bin/scratch-toggle notes
 
-# Session control
-bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/powermenu
+# Session control (Win+Shift+e = process killer)
+bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/rofi-pkill
 bindsym $mod+Shift+c reload
 
 # Session save/restore (on-demand, no daemon, stdlib-only)
@@ -352,22 +353,26 @@ for_window [class="^steam_app_.*$"] fullscreen enable, allow_tearing yes, shortc
 for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
 for_window [app_id="(?i)^(cs2|gamescope|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
 
-# Steam Games (Workspace 4) — every game window goes to ws4, never the
-# focused workspace. Dying Light can map outside steam_app_*, so its native
-# classes are covered too. assign handles initial placement, for_window is
-# backup for windows whose class is set at map time.
+# Steam Games & Native Games (Workspace 4)
 assign [class="^steam_app_.*$"] workspace number $ws4
 assign [app_id="^steam_app_.*$"] workspace number $ws4
-assign [class="(?i)^dyinglight.*$"] workspace number $ws4
-assign [app_id="(?i)^dyinglight.*$"] workspace number $ws4
-assign [class="(?i)^gamescope$"] workspace number $ws4
-assign [app_id="(?i)^gamescope$"] workspace number $ws4
+assign [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] workspace number $ws4
+assign [app_id="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] workspace number $ws4
 for_window [class="^steam_app_.*$"] move to workspace number $ws4
 for_window [app_id="^steam_app_.*$"] move to workspace number $ws4
-for_window [class="(?i)^dyinglight.*$"] move to workspace number $ws4
-for_window [app_id="(?i)^dyinglight.*$"] move to workspace number $ws4
-for_window [class="(?i)^gamescope$"] move to workspace number $ws4
-for_window [app_id="(?i)^gamescope$"] move to workspace number $ws4
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] move to workspace number $ws4
+for_window [app_id="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] move to workspace number $ws4
+
+# Rockstar Games Launcher & GTA IV (Workspace 4)
+assign [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe|gtaiv\.exe|gtaiv)$"] workspace number $ws4
+assign [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe|gtaiv\.exe|gtaiv)$"] workspace number $ws4
+assign [title="(?i)^(rockstar games|grand theft auto iv).*$"] workspace number $ws4
+for_window [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] move to workspace number $ws4, floating enable
+for_window [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] move to workspace number $ws4, floating enable
+for_window [title="(?i)^rockstar games.*$"] move to workspace number $ws4, floating enable
+for_window [class="(?i)^(gtaiv\.exe|gtaiv)$"] move to workspace number $ws4
+for_window [instance="(?i)^(gtaiv\.exe|gtaiv)$"] move to workspace number $ws4
+
 
 # Scratchpad window rules (floating & centered, auto-hidden to scratchpad)
 # Geometry MUST match the canonical per-mode size in scratch-toggle show_it()
