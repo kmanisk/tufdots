@@ -4,9 +4,10 @@ After=pipewire.service pipewire-pulse.service
 Wants=pipewire.service
 
 [Service]
-Type=simple
-ExecStart=%h/.local/bin/dusky-audio-studio --autostart
-ExecStop=%h/.local/bin/dusky-audio-studio --off
+Type=forking
+PIDFile=%h/.config/dusky/settings/dusky_studio/daemon.pid
+ExecStart=%h/.local/bin/dusky-audio-studio --on
+ExecStop=pkill -f dusky_audio_dsp
 Restart=on-failure
 RestartSec=3
 
