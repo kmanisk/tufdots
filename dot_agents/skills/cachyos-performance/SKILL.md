@@ -31,10 +31,12 @@ version: 1.0.0
 - Keep `ananicy-cpp.service` active. It sets I/O and CPU scheduling priority on the fly when game binaries are detected.
 - Use `systemd-oomd` or `earlyoom` configured by CachyOS defaults; do not override memory pressure parameters manually without testing.
 
-## Performance & Resource Discipline (Anti-Bloat)
-- **Core Principle:** Save disk space, RAM, and CPU cycles as priority #1. Retain what matters (raw responsiveness, lowest input latency, frame pacing, battery thermals) — avoid flashy animations, redundant eye-candy, or heavy background daemons.
+## Performance & Resource Discipline (Anti-Bloat & Gaming Reliability)
+- **Core Principle & Needs:** Instantaneous, reliable competitive & AAA gaming rig paired with rapid terminal workflows. Save disk space, RAM, and CPU cycles as priority #1.
+- **Zero Animations & Zero Eye-Candy Lag:** Disable all window transitions, animations, blur shaders, and visual effects in Sway and i3. Windows map and tile immediately with 0ms delay.
+- **Daemonless Architecture:** Always prefer on-demand CLI utilities and ephemeral scripts over persistent system daemons or background tray processes. No background process may steal CPU cycles or lock RAM during gaming sessions.
 - **Autologin / Display Architecture:** Prefer No-DM Getty autologin (0 MB background RAM overhead) over full display managers.
-- **Headless Over GUI:** Daemons and services must run headless in the background without requiring user interaction or open GUI windows.
+- **Headless Essential Services Only:** Only strictly necessary system services (PipeWire/WirePlumber, ananicy-cpp, udiskie) run in the background. Daemons must never require open GUI windows to function.
 
 ## Audio Pipeline (Stock PipeWire)
 - **No DSP daemon:** stock PipeWire + WirePlumber only; do not add background audio daemons.
