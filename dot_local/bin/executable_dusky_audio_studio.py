@@ -44,7 +44,6 @@ HOME_DIR: Final[Path] = Path.home()
 STATE_DIR: Final[Path] = HOME_DIR / ".config" / "dusky" / "settings" / "dusky_studio"
 CACHE_DIR: Final[Path] = HOME_DIR / ".cache" / "dusky_studio"
 CONFIG_FILE: Final[Path] = STATE_DIR / "config.json"
-CUSTOM_PRESETS_FILE: Final[Path] = STATE_DIR / "custom_eq_presets.json"
 SOCK_PATH: Final[Path] = STATE_DIR / "dusky_audio.sock"
 PID_FILE: Final[Path] = STATE_DIR / "daemon.pid"
 GUI_PID_FILE: Final[Path] = STATE_DIR / "gui.pid"
@@ -214,51 +213,6 @@ window.panel-window {
     color: @theme_selected_fg_color;
     border-color: @theme_selected_bg_color;
     font-weight: 700;
-}
-
-.custom-preset-entry {
-    background-color: alpha(@theme_base_color, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 7px;
-    padding: 3px 8px;
-    font-size: 11px;
-    color: @theme_fg_color;
-}
-
-.custom-preset-entry:focus {
-    border-color: @theme_selected_bg_color;
-}
-
-.save-preset-btn {
-    border-radius: 7px;
-    padding: 3px 12px;
-    font-weight: 700;
-    font-size: 11px;
-    background-color: alpha(@theme_selected_bg_color, 0.22);
-    border: 1px solid alpha(@theme_selected_bg_color, 0.4);
-    color: @theme_selected_bg_color;
-    transition: all 150ms ease;
-}
-
-.save-preset-btn:hover {
-    background-color: @theme_selected_bg_color;
-    color: @theme_selected_fg_color;
-}
-
-.delete-preset-btn {
-    border-radius: 7px;
-    padding: 3px 10px;
-    font-weight: 700;
-    font-size: 11px;
-    background-color: alpha(#e74c3c, 0.15);
-    border: 1px solid alpha(#e74c3c, 0.35);
-    color: #e74c3c;
-    transition: all 150ms ease;
-}
-
-.delete-preset-btn:hover {
-    background-color: #e74c3c;
-    color: white;
 }
 
 notebook header {
@@ -1436,13 +1390,15 @@ def set_dusky_devices_as_default() -> None:
                 elif media_class == "Audio/Sink" and ("ghelper-audio-sink" in node_name or "dusky audio" in node_desc):
                     sink_id = obj.get("id")
 
-            cfg = load_config()
-            if mic_id is not None:
+            if mic_id is not None and sink_id is not None:
                 subprocess.run(["wpctl", "set-default", str(mic_id)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=COMMAND_ENV)
-            if sink_id is not None and getattr(cfg, "out_rnnoise_on", False):
                 subprocess.run(["wpctl", "set-default", str(sink_id)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=COMMAND_ENV)
-            if mic_id is not None:
                 break
+            elif mic_id is not None or sink_id is not None:
+                if mic_id is not None:
+                    subprocess.run(["wpctl", "set-default", str(mic_id)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=COMMAND_ENV)
+                if sink_id is not None:
+                    subprocess.run(["wpctl", "set-default", str(sink_id)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=COMMAND_ENV)
         except Exception:
             pass
         time.sleep(0.04)
@@ -2562,47 +2518,6 @@ def run_gtk_app() -> None:
                 self.eq_band_rows.append(row)
                 vbox.pack_start(row, False, False, 0)
 
-            # ── Custom Presets ─────────────────────────────────────────
-            vbox.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 6)
-
-            custom_hdr = Gtk.Label(label="Custom Presets", xalign=0)
-            custom_hdr.get_style_context().add_class("section-label")
-            vbox.pack_start(custom_hdr, False, False, 0)
-
-            # Row 1: dropdown + Load + Delete
-            load_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-            self.custom_preset_combo = Gtk.ComboBoxText()
-            self.custom_preset_combo.set_hexpand(True)
-            self._refresh_custom_preset_combo()
-            load_row.pack_start(self.custom_preset_combo, True, True, 0)
-
-            btn_load = Gtk.Button(label="Load")
-            btn_load.get_style_context().add_class("save-preset-btn")
-            btn_load.connect("clicked", self._on_load_custom_preset)
-            load_row.pack_start(btn_load, False, False, 0)
-
-            btn_delete = Gtk.Button(label="Delete")
-            btn_delete.get_style_context().add_class("delete-preset-btn")
-            btn_delete.connect("clicked", self._on_delete_custom_preset)
-            load_row.pack_start(btn_delete, False, False, 0)
-            vbox.pack_start(load_row, False, False, 2)
-
-            # Row 2: name entry + Save
-            save_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-            self.custom_preset_entry = Gtk.Entry()
-            self.custom_preset_entry.set_placeholder_text("Preset name…")
-            self.custom_preset_entry.get_style_context().add_class("custom-preset-entry")
-            self.custom_preset_entry.set_hexpand(True)
-            self.custom_preset_entry.connect("activate", self._on_save_custom_preset)
-            save_row.pack_start(self.custom_preset_entry, True, True, 0)
-
-            btn_save = Gtk.Button(label="Save Preset")
-            btn_save.get_style_context().add_class("save-preset-btn")
-            btn_save.connect("clicked", self._on_save_custom_preset)
-            save_row.pack_start(btn_save, False, False, 0)
-            vbox.pack_start(save_row, False, False, 2)
-            # ───────────────────────────────────────────────────────────
-
             scrolled = Gtk.ScrolledWindow()
             scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
             scrolled.add(vbox)
@@ -3137,85 +3052,6 @@ def run_gtk_app() -> None:
             for btn in self.eq_preset_buttons.values():
                 btn.get_style_context().remove_class("active-preset")
 
-        # ── Custom Preset Backend ──────────────────────────────────────
-
-        def _load_custom_presets(self) -> dict[str, dict[str, Any]]:
-            """Load custom presets from JSON file. Returns empty dict on any error."""
-            try:
-                if CUSTOM_PRESETS_FILE.exists():
-                    data = json.loads(CUSTOM_PRESETS_FILE.read_text(encoding="utf-8"))
-                    if isinstance(data, dict):
-                        return data
-            except Exception:
-                pass
-            return {}
-
-        def _save_custom_presets(self, presets: dict[str, dict[str, Any]]) -> None:
-            """Persist custom presets dict to JSON file."""
-            try:
-                CUSTOM_PRESETS_FILE.parent.mkdir(parents=True, exist_ok=True)
-                CUSTOM_PRESETS_FILE.write_text(
-                    json.dumps(presets, indent=2, ensure_ascii=False),
-                    encoding="utf-8",
-                )
-            except Exception as exc:
-                print(f"[Dusky] Failed to save custom presets: {exc}", file=sys.stderr)
-
-        def _refresh_custom_preset_combo(self) -> None:
-            """Repopulate the custom presets ComboBoxText from disk."""
-            presets = self._load_custom_presets()
-            self.custom_preset_combo.remove_all()
-            for name in presets:
-                self.custom_preset_combo.append_text(name)
-            if presets:
-                self.custom_preset_combo.set_active(0)
-
-        def _on_save_custom_preset(self, _widget: Any) -> None:
-            """Save current EQ state under the name typed in the entry."""
-            raw = self.custom_preset_entry.get_text().strip()
-            if not raw:
-                return
-            if self.current_eq_target == "mic":
-                gains = list(self.cfg.eq_gains)
-                post_gain = self.cfg.eq_post_gain
-            else:
-                gains = list(self.cfg.out_eq_gains)
-                post_gain = self.cfg.out_eq_post_gain
-            presets = self._load_custom_presets()
-            presets[raw] = {"post_gain": post_gain, "gains": gains}
-            self._save_custom_presets(presets)
-            self._refresh_custom_preset_combo()
-            # Select the newly saved entry in the combo
-            model = self.custom_preset_combo.get_model()
-            if model:
-                for i, row in enumerate(model):
-                    if row[0] == raw:
-                        self.custom_preset_combo.set_active(i)
-                        break
-            self.custom_preset_entry.set_text("")
-
-        def _on_load_custom_preset(self, _widget: Any) -> None:
-            """Apply the selected custom preset to the EQ sliders."""
-            name = self.custom_preset_combo.get_active_text()
-            if not name:
-                return
-            presets = self._load_custom_presets()
-            data = presets.get(name)
-            if data is not None:
-                self.apply_eq_preset(name, data)
-
-        def _on_delete_custom_preset(self, _widget: Any) -> None:
-            """Remove the selected custom preset from disk and refresh combo."""
-            name = self.custom_preset_combo.get_active_text()
-            if not name:
-                return
-            presets = self._load_custom_presets()
-            presets.pop(name, None)
-            self._save_custom_presets(presets)
-            self._refresh_custom_preset_combo()
-
-        # ──────────────────────────────────────────────────────────────
-
         def on_eq_toggled(self, switch: Gtk.Switch, _g: Any) -> None:
             active = switch.get_active()
             if self.current_eq_target == "mic":
@@ -3684,23 +3520,6 @@ def main() -> None:
                 print(f"Applied Character Preset: {match_key}")
             else:
                 print(f"Preset '{p_name}' not found. Available: {', '.join(PRESETS.keys())}")
-        case ("--enhancer" | "--eq-preset" | "-e") if len(args) > 1:
-            p_name = " ".join(args[1:])
-            match_key = None
-            for k in INPUT_EQ_PRESETS:
-                if k.lower() == p_name.lower():
-                    match_key = k
-                    break
-            if match_key:
-                preset_data = INPUT_EQ_PRESETS[match_key]
-                cfg.eq_on = True
-                cfg.eq_post_gain = preset_data["post_gain"]
-                cfg.eq_gains = list(preset_data["gains"])
-                save_config(cfg)
-                sync_config_to_daemon(cfg)
-                print(f"Applied Voice Enhancer Preset: {match_key}")
-            else:
-                print(f"Voice enhancer preset '{p_name}' not found. Available: {', '.join(INPUT_EQ_PRESETS.keys())}")
         case ("--set-source" | "--source" | "--src") if len(args) > 1:
             val = " ".join(args[1:])
             cfg.source = val
