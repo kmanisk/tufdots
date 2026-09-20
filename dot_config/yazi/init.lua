@@ -1,2 +1,3 @@
--- Sync yanked files across all running Yazi instances via DDS
-require("session"):setup({ sync_yanked = true })
+require("git"):setup({
+	order = 1500,
+})

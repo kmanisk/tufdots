@@ -8,7 +8,7 @@ italic = { family = "Iosevka Nerd Font", style = "Italic" }
 bold_italic = { family = "Iosevka Nerd Font", style = "Bold Italic" }
 
 [cursor]
-style = { shape = "Beam", blinking = "Off" }
+style = { shape = "Block", blinking = "Off" }
 
 [selection]
 save_to_clipboard = true

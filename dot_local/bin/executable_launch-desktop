@@ -12,7 +12,6 @@ if [ -f "$SESSION_FILE" ]; then
 fi
 
 if [ "$SESSION" = "sway" ]; then
-    echo "==> Starting Sway (Wayland)..."
     exec "$HOME/.local/bin/sway-run"
 elif [ "$SESSION" = "plasma" ] && [ -x /usr/bin/startplasma-wayland ]; then
     echo "==> Starting KDE Plasma (Wayland)..."

@@ -1,108 +1,15 @@
 #!/usr/bin/env bash
-# Wallpaper switcher — minimal, fast, capped.
-# - Win+Shift+W: instantly rotates a cached wallpaper (zero network wait)
-# - Then tops up the library in the background until 100 downloads total
-# - Genres: gaming, creepy, minimal, pixel, linux (logos). Nothing else.
-# - Sources: Wallhaven (SFW, General category only) + Reddit via Arctic-Shift
-#   mirror (www.reddit.com is network-blocked). HTTPS only.
+# Win+Shift+W: instantly rotate a cached MINECRAFT wallpaper. No downloads.
+# (Formerly a multi-genre fetcher — repurposed 2026-09-20 for Minecraft-only
+# setup. New downloads come from Alt+Shift+W / minecraft-wallpaper.)
 set -u
-export DISPLAY="${DISPLAY:-:0}"
-
 STORE="$HOME/.local/share/wallpapers"
-CACHE="$HOME/.cache/wallpapers"
-MAX_DOWNLOADS=100
-TEMP_FILE="/tmp/wallpaper_dl_$$.jpg"
-trap 'rm -f "$TEMP_FILE"' EXIT
 
-mkdir -p "$STORE" "$CACHE"
-
-# --- genre ---------------------------------------------------------------
-CATEGORY=""
-for arg in "$@"; do
-    case "$arg" in
-        gaming|game) CATEGORY="gaming" ;;
-        creepy|dark|horror) CATEGORY="creepy" ;;
-        minimal) CATEGORY="minimal" ;;
-        pixel|pixelart|8bit) CATEGORY="pixel" ;;
-        linux|tux|logo|logos) CATEGORY="linux" ;;
-        random|any|"") CATEGORY="random" ;;
-    esac
-done
-GENRES=("gaming" "creepy" "minimal" "pixel" "linux")
-[[ -z "$CATEGORY" || "$CATEGORY" == "random" ]] && CATEGORY="${GENRES[$RANDOM % ${#GENRES[@]}]}"
-
-# --- 1. instant cached rotate --------------------------------------------
-mapfile -t POOL < <(find "$STORE" "$CACHE" -maxdepth 1 \( -type f -o -type l \) \( -name "${CATEGORY}_*.jpg" -o -name "${CATEGORY}_*.png" \) 2>/dev/null)
-[[ ${#POOL[@]} -eq 0 ]] && mapfile -t POOL < <(find "$STORE" "$CACHE" -maxdepth 1 \( -type f -o -type l \) \( -name "gaming_*.jpg" -o -name "gaming_*.png" -o -name "creepy_*.jpg" -o -name "creepy_*.png" -o -name "minimal_*.jpg" -o -name "minimal_*.png" -o -name "pixel_*.jpg" -o -name "pixel_*.png" -o -name "linux_*.jpg" -o -name "linux_*.png" \) 2>/dev/null)
-
-CURRENT=""
-[[ -f "$HOME/.fehbg" ]] && CURRENT=$(grep -oE "'[^']+'" "$HOME/.fehbg" 2>/dev/null | tr -d "'")
-CANDIDATES=()
-for f in "${POOL[@]:-}"; do [[ "$f" != "$CURRENT" ]] && CANDIDATES+=("$f"); done
-[[ ${#CANDIDATES[@]} -eq 0 ]] && CANDIDATES=("${POOL[@]:-}")
-if [[ ${#CANDIDATES[@]} -gt 0 ]]; then
-    CHOSEN="${CANDIDATES[$RANDOM % ${#CANDIDATES[@]}]}"
-    if [ -n "$SWAYSOCK" ] || [ -n "$WAYLAND_DISPLAY" ]; then
-        swaymsg output "*" bg "$CHOSEN" fill 2>/dev/null || swaybg -i "$CHOSEN" -m fill &
-    fi
-    if command -v feh >/dev/null 2>&1 && [ -n "$DISPLAY" ]; then
-        feh --bg-fill "$CHOSEN" 2>/dev/null || true
-    fi
-    mkdir -p "$HOME/.config"
-    echo "$CHOSEN" > "$HOME/.config/current_wallpaper"
-    cat <<EOF > "$HOME/.fehbg"
-#!/bin/sh
-feh --no-fehbg --bg-fill '$CHOSEN'
-EOF
-    chmod +x "$HOME/.fehbg"
-    command -v notify-send >/dev/null && notify-send -i preferences-desktop-wallpaper -t 1500 "Wallpaper" "$CATEGORY"
+mapfile -t POOL < <(find "$STORE" -maxdepth 1 -type f -name "minecraft_*.jpg" 2>/dev/null)
+[[ ${#POOL[@]} -eq 0 ]] && { notify-send -t 2000 "Wallpaper" "No cached Minecraft wallpapers — press Alt+Shift+W first"; exit 1; }
+CHOSEN="${POOL[$RANDOM % ${#POOL[@]}]}"
+if [ -n "${SWAYSOCK:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    swaymsg output "*" bg "$CHOSEN" fill 2>/dev/null
 fi
-
-# --- 2. background top-up to MAX_DOWNLOADS --------------------------------
-COUNT=$(find "$STORE" "$CACHE" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | wc -l)
-[[ "$COUNT" -ge "$MAX_DOWNLOADS" ]] && exit 0
-
-(
-case "$CATEGORY" in
-    gaming)  SUBS=("GamingWallpapers" "wallpapers"); TAGS=("gaming" "video+games" "dark+souls" "witcher") ;;
-    creepy)  SUBS=("creepy" "DarkArt" "wallpapers"); TAGS=("dark+fantasy" "horror" "gothic" "dark") ;;
-    minimal) SUBS=("MinimalWallpaper" "wallpapers"); TAGS=("minimal" "minimalist" "abstract") ;;
-    pixel)   SUBS=("PixelArtWallpapers" "wallpapers"); TAGS=("pixel+art" "pixelart" "retro+gaming") ;;
-    linux)   SUBS=("wallpapers" "linux"); TAGS=("linux" "tux" "arch+linux") ;;
-esac
-TAG="${TAGS[$RANDOM % ${#TAGS[@]}]}"
-SUB="${SUBS[$RANDOM % ${#SUBS[@]}]}"
-URL=""
-
-# Wallhaven first: purity=100 (SFW), categories=100 (General only — no anime/people), 16:9+, 1080p+
-for _ in 1 2; do
-    PAGE=$((RANDOM % 5 + 1))
-    JSON=$(curl -s -L --max-time 5 "https://wallhaven.cc/api/v1/search?q=${TAG}&categories=100&purity=100&atleast=1920x1080&ratios=16x9,16x10&page=${PAGE}" 2>/dev/null)
-    CAND=$(echo "$JSON" | jq -r '.data[]?.path' 2>/dev/null | shuf -n 1)
-    if [[ "$CAND" =~ ^https:// ]]; then
-        curl -s -L --max-time 15 "$CAND" -o "$TEMP_FILE" 2>/dev/null && URL="$CAND" && break
-        rm -f "$TEMP_FILE"
-    fi
-done
-
-# Reddit mirror fallback
-if [[ -z "$URL" ]]; then
-    JSON=$(curl -s -L --max-time 5 "https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=${SUB}&limit=50" 2>/dev/null)
-    while read -r CAND; do
-        [[ -z "$CAND" ]] && continue
-        curl -s -L --max-time 15 "$CAND" -o "$TEMP_FILE" 2>/dev/null || { rm -f "$TEMP_FILE"; continue; }
-        URL="$CAND" && break
-        rm -f "$TEMP_FILE"
-    done < <(echo "$JSON" | jq -r '[.data[]? | select(.url? | test("^https://i\\.redd\\.it/.*\\.(jpg|jpeg|png)$")) | .url] | .[range(0; length)]' 2>/dev/null | shuf | head -n 3)
-fi
-
-[[ -z "$URL" || ! -f "$TEMP_FILE" ]] && exit 0
-file "$TEMP_FILE" | grep -qiE 'image|bitmap' || exit 0
-if command -v identify >/dev/null 2>&1; then
-    W=$(identify -format "%w" "$TEMP_FILE[0]" 2>/dev/null || echo 0)
-    [[ "$W" -lt 1400 ]] && exit 0
-fi
-[[ $(stat -c%s "$TEMP_FILE" 2>/dev/null || echo 0) -lt 80000 ]] && exit 0
-mv "$TEMP_FILE" "$STORE/${CATEGORY}_$(date +%s).jpg"
-) >/dev/null 2>&1 & disown
-exit 0
+echo "$CHOSEN" > "$HOME/.config/current_wallpaper"
+command -v notify-send >/dev/null && notify-send -i preferences-desktop-wallpaper -t 1500 "Wallpaper" "MinecraftWallpapers (cached)"

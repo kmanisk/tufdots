@@ -6,7 +6,7 @@ Xft.hintstyle: hintslight
 Xft.hinting: 1
 Xft.antialias: 1
 Xcursor.size: 37
-Xcursor.theme: phinger-cursors-gruvbox-material
+Xcursor.theme: phinger-cursors-gruvbox-material-light
 
 ! =============================================================================
 ! Gruvbox Dark Color Palette (from morhetz/gruvbox-generalized)

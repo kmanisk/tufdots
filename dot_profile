@@ -1,0 +1,8 @@
+export BROWSER=cachy-browser
+export EDITOR=/usr/bin/vim
+export MAIL=thunderbird
+export TERMINAL=alacritty
+export QT_QPA_PLATFORMTHEME="qt5ct:qt6ct"
+export GTK2_RC_FILES="$HOME/.gtkrc-2.0"
+export PATH="$HOME/.gemini/antigravity-cli/bin:$HOME/.local/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"

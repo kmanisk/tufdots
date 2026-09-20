@@ -24,6 +24,9 @@ packages/**
 systemd/**
 wallpapers/**
 docs/**
+scripts/**
+GAMING.md
+GTAIV_WORKING_CONFIG.md
 
 # --- Machine Resolution (defaults to generic-linux) ---
 {{- $machineKey := "" -}}
