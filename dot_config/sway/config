@@ -352,9 +352,12 @@ for_window [class="(?i)^thunar$" window_type="dialog"] floating enable
 # PeaZip Archive Manager (floating)
 for_window [app_id="(?i)^peazip.*"] floating enable
 for_window [class="(?i)^peazip.*"] floating enable
-for_window [class="^steam_app_.*$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
-for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
-for_window [app_id="(?i)^(cs2|gamescope|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable
+for_window [class="^steam_app_.*$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable, inhibit_idle focus
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable, inhibit_idle focus
+for_window [app_id="(?i)^(cs2|gamescope|dyinglight.*)$"] fullscreen enable, allow_tearing yes, shortcuts_inhibitor enable, inhibit_idle focus
+for_window [title="(?i)^GTAIV$"] inhibit_idle focus
+for_window [title="(?i)^Grand Theft Auto IV$"] inhibit_idle focus
+for_window [workspace="^4$"] inhibit_idle visible
 
 # Steam Games & Native Games (Workspace 4)
 assign [class="^steam_app_.*$"] workspace number $ws4

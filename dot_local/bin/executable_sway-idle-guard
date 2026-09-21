@@ -23,14 +23,33 @@ try:
     tree = json.load(sys.stdin)
 except Exception:
     sys.exit(1)
-stack = [tree]
-while stack:
-    n = stack.pop()
-    if isinstance(n, dict):
-        if n.get("focused") and n.get("fullscreen_mode"):
-            sys.exit(0)
-        stack.extend(n.get("nodes", []) + n.get("floating_nodes", []))
-sys.exit(1)
+
+def check_game_active(node, current_ws=None):
+    if node.get("type") == "workspace":
+        current_ws = node.get("name")
+        # If workspace 4 has any windows and is focused/visible, inhibit idle
+        if current_ws == "4" and (node.get("nodes") or node.get("floating_nodes")):
+            return True
+
+    # Check focused container
+    if node.get("focused"):
+        if node.get("fullscreen_mode"):
+            return True
+        if current_ws == "4":
+            return True
+        c = str(node.get("app_id") or node.get("window_properties", {}).get("class") or "").lower()
+        t = str(node.get("name") or "").lower()
+        if any(k in c for k in ["steam_app_", "gamescope", "cs2", "eldenring", "gtaiv", "launcher.exe", "socialclubhelper.exe", "playgtaiv"]):
+            return True
+        if any(k in t for k in ["grand theft auto", "gtaiv", "rockstar games", "elden ring"]):
+            return True
+
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        if check_game_active(child, current_ws):
+            return True
+    return False
+
+sys.exit(0 if check_game_active(tree) else 1)
 '; then
         set_state paused
     else
