@@ -40,5 +40,10 @@
 
 ---
 
-## 4. Related Docs
-- [Full Modpack & Proton Troubleshooting Setup Guide](./modpack-and-proton-guide.md)
+## 4. Master Handoff & Visual Overhaul Guides
+- **[Master Complete Edition Linux Guide](./MASTER_GUIDE.md)** — **Definitive Single Source of Truth**: Full end-to-end architecture, launch options (LSFG-VK, MangoHud, vkBasalt), engine constraints (`ExtendedLimits=0`, 32-bit memory ceiling), Solitude 3 nighttime ambient lift, crash postmortems, controller phone conflict resolution, and 165Hz low-latency configuration.
+- **[AI Agent Handoff & Visual Overhaul Master Guide](./ai-agent-handoff-and-visual-overhaul.md)** — Detailed hardware/OS audit, launch parameters, active vs. standby stack, and "Tokyo Drift / Times Square Neon Night" roadmap.
+- **[Community Restoration & Gameplay Expansion Roadmap](./community-restoration-roadmap.md)** — Detailed tracking of modular restoration modules (Grass & Procedural Props Fix, Traffic Parameters, Popcycle, Bullet Penetration), what is currently active vs. pending goals, and architectural invariants.
+- **[Verified Native Linux (Btrfs) Proton Setup Guide](./native-proton-setup.md)** — Deep technical setup instructions, Gillian base architecture, and crash postmortems.
+- **[Full Modpack & Proton Troubleshooting Setup Guide](./modpack-and-proton-guide.md)** — Legacy baseline setup and initial migration records.
+

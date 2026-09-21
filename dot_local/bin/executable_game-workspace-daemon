@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# game-workspace-daemon: backstop for game windows that set class/title
+# AFTER mapping (Rockstar Launcher/CEF), which static assign rules miss.
+# Event-driven via sway subscribe — no polling. Singleton via flock.
+set -u
+LOCK="/tmp/game-workspace-daemon.lock"
+LOG="/tmp/game-workspace-daemon.log"
+exec 9>"$LOCK"
+flock -n 9 || { echo "$(date '+%T') another instance holds lock, exiting" >> "$LOG"; exit 0; }
+echo "$(date '+%T') daemon started pid=$$" >> "$LOG"
+
+is_game() { # $1 = "app_id|class|instance|title"
+    local app_id=$(echo "$1" | cut -d'|' -f1)
+    local class=$(echo "$1" | cut -d'|' -f2)
+    local instance=$(echo "$1" | cut -d'|' -f3)
+    local title=$(echo "$1" | cut -d'|' -f4)
+
+    # Never match non-game applications (browsers, terminals, editors, Steam client)
+    if echo "$app_id $class $instance" | grep -qiE "\b(steam|steamwebhelper|brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha|alacritty|kitty|zed|code)\b"; then
+        return 1
+    fi
+
+    # Match actual game binaries or dedicated game launchers
+    if echo "$app_id $class $instance" | grep -qiE "steam_app_|gamescope|cs2|eldenring|dyinglight|farcry|gtaiv|launcher\.exe|socialclubhelper\.exe|playgtaiv"; then
+        return 0
+    fi
+
+    # For titles, only match standalone game titles (never browser tabs or editor titles)
+    if echo "$title" | grep -qiE "^(rockstar games.*|grand theft auto iv|gtaiv)$"; then
+        return 0
+    fi
+
+    return 1
+}
+
+move_if_game() { # $1 = container id
+    local id="$1" info
+    info=$(swaymsg -t get_tree 2>/dev/null | jq -r --argjson id "$1" '
+        .. | objects | select(.id == $id) |
+        "\(.app_id // "-")|\((.window_properties // {}).class // "-")|\((.window_properties // {}).instance // "-")|\(.name // "-")"' 2>/dev/null)
+    if is_game "$info"; then
+        echo "$(date '+%T') MOVE id=$id info=$info" >> "$LOG"
+        swaymsg "[con_id=$id] move to workspace number 4" >/dev/null 2>&1
+    fi
+}
+
+# Initial sweep (catch anything already open) + late-set recheck loop.
+swaymsg -t get_tree 2>/dev/null | jq -r '.. | objects | select(.type=="con" and .pid != null) | .id' 2>/dev/null | while read -r id; do move_if_game "$id"; done
+
+# NOTE: stdbuf -o0 is required — swaymsg block-buffers when piped, which
+# would delay events indefinitely. Verified 2026-09-21.
+stdbuf -o0 swaymsg -t subscribe '["window"]' 2>/dev/null | while read -r ev; do
+    # "new" catches mapping; "title" catches CEF/XWayland windows whose
+    # class/title only materialize seconds after mapping (proven miss:
+    # Rockstar launcher mapped blank, titled later, sat on ws1).
+    echo "$ev" | grep -qE '"change":[[:space:]]*"(new|title)"' || continue
+    id=$(echo "$ev" | jq -r '.container.id // empty' 2>/dev/null)
+    [ -n "$id" ] || continue
+    move_if_game "$id"
+    # Recheck after 3s for late class/title changes (CEF launchers).
+    ( sleep 3; move_if_game "$id" ) &
+done

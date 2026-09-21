@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# sway-idle-guard: pause swayidle while a fullscreen window is focused.
+# Prevents auto-lock / black screen during fullscreen gaming (controller
+# play generates no keyboard/mouse input, so idle timers would fire).
+# Event-driven via sway subscribe — no polling. Singleton via flock.
+set -u
+LOCK="/tmp/sway-idle-guard.lock"
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+
+set_state() { # $1 = paused|active
+    if [ "$1" = "paused" ]; then
+        pkill -STOP -x swayidle 2>/dev/null
+    else
+        pkill -CONT -x swayidle 2>/dev/null
+    fi
+}
+
+apply_current() {
+    if swaymsg -t get_tree 2>/dev/null | python3 -c '
+import json, sys
+try:
+    tree = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+stack = [tree]
+while stack:
+    n = stack.pop()
+    if isinstance(n, dict):
+        if n.get("focused") and n.get("fullscreen_mode"):
+            sys.exit(0)
+        stack.extend(n.get("nodes", []) + n.get("floating_nodes", []))
+sys.exit(1)
+'; then
+        set_state paused
+    else
+        set_state active
+    fi
+}
+
+apply_current  # initial state (e.g. login straight into a game)
+stdbuf -o0 swaymsg -t subscribe -m '["window"]' 2>/dev/null | while read -r ev; do
+    echo "$ev" | grep -qE '"change":[[:space:]]*"focus"|"change":[[:space:]]*"fullscreen_mode"' || continue
+    apply_current
+done

@@ -59,6 +59,8 @@ bindsym $mod+v exec --no-startup-id ~/.local/bin/bt-battery-notify
 bindsym Mod1+Escape exec --no-startup-id ~/.local/bin/rofi-pkill
 # Power menu on Win+Esc
 bindsym $mod+Escape exec --no-startup-id ~/.local/bin/powermenu
+# Quit ROG Center (it hides to a nonexistent tray instead of exiting)
+bindsym $mod+Shift+r exec --no-startup-id pkill -f rog-control-center
 
 # Games Launcher (Windows + g / Alt + g)
 bindsym $mod+g exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
@@ -67,7 +69,7 @@ bindsym $mod+Shift+g exec --no-startup-id "prime-run ~/.local/bin/steam-workspac
 bindsym Mod1+Shift+s exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
 
 # Spotify scratchpad
-bindsym $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
+bindsym --no-repeat $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
 
 # Task Manager (btop in floating window: Ctrl+Shift+Esc, Win+Shift+Esc, Alt+Shift+Esc)
 bindsym Control+Shift+Escape exec --no-startup-id ~/.local/bin/toggle-btop
@@ -228,10 +230,10 @@ bindsym $mod+Shift+period move container to workspace next; workspace next
 # Mod1+grave & Control+space both toggle scratchpad terminal.
 # (Control+space is a silent no-op while a game is focused: SCRATCH_GAME_GUARD,
 # checked inside scratch-toggle. shortcuts_inhibitor rules remain as backup.)
-bindsym Mod1+grave exec --no-startup-id ~/.local/bin/scratch-toggle term
+bindsym --no-repeat Mod1+grave exec --no-startup-id ~/.local/bin/scratch-toggle term
 # Guarded: silent no-op while a game window is focused (see scratch-toggle)
-bindsym Control+space exec --no-startup-id env SCRATCH_GAME_GUARD=1 ~/.local/bin/scratch-toggle term
-bindsym $mod+n exec --no-startup-id ~/.local/bin/scratch-toggle notes
+bindsym --no-repeat Control+space exec --no-startup-id env SCRATCH_GAME_GUARD=1 ~/.local/bin/scratch-toggle term
+bindsym --no-repeat $mod+n exec --no-startup-id ~/.local/bin/scratch-toggle notes
 
 # Session control (Win+Shift+e = process killer)
 bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/rofi-pkill
@@ -256,7 +258,7 @@ input type:touchpad {
 
 # Cursor: explicit theme + size (37 -> 48); without this Sway falls back
 # to theme defaults and ignores Xcursor.size for Wayland surfaces
-seat seat0 xcursor_theme phinger-cursors-gruvbox-material-light 37
+seat seat0 xcursor_theme phinger-cursors-gruvbox-material 37
 
 # Output Configuration (Internal Display @ 165Hz, Native 1:1 hardware pixels)
 # Baseline: Adaptive Sync (VRR) enabled for tear-free, low-latency sync.
@@ -303,6 +305,7 @@ for_window [class="pavucontrol"] floating enable
 for_window [app_id="blueman-manager"] floating enable
 for_window [class="blueman-manager"] floating enable
 for_window [app_id="peazip"] floating enable
+for_window [app_id="goverlay"] tiling enable
 for_window [app_id="(?i)^nvidia-settings$"] floating enable, move position center
 for_window [class="(?i)^nvidia-settings$"] floating enable, move position center
 for_window [app_id="(?i)^btop$"] floating enable, resize set 1820 1100, move position center
@@ -360,18 +363,23 @@ assign [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$
 assign [app_id="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] workspace number $ws4
 for_window [class="^steam_app_.*$"] move to workspace number $ws4
 for_window [app_id="^steam_app_.*$"] move to workspace number $ws4
+for_window [title="^GTAIV$"] move to workspace number $ws4
 for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] move to workspace number $ws4
 for_window [app_id="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|dyinglight.*)$"] move to workspace number $ws4
 
 # Rockstar Games Launcher & GTA IV (Workspace 4)
 assign [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe|gtaiv\.exe|gtaiv)$"] workspace number $ws4
 assign [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe|gtaiv\.exe|gtaiv)$"] workspace number $ws4
-assign [title="(?i)^(rockstar games|grand theft auto iv).*$"] workspace number $ws4
+assign [class="(?i)^(?!steam$).*" title="(?i)^(rockstar games.*|grand theft auto iv)$"] workspace number $ws4
+assign [class="(?i)^(?!steam$).*" title="(?i).*(rockstar|social club).*$"] workspace number $ws4
 for_window [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] move to workspace number $ws4, floating enable
 for_window [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] move to workspace number $ws4, floating enable
 for_window [title="(?i)^rockstar games.*$"] move to workspace number $ws4, floating enable
+for_window [title="(?i).*(rockstar|social club).*$"] move to workspace number $ws4, floating enable
 for_window [class="(?i)^(gtaiv\.exe|gtaiv)$"] move to workspace number $ws4
 for_window [instance="(?i)^(gtaiv\.exe|gtaiv)$"] move to workspace number $ws4
+for_window [title="(?i)^GTAIV$"] move to workspace number $ws4
+for_window [title="(?i)^Grand Theft Auto IV$"] move to workspace number $ws4
 
 
 # Scratchpad window rules (floating & centered, auto-hidden to scratchpad)
@@ -409,32 +417,54 @@ for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen
 for_window [app_id="(?i)^brave-(?!origin$).+"] floating enable, move position center
 for_window [app_id="(?i)^(brave|brave-browser|brave-origin|firefox|librewolf|zen-alpha)$" title="(?i).*(sign in|log in|login|oauth|authorize|authenticat).*"] floating enable, move position center
 
-# Steam & Gaming Rules (Workspace 3)
+# Steam & All Steam Dialogs (Workspace 3)
 assign [class="(?i)^steam$"] workspace number $ws3
-assign [instance="steamwebhelper"] workspace number $ws3
+assign [app_id="(?i)^steam$"] workspace number $ws3
+assign [instance="(?i)^steam.*$"] workspace number $ws3
+
 for_window [class="(?i)^steam$"] move to workspace number $ws3
-for_window [instance="steamwebhelper"] move to workspace number $ws3
-for_window [instance="steamwebhelper" title="^Steam$"] floating disable
-# Steam browser/links/file-pickers/dialogs float: otherwise they open as
-# hidden tabs inside ws3's tabbed container and clicks appear to do nothing.
-for_window [instance="steamwebhelper" title="^Steam$"] floating disable
-# Steam Add Non-Steam Game opens as a tab / tiled (not floating)
-for_window [instance="steamwebhelper" title="^Add Non-Steam Game$"] floating disable
-for_window [class="(?i)^steam$" title="^Add Non-Steam Game$"] floating disable
-# Steam Settings + game Properties open as tabs (tiled on tabbed ws3)
-for_window [class="(?i)^steam$" title="^Settings$"] floating disable
-for_window [class="(?i)^steam$" title=".*[Pp]roperties.*"] floating disable
+for_window [app_id="(?i)^steam$"] move to workspace number $ws3
+for_window [instance="(?i)^steam.*$"] move to workspace number $ws3
+
+# Main Steam window tiled
 for_window [class="(?i)^steam$" title="^Steam$"] floating disable
-# Steam Friends list floats
-for_window [class="(?i)^steam$" title="^Friends List$"] floating enable, resize set 360 700
-for_window [instance="steamwebhelper" title="^Friends List$"] floating enable, resize set 360 700
-for_window [instance="steamwebhelper" title=".* - Chat$"] floating enable
+for_window [instance="steamwebhelper" title="^Steam$"] floating disable
+
+# Steam Settings, Properties, and Non-Steam Game open tiled or as tabs on ws3
+for_window [class="(?i)^steam$" title="^Settings$"] move to workspace number $ws3, floating disable
+for_window [class="(?i)^steam$" title=".*[Pp]roperties.*"] move to workspace number $ws3, floating disable
+for_window [class="(?i)^steam$" title="^Add Non-Steam Game$"] move to workspace number $ws3, floating disable
+for_window [instance="steamwebhelper" title="^Add Non-Steam Game$"] move to workspace number $ws3, floating disable
+
+# Steam dialogs (Launch options, Self Updater, Guard, News, File Chooser, etc.) move to ws3 and float
+for_window [class="(?i)^steam$" window_type="dialog"] move to workspace number $ws3, floating enable, move position center
+for_window [class="(?i)^steam$" window_role="dialog"] move to workspace number $ws3, floating enable, move position center
+for_window [class="(?i)^steam$" window_role="pop-up"] move to workspace number $ws3, floating enable, move position center
+for_window [class="(?i)^steam$" title="(?i).*(launch option|launch options|choose an option|news|updater|guard|screenshot|cd key|install).*"] move to workspace number $ws3, floating enable, move position center
+
+# Steam Friends list & Chat float on ws3
+for_window [class="(?i)^steam$" title="^Friends List$"] move to workspace number $ws3, floating enable, resize set 360 700
+for_window [instance="steamwebhelper" title="^Friends List$"] move to workspace number $ws3, floating enable, resize set 360 700
+for_window [instance="steamwebhelper" title=".* - Chat$"] move to workspace number $ws3, floating enable
+
 # Games go to ws4 only (native XWayland + gamescope-nested + native Wayland cs2)
 # Any other window attempting to launch on ws4 is evicted to ws1
 for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
+
+# Whitelist of game & launcher windows allowed on ws4 (re-assert ws4 after eviction rule)
 for_window [class="^steam_app_.*$"] move to workspace number $ws4
-for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|dyinglight.*)$"] move to workspace number $ws4
+for_window [app_id="^steam_app_.*$"] move to workspace number $ws4
+for_window [class="(?i)^(cs2|gamescope|eldenring|steam_proton|farcry3|gtaiv|gtaiv\.exe|dyinglight.*)$"] move to workspace number $ws4
 for_window [app_id="(?i)^(cs2|gamescope|dyinglight.*)$"] move to workspace number $ws4
+for_window [class="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] move to workspace number $ws4, floating enable
+for_window [instance="(?i)^(launcher\.exe|socialclubhelper\.exe|playgtaiv\.exe)$"] move to workspace number $ws4, floating enable
+for_window [title="(?i)^GTAIV$"] move to workspace number $ws4
+for_window [title="(?i)^Grand Theft Auto IV$"] move to workspace number $ws4
+for_window [title="(?i).*(rockstar|social club).*$"] move to workspace number $ws4, floating enable
+
+# Re-assert Steam windows on ws3 if affected by ws4 eviction
+for_window [class="(?i)^steam$"] move to workspace number $ws3
+for_window [instance="(?i)^steam.*$"] move to workspace number $ws3
 
 # Autostart Services
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway SWAYSOCK QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE
@@ -451,9 +481,13 @@ exec --no-startup-id ~/.local/bin/toggle-nightlight --auto --silent
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 # Bluetooth tray (blueman-applet was missing on sway: GUI toggle did nothing)
 exec --no-startup-id blueman-applet
+# Game workspace backstop: moves late-class game windows (Rockstar/CEF) to ws4
+exec_always --no-startup-id ~/.local/bin/game-workspace-daemon
 exec_always --no-startup-id sh -c '[ -f "$HOME/.config/current_wallpaper" ] && swaymsg output "*" bg "$(cat "$HOME/.config/current_wallpaper")" fill'
 
 # Idle Management (swayidle)
+# sway-idle-guard pauses these timers while a fullscreen window is focused
+exec_always --no-startup-id ~/.local/bin/sway-idle-guard
 exec swayidle -w \
     timeout 300 'swaylock -f -c 000000' \
     timeout 600 'swaymsg "output * dpms off"' \
