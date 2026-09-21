@@ -8,7 +8,7 @@ in `.chezmoidata.toml`.
 |---|---|---|
 | `common.txt` | Baseline CLI tools (git, ripgrep, btop, yazi, neovim, uv, …) | Always |
 | `linux-core.txt` | System tools (base-devel, btrfs-progs, snapper, NetworkManager, …) | Linux |
-| `i3.txt` | i3wm, Alacritty, Polybar, Dunst, Rofi, feh, X11 utilities | `features.i3 = true` |
+| `i3.txt` | RETIRED 2026-09-21 (sway-only box; i3wm/i3lock removed, shared X11 utils kept) | `features.i3 = false` |
 | `gaming.txt` | Steam, Gamescope, Gamemode, Mangohud | `features.gaming = true` |
 | `nvidia.txt` | NVIDIA dGPU drivers, 32-bit Vulkan/OpenCL | `gpu_strategy = "hybrid-optimus-d3cold"` |
 | `asus.txt` | asusctl, supergfxctl, switcheroo-control | `features.asus_ctl = true` |

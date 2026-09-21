@@ -38,7 +38,7 @@ case "$chosen" in
         systemctl reboot
         ;;
     *"Lock"*)
-        sleep 0.1 && i3lock --blur 5
+        sleep 0.1 && swaylock -f -c 000000
         ;;
     *"Suspend"*)
         systemctl suspend
