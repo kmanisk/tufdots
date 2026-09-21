@@ -451,8 +451,7 @@ for_window [instance="steamwebhelper" title="^Friends List$"] move to workspace 
 for_window [instance="steamwebhelper" title=".* - Chat$"] move to workspace number $ws3, floating enable
 
 # Games go to ws4 only (native XWayland + gamescope-nested + native Wayland cs2)
-# Any other window attempting to launch on ws4 is evicted to ws1
-for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
+# for_window [workspace="^4$"] move container to workspace number $ws1, workspace number $ws1
 
 # Whitelist of game & launcher windows allowed on ws4 (re-assert ws4 after eviction rule)
 for_window [class="^steam_app_.*$"] move to workspace number $ws4
