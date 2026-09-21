@@ -210,8 +210,13 @@ d3d9.maxFrameLatency = 1
 d3d9.presentInterval = 0
 d3d9.maxFrameRate = 0
 dxvk.tearFree = True
+
+# Texture Filtering Overrides (Zero VRAM / Memory Cost)
+d3d9.samplerAnisotropy = 16
+# d3d9.samplerLodBias = -0.5
 ```
 
+* `d3d9.samplerAnisotropy = 16`: Forces 16x Anisotropic Filtering across all D3D9 texture samplers, ensuring oblique surfaces (roads, distant tarmac, angled facades) remain sharp at zero VRAM overhead.
 * `d3d9.maxFrameLatency = 1`: Clamps prerendered frames to 1, minimizing input lag on mouse and gamepad.
 * `dxvk.enableAsync = true` & `dxvk.gplAsyncCache = true`: Uses DXVK GPLAsync (Nexus #385) to compile Vulkan pipelines asynchronously in background threads. Completely eliminates the notorious traversal stutter when driving fast across bridge boundaries into new boroughs.
 * `dxvk.tearFree = True`: Eliminates horizontal screen tearing without adding traditional double/triple-buffering input lag.
