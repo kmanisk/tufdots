@@ -11,9 +11,8 @@
 export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
 
-DB_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/cliphist/db"
 PIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/clipboard_pins"
-mkdir -p "$(dirname "$DB_PATH")" "$PIN_DIR"
+mkdir -p "$PIN_DIR"
 THEME="$HOME/.config/rofi/clipboard-floating.rasi"
 
 PIN_PREFIX="📌 [PIN] "
@@ -32,7 +31,7 @@ display_items() {
             echo "${PIN_PREFIX}${first_line}"
         done
     fi
-    cliphist -db-path "$DB_PATH" list 2>/dev/null
+    cliphist list 2>/dev/null
 }
 
 # Main interactive loop: pinning, unpinning, or deleting keeps the menu open
@@ -71,7 +70,7 @@ while true; do
                 fi
             done
         else
-            cliphist -db-path "$DB_PATH" delete <<< "$chosen" 2>/dev/null
+            cliphist delete <<< "$chosen" 2>/dev/null
             notify "Deleted Entry" "Clipboard entry removed"
         fi
         continue
@@ -82,7 +81,7 @@ while true; do
         if [ "$is_pinned" -eq 1 ]; then
             notify "Already Pinned" "This item is already pinned"
         else
-            raw_text=$(cliphist -db-path "$DB_PATH" decode <<< "$chosen" 2>/dev/null)
+            raw_text=$(cliphist decode <<< "$chosen" 2>/dev/null)
             if [ -n "$raw_text" ]; then
                 hash_id=$(printf '%s' "$raw_text" | md5sum | cut -d' ' -f1)
                 printf '%s' "$raw_text" > "$PIN_DIR/$hash_id"
@@ -126,7 +125,7 @@ while true; do
                 fi
             done
         else
-            raw_text=$(cliphist -db-path "$DB_PATH" decode <<< "$chosen" 2>/dev/null)
+            raw_text=$(cliphist decode <<< "$chosen" 2>/dev/null)
             if [ -n "$raw_text" ]; then
                 printf '%s' "$raw_text" | xsel -b -i 2>/dev/null
                 printf '%s' "$raw_text" | xclip -selection clipboard 2>/dev/null

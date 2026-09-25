@@ -1,6 +1,5 @@
 # ==============================================================================
 # Sway Configuration (Wayland) — ASUS TUF Gaming F16
-# Parallel-installed alongside i3wm (X11 default remains active)
 # Hardware: Intel i5-13450HX (iGPU card1) + NVIDIA RTX 5050 Mobile (dGPU card0)
 # Display: eDP-1 1920x1200 @ 165Hz
 # ==============================================================================
@@ -40,14 +39,18 @@ bindsym $mod+Shift+b split h
 bindsym $mod+Shift+w exec --no-startup-id ~/.local/bin/random-wallpaper
 # Minecraft wallpapers only, from r/MinecraftWallpapers (Alt + Shift + W)
 bindsym Mod1+Shift+w exec --no-startup-id ~/.local/bin/minecraft-wallpaper
+# Alt+Shift+u: "fresh set" — archive the current library, fetch a new batch,
+# inject into the local store, and apply one immediately. The saturation
+# popup's "Start a new set" action button also fires this.
+bindsym Alt+Shift+u exec --no-startup-id ~/.local/bin/minecraft-wallpaper --fresh
 
 # Browser on NVIDIA GPU (Windows + Alt + b) -> Brave on RTX 5050
 bindsym $mod+Mod1+b workspace number $ws2; exec brave-nvidia
 
 # Text Editor & File Manager
 bindsym $mod+Shift+t exec alacritty -o font.size=20.5 -e nvim
-bindsym $mod+e exec thunar
-bindsym $mod+t exec --no-startup-id zed
+bindsym $mod+e exec thunar ~
+bindsym Mod1+z exec --no-startup-id zed
 
 # Time/date notification (Win + c)
 bindsym $mod+c exec notify-send "Clock" "$(date '+%A, %B %d%n%I:%M %P')"
@@ -67,6 +70,9 @@ bindsym $mod+g exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
 bindsym Mod1+g exec --no-startup-id ~/.local/bin/rofi-games
 bindsym $mod+Shift+g exec --no-startup-id "prime-run ~/.local/bin/steam-workspace"
 bindsym Mod1+Shift+s exec --no-startup-id "STEAM_DGPU=1 ~/.local/bin/steam-workspace"
+
+# MangoHud 3D Preview Toggle (Alt + m)
+bindsym Mod1+m exec --no-startup-id ~/.local/bin/hudtest
 
 # Spotify scratchpad
 bindsym --no-repeat $mod+m exec --no-startup-id ~/.local/bin/scratch-toggle spotify
@@ -140,6 +146,12 @@ bindsym $mod+Shift+a focus parent
 bindsym $mod+w layout tabbed
 bindsym $mod+semicolon exec --no-startup-id ~/.local/bin/smart-layout-toggle
 bindsym $mod+a exec --no-startup-id ~/.local/bin/smart-layout-toggle
+
+# Focus activation: always jump to windows requesting focus (e.g. Steam
+# Big Picture raising itself from another workspace). Sway default is
+# "smart" (often just marks urgent). NOTE: this is global — any app can
+# steal focus, not just Steam. Revert to smart if background apps yank focus.
+focus_on_window_activation focus
 
 # Focus Navigation (hjkl & arrows)
 bindsym $mod+h focus left
@@ -247,18 +259,46 @@ bindsym Mod1+Control+8 exec --no-startup-id ~/.local/bin/sway-session-restore
 
 # Input settings
 input type:keyboard {
-    repeat_delay 500
+    repeat_delay 600
     repeat_rate 25
 }
 
 input type:touchpad {
     tap enabled
     natural_scroll enabled
+    pointer_accel 0.0
+    accel_profile adaptive
+    scroll_factor 0.4
 }
+
+input type:pointer {
+    pointer_accel 0.0
+    accel_profile adaptive
+}
+
+# Touchpad Gestures (Native Sway - no external background gesture daemon needed)
+# Workspaces & Window management (3 fingers)
+bindgesture swipe:3:right workspace prev
+bindgesture swipe:3:left workspace next
+bindgesture swipe:3:up floating toggle
+bindgesture swipe:3:down scratchpad show
+bindgesture pinch:3:outward fullscreen enable
+bindgesture pinch:3:inward fullscreen disable
+
+# Audio & Brightness Controls (4 fingers)
+bindgesture swipe:4:up exec --no-startup-id ~/.local/bin/volume-notify up
+bindgesture swipe:4:down exec --no-startup-id ~/.local/bin/volume-notify down
+bindgesture swipe:4:right exec --no-startup-id ~/.local/bin/change-brightness +5%
+bindgesture swipe:4:left exec --no-startup-id ~/.local/bin/change-brightness -5%
+
+# Close window & Launchers (Pinch / Hold)
+bindgesture pinch:4:inward kill
+bindgesture hold:3 exec --no-startup-id ~/.local/bin/rofi-clipboard
+bindgesture hold:4 exec --no-startup-id ~/.local/bin/powermenu
 
 # Cursor: explicit theme + size (37 -> 48); without this Sway falls back
 # to theme defaults and ignores Xcursor.size for Wayland surfaces
-seat seat0 xcursor_theme phinger-cursors-gruvbox-material 37
+seat seat0 xcursor_theme phinger-cursors-gruvbox-material-light 40
 
 # Output Configuration (Internal Display @ 165Hz, Native 1:1 hardware pixels)
 # Baseline: Adaptive Sync (VRR) enabled for tear-free, low-latency sync.
@@ -283,8 +323,6 @@ client.urgent           #fb4934  #cc241d  #ebdbb2  #fb4934    #fb4934
 
 default_border pixel 1
 default_floating_border pixel 1
-for_window [class="^.*"] border pixel 1
-for_window [app_id="^.*"] border pixel 1
 
 # Hide outer edge borders when tabs/windows fill the edge
 hide_edge_borders --i3 smart
@@ -302,10 +340,10 @@ for_window [app_id="cachyos-welcome"] floating enable
 for_window [class="cachyos-welcome"] floating enable
 for_window [app_id="pavucontrol"] floating enable
 for_window [class="pavucontrol"] floating enable
-for_window [app_id="blueman-manager"] floating enable
-for_window [class="blueman-manager"] floating enable
-for_window [app_id="peazip"] floating enable
-for_window [app_id="goverlay"] tiling enable
+for_window [app_id="blueman-manager"] floating disable
+for_window [class="blueman-manager"] floating disable
+for_window [app_id="(?i)^goverlay$"] floating disable, focus
+for_window [class="(?i)^goverlay$"] floating disable, focus
 for_window [app_id="(?i)^nvidia-settings$"] floating enable, move position center
 for_window [class="(?i)^nvidia-settings$"] floating enable, move position center
 for_window [app_id="(?i)^btop$"] floating enable, resize set 1820 1100, move position center
@@ -316,6 +354,8 @@ for_window [instance="(?i)^AppRun\.wrapped$"] floating enable, resize set 1200 7
 for_window [instance="(?i)^pkg-float$"] floating enable, resize set 1250 780, move position center
 for_window [app_id="(?i)^lsfg-vk-ui$"] floating enable, resize set 1250 820, move position center
 for_window [class="(?i)^lsfg-vk-ui$"] floating enable, resize set 1250 820, move position center
+for_window [app_id="(?i)^vkcube.*"] floating enable, resize set 900 650, move position center
+for_window [class="(?i)^vkcube.*"] floating enable, resize set 900 650, move position center
 
 # Desktop Portal, File Chooser & Dialog rules (prevents getting swallowed into tabbed layouts)
 for_window [app_id="(?i)xdg-desktop-portal.*"] floating enable, move position center

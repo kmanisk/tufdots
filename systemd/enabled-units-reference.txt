@@ -1,15 +1,15 @@
 # ==============================================================================
 # SYSTEMD ENABLED UNITS REFERENCE
 # ==============================================================================
-# Dumped from CachyOS gaming laptop
-# System Units:
+# Dumped from CachyOS gaming laptop (ASUS TUF Gaming F16 - Sway/Wayland)
+#
+# System Units (systemctl list-unit-files --state=enabled):
 UNIT FILE                         STATE   PRESET
 cachyos-iw-set-regdomain.path     enabled disabled
 grub-btrfs-snapper.path           enabled disabled
 ananicy-cpp.service               enabled disabled
 bluetooth.service                 enabled disabled
 getty@.service                    enabled enabled
-glance_cpu_pkg_watt.service       enabled disabled
 intel_lpmd.service                enabled disabled
 linux-modules-cleanup.service     enabled disabled
 NetworkManager-dispatcher.service enabled disabled
@@ -19,7 +19,6 @@ nvidia-powerd.service             enabled disabled
 nvidia-resume.service             enabled disabled
 nvidia-suspend.service            enabled disabled
 supergfxd.service                 enabled disabled
-switcheroo-control.service        enabled disabled
 systemd-oomd.service              enabled disabled
 systemd-resolved.service          enabled enabled
 systemd-timesyncd.service         enabled enabled
@@ -34,9 +33,21 @@ cachyos-rate-mirrors.timer        enabled disabled
 fstrim.timer                      enabled disabled
 snapper-cleanup.timer             enabled disabled
 
-32 unit files listed.
+# 27 system unit files listed.
 
-# User Units:
-# Enabled under graphical-session.target.wants / default.target.wants:
-#   xremap.service
-#   nightlight-auto.timer
+# User Units (systemctl --user list-unit-files --state=enabled):
+UNIT FILE                   STATE   PRESET
+bt-auto-trust.service       enabled enabled
+cliphist.service            enabled enabled
+dusky-audio-dsp.service     enabled enabled
+sway-session-save.service   enabled enabled
+wireplumber.service         enabled enabled
+xdg-user-dirs.service       enabled enabled
+xremap.service              enabled enabled
+gnome-keyring-daemon.socket enabled enabled
+p11-kit-server.socket       enabled enabled
+pipewire-pulse.socket       enabled enabled
+pipewire.socket             enabled enabled
+nightlight-auto.timer       enabled enabled
+
+# 12 user unit files listed.

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Goverlay launch wrapper:
+# 1. Goverlay's Pascal/LCL backend reads 'lsmod' via a synchronous IPC pipe to detect
+#    installed GPU drivers (nvidia, amdgpu, etc.). On modern systems with over 200 kernel
+#    modules, the unbuffered full lsmod output overflows GOverlay's internal pipe buffer,
+#    causing an unhandled deadlock in anon_pipe_write / do_wait before the UI can map.
+#    Providing a focused lsmod wrapper ensures instant GPU detection and instant window display.
+# 2. Applies explicit DPI & UI scale factor directly to GOverlay so it remains crisp and zoomed
+#    regardless of how or where it was launched (tiled or floating, launcher or terminal).
+
+export PATH="$HOME/.local/lib/goverlay-bin:$PATH"
+export QT_SCALE_FACTOR=1.35
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export QT_FONT_DPI=120
+exec /usr/lib/goverlay "$@"

@@ -180,7 +180,7 @@ mkcd() {
 local conf_dir="$HOME/.config/zshrc"
 local -a my_modules=(
     batstat git kvm lmstudio logs logs_old mon_info
-    pkg pkg_search res_mon waydroid wthr cmd_atlas
+    pkg pkg_search res_mon wthr cmd_atlas
     sshfile neovim_delta core zoxide gemini
 )
 

@@ -1,9 +1,10 @@
 # ==============================================================================
 # Linux Gaming Stack (Steam, Gamescope, Optimus Offload)
+# Active when: features.gaming = true
 # ==============================================================================
 steam
 gamescope
 gamemode
 mangohud
 vulkan-tools
-cachyos-gaming-meta
+goverlay

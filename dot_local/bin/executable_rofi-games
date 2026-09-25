@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# rofi-games — game launcher menu (Alt+g). All entries use Proton, never vanilla Wine.
+export PATH="$HOME/.local/bin:$PATH"
+
+options="✨ ELDEN RING + FG (2x)\n🗡️ ELDEN RING\n🧪 ELDEN RING (Gamescope test)\n🎮 Steam library\n🛑 Kill game"
+chosen=$(echo -e "$options" | rofi -dmenu -i -p "Games")
+
+case "$chosen" in
+    *"Steam"*)    env STEAM_DGPU=1 steam-workspace ;;
+    *"+ FG"*) env LSFGVK_PROFILE='Elden Ring 2x' mangohud eldenring-run ;;
+    *"Gamescope test"*) env DISABLE_LSFGVK=1 mangohud eldenring-run ;;
+    *"ELDEN RING"*) env DISABLE_LSFGVK=1 mangohud eldenring-run ;;
+    *"Kill"*)     killgame ;;
+esac

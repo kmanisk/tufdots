@@ -22,12 +22,12 @@ case "$mode" in
     # Order on show is always: resize set W H, then move position center.
     term)
         instance="scratch-term"
-        spawn="alacritty --class scratch-term"
+        spawn="alacritty --class scratch-term 2>>/tmp/scratch-term-err.log"
         geom="1700 1050"
         ;;
     notes)
         instance="scratch-notes"
-        spawn="alacritty -o font.size=20.5 --class scratch-notes -e nvim $HOME/notes.md"
+        spawn="alacritty -o font.size=20.5 --class scratch-notes -e nvim $HOME/notes.md 2>>/tmp/scratch-notes-err.log"
         geom="1700 1050"
         ;;
     spotify)
@@ -133,7 +133,10 @@ show_it() {
 
 # Fast-path: if window process is already running, toggle instantly (<3ms)
 if pgrep -f "$instance" >/dev/null 2>&1; then
+    echo "$(date '+%T') toggle $mode state_before=$(win_state)" >> /tmp/scratch-toggle.log 2>&1
     show_it
+    echo "$(date '+%T') toggle $mode state_after=$(win_state)" >> /tmp/scratch-toggle.log 2>&1
+    tail -n 30 /tmp/scratch-toggle.log > /tmp/scratch-toggle.log.tmp 2>/dev/null && mv /tmp/scratch-toggle.log.tmp /tmp/scratch-toggle.log 2>/dev/null
     exit 0
 fi
 

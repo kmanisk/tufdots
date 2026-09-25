@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Sway (Wayland) Launcher — ASUS TUF Gaming F16 (Optimus Hybrid)
+# ==============================================================================
+# GPU Architecture Invariant:
+# - Render Sway compositor on Intel UHD Graphics (iGPU: /dev/dri/card1, vendor 0x8086)
+# - Keep NVIDIA RTX 5050 Mobile (dGPU: /dev/dri/card0, vendor 0x10de) in D3cold sleep
+# - Games/Vulkan offload explicitly via prime-run or environment flags
+# ==============================================================================
+
+export XDG_CURRENT_DESKTOP=sway
+export XDG_SESSION_DESKTOP=sway
+export XDG_SESSION_TYPE=wayland
+
+# Intel VA-API hardware acceleration
+export LIBVA_DRIVER_NAME=iHD
+
+# Wayland native toolkits
+export MOZ_ENABLE_WAYLAND=1
+export QT_QPA_PLATFORM="wayland;xcb"
+export SDL_VIDEODRIVER="wayland,x11"
+export CLUTTER_BACKEND=wayland
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+# WLR cursor fallback for hybrid GPU configurations
+export WLR_NO_HARDWARE_CURSORS=1
+
+# Pin Sway compositor directly to the Intel iGPU (card1) to ensure RTX 5050 suspends
+if [ -e /dev/dri/card1 ] && [ -e /dev/dri/card0 ]; then
+    export WLR_DRM_DEVICES=/dev/dri/card1
+fi
+
+exec sway "$@"

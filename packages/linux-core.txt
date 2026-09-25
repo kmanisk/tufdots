@@ -18,6 +18,12 @@ networkmanager
 polkit
 sudo
 udiskie
+gvfs
+gvfs-mtp
+gvfs-gphoto2
+thunar
+thunar-volman
+android-udev
 ufw
 bluez
 bluez-utils

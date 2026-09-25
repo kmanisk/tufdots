@@ -1,6 +1,6 @@
 # ==============================================================================
 # ASUS ROG / TUF Hardware Management
+# Active when: features.asus_ctl = true
 # ==============================================================================
 asusctl
 supergfxctl
-switcheroo-control

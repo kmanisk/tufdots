@@ -8,13 +8,13 @@
     // "buffer_font_family": "CozetteVector",
     // "buffer_font_family": "Departure Mono",
     // "buffer_font_family": "Share Tech Mono",
-    "buffer_font_family": "Iosevka Nerd Font Mono",
+    "buffer_font_family": "Iosevka Nerd Font",
     "buffer_font_fallbacks": [
         "FantasqueSansM Nerd Font",
         "Aporetic Sans Mono",
         "FantasqueSansM Nerd Font Mono"
     ],
-    "buffer_font_size": 29.0, // <- Change this to adjust editor code size
+    "buffer_font_size": 40.0, // <- Change this to adjust editor code size
     // "buffer_font_size": 30.0, // <- Change this to adjust editor code size
     "buffer_font_weight": 400, // Regular = 400, Medium = 500, SemiBold = 600, Bold = 700
     "buffer_line_height": {
@@ -27,13 +27,13 @@
     },
     // UI Font (Sidebars, Menus, Status Bar, Tabs)
     "ui_font_family": "Cantarell",
-    "agent_ui_font_size": 18,
+    "agent_ui_font_size": 27,
     // "ui_font_family": "IntoneMono Nerd Font",
     "ui_font_fallbacks": [
         "Cantarell",
         "system-ui"
     ],
-    "ui_font_size": 20.0,
+    "ui_font_size": 25.0,
     "ui_font_weight": 400,
     // Terminal Font
     "terminal": {

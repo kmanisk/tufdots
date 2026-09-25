@@ -7,7 +7,6 @@ ripgrep
 fastfetch
 btop
 yazi
-micro
 neovim
 rsync
 unzip
@@ -16,5 +15,4 @@ which
 uv
 jq
 fzf
-bc
 age

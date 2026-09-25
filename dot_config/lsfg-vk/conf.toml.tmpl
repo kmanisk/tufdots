@@ -1,29 +1,46 @@
 version = 2
 
-# Global options
 [global]
-dll = "{{ .chezmoi.homeDir }}/.config/lsfg-vk/lsfg-vk.dll"
 allow_fp16 = true
+dll = "{{ .chezmoi.homeDir }}/.config/lsfg-vk/lsfg-vk.dll"
 log_level = "info"
 
-# Sleeping Dogs: Definitive Edition Profile
 [[profile]]
-name = "Sleeping Dogs Definitive Edition"
-active_in = ["sdhdship.exe"]
-multiplier = 2
+active_in = "sdhdship.exe"
 flow_scale = 1.0
-performance_mode = false
-pacing = "vsync"
+multiplier = 2
+name = "Sleeping Dogs Definitive Edition"
 override_present_mode = true
+pacing_mode = "vsync"
+performance_mode = false
 preserve_swapchain_image_count = false
 
-# Grand Theft Auto IV (Complete Edition) Profile
 [[profile]]
-name = "gta4"
 active_in = "GTAIV.exe"
-multiplier = 2
 flow_scale = 1.0
-performance_mode = false
-pacing_mode = "vsync"
+multiplier = 2
+name = "gta4"
 override_present_mode = true
+pacing_mode = "vsync"
+performance_mode = false
+preserve_swapchain_image_count = false
+
+[[profile]]
+active_in = [ "FMF2.exe", "FMF2-Win64-Shipping.exe" ]
+flow_scale = 1.0
+multiplier = 2
+name = "FMF2"
+override_present_mode = true
+pacing_mode = "vsync"
+performance_mode = false
+preserve_swapchain_image_count = false
+
+[[profile]]
+active_in = [ "left4dead2.exe", "L4D2 Launcher.exe", "left4dead2.exe" ]
+flow_scale = 1.0
+multiplier = 2
+name = "L4D2"
+override_present_mode = true
+pacing_mode = "vsync"
+performance_mode = false
 preserve_swapchain_image_count = false

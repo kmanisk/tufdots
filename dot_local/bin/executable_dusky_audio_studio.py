@@ -1415,6 +1415,10 @@ class AudioDspServer:
         self.running = False
         self.telemetry = AudioTelemetry()
         self._lock = threading.Lock()
+        # Last physical sink the engine was pointed at + last liveness check.
+        # Used by the serve loop to re-target when a device disconnects.
+        self.current_sink: str = ""
+        self._last_sink_check: float = 0.0
 
     def start(self) -> bool:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -1540,11 +1544,39 @@ class AudioDspServer:
             except (socket.timeout, OSError):
                 if not self.running or (self.proc and self.proc.poll() is not None):
                     break
+                self._heal_dead_sink()
                 continue
 
             threading.Thread(target=self._handle_client, args=(conn,), daemon=True).start()
 
         self.stop()
+
+    def _heal_dead_sink(self) -> None:
+        """Re-target the DSP engine when its physical sink disconnects.
+
+        The engine is pointed at one sink name (e.g. BT headphones). When that
+        device vanishes, audio goes silent until something re-resolves. This
+        runs on the accept-loop wakeup (throttled): if the current target is
+        dead, resolve the live default and move the engine there. One-way
+        only — never steals back when devices reappear, so manual wpctl
+        choices are respected.
+        """
+        try:
+            now = time.monotonic()
+            if now - self._last_sink_check < 3.0:
+                return
+            self._last_sink_check = now
+            if not self.current_sink:
+                return
+            if is_node_alive(self.current_sink, "Audio/Sink"):
+                return
+            new_target = resolve_hardware_sink("default")
+            if not new_target or new_target == "default" or new_target == self.current_sink:
+                return
+            self.send_cmd(f"SINK_TGT {new_target}")
+            self.current_sink = new_target
+        except Exception:
+            pass
 
     def _handle_client(self, conn: socket.socket) -> None:
         conn.settimeout(5.0)
@@ -1592,6 +1624,7 @@ class AudioDspServer:
         self.send_cmd(f"SRC {target_src}")
         target_sink = resolve_hardware_sink(cfg.sink, fallback_node=cfg.pre_sink)
         self.send_cmd(f"SINK_TGT {target_sink}")
+        self.current_sink = target_sink
         self.send_cmd(f"VOL {cfg.volume * 10}")
         self.send_cmd(f"MON {1 if cfg.monitor else 0}")
 

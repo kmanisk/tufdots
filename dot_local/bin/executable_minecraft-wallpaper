@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Alt+Shift+W: SEQUENTIAL Minecraft wallpaper stepper.
+# Every press advances to the next cached wallpaper in sorted order
+# (wraps 10->1), so it never repeats until a full cycle completes.
+# Then tops up the library in the background (locked, minecraft-only).
+set -u
+STORE="$HOME/.local/share/wallpapers"
+LOCK="/tmp/mc-wallpaper-fetch.lock"
+
+mapfile -t POOL < <(ls -1 "$STORE"/minecraft_*.jpg 2>/dev/null | sort)
+[[ ${#POOL[@]} -eq 0 ]] && { notify-send -t 2000 "Wallpaper" "No cached wallpapers — fetching one…"; }
+
+# --- 1. step to next-after-current --------------------------------------
+CURRENT="$(cat "$HOME/.config/current_wallpaper" 2>/dev/null)"
+NEXT="${POOL[0]:-}"
+for i in "${!POOL[@]}"; do
+    if [[ "${POOL[$i]}" == "$CURRENT" ]]; then
+        NEXT="${POOL[$(( (i + 1) % ${#POOL[@]} ))]}"
+        break
+    fi
+done
+# Current file gone from library (deleted/rotated out): start at first.
+[[ -n "$NEXT" && -f "$NEXT" ]] || NEXT="${POOL[0]:-}"
+if [[ -n "${NEXT:-}" && -f "$NEXT" ]]; then
+    swaymsg output "*" bg "$NEXT" fill 2>/dev/null
+    echo "$NEXT" > "$HOME/.config/current_wallpaper"
+    IDX=0
+    for i in "${!POOL[@]}"; do [[ "${POOL[$i]}" == "$NEXT" ]] && IDX=$i; done
+    command -v notify-send >/dev/null && notify-send -i preferences-desktop-wallpaper -t 1500 "Wallpaper" "Minecraft $((IDX + 1))/${#POOL[@]}"
+fi
+
+# --- 2. top-up until *MIN* target, then SATURATION + user decision ---------
+# Once we own >= 25 of the photos the API can plausibly vend (saturation),
+# fetching more has sharply diminishing returns — so BOTH:
+#   a) stop-top-up-no-matter-what at the hard cap,
+#   b) measure saturation vs. what the source can actually supply,
+# then pop a sway notification asking whether to keep this set or start a
+# fresh one (notify-send action button spins minecraft-wallpaper --fresh).
+# (notification is fire-once per server day: FLOAT_STAMP guard)
+SATSTAMP="/tmp/mc-sat-notify.last"
+TODAY="$(date +%Y%m%d)"
+if [[ ! -f "$SATSTAMP" || "$(cat "$SATSTAMP" 2>/dev/null)" != "$TODAY" ]]; then
+
+# --- 2a. measured saturation (cache/cap, from IVY counts) ------------------
+AVAIL=$(curl -s -L --max-time 8 "https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=MinecraftWallpapers&limit=100" 2>/dev/null \
+        | jq '[.data[]? | select(.url? | test("^https://i\\.redd\\.it/.*\\.(jpg|jpeg|png)$")) | select(.title? | test("join|server|bedrock|war |empire|nation|discord|play now| IP"; "i") | not)] | length' 2>/dev/null)
+COUNT=$(ls "$STORE"/minecraft_*.jpg 2>/dev/null | wc -l)
+[[ "$COUNT" -ge 25 ]] || exit 0   # not saturated yet -> no popup, keep topping
+SAT_ELSE="$([ "$AVAIL" -ge 25 ] 2>/dev/null && echo "$(( COUNT * 100 / AVAIL ))" || echo 100)"
+: >"$SATSTAMP"; echo "$TODAY" >>"$SATSTAMP"
+
+# --- 2b. decision popup (notify-send action button = start a fresh set) ----
+COMMAND_FRESH="setsid -f swaymsg 'exec ~/.local/bin/minecraft-wallpaper --fresh'"
+notify-send -u critical -t 12000 -A "fresh=Start a new set" -A "keep=Keep this set" \
+  "Wallpaper library: saturated" \
+  "You already own ${COUNT} Minecraft wallpapers (~${SAT_ELSE}% of what the feed currently offers). Keep cycling, or swap in a freshly-fetched batch?" \
+  2>/dev/null || notify-send -t 12000 -u critical "Wallpaper library: saturated" "You own ${COUNT} (≈${SAT_ELSE}% of available). New batch available. (sway: no action-button mako → run 'minecraft-wallpaper --fresh' manually which is also bound to \`Alt+Shift+u\`.)"
+fi
+
+# --- 2c. regular top-up continues as before (unconditional, locked) ---------
+(
+flock -n 9 || exit 0
+COUNT=$(ls "$STORE"/minecraft_*.jpg 2>/dev/null | wc -l)
+[[ "$COUNT" -ge 30 ]] && exit 0
+TEMP_FILE="/tmp/mc_wallpaper_$$.jpg"
+trap 'rm -f "$TEMP_FILE"' EXIT
+JSON=$(curl -s -L --max-time 10 "https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=MinecraftWallpapers&limit=100" 2>/dev/null)
+CAND=$(echo "$JSON" | jq -r '[.data[]? | select(.url? | test("^https://i\\.redd\\.it/.*\\.(jpg|jpeg|png)$")) | select(.title? | test("join|server|bedrock|war |empire|nation|discord|play now| IP"; "i") | not) | .url] | .[]' 2>/dev/null | shuf -n 1)
+[[ "$CAND" =~ ^https:// ]] || exit 0
+curl -s -L --max-time 20 "$CAND" -o "$TEMP_FILE" 2>/dev/null || exit 0
+file "$TEMP_FILE" | grep -qiE 'image|bitmap' || exit 0
+if command -v identify >/dev/null 2>&1; then
+    W=$(identify -format "%w" "$TEMP_FILE[0]" 2>/dev/null || echo 0)
+    [[ "$W" -lt 1400 ]] && exit 0
+fi
+NEWHASH=$(md5sum "$TEMP_FILE" | cut -d' ' -f1)
+for f in "$STORE"/minecraft_*.jpg; do
+    [ -f "$f" ] || continue
+    [ "$(md5sum "$f" | cut -d' ' -f1)" = "$NEWHASH" ] && exit 0
+done
+DEST="$STORE/minecraft_$(date +%s).jpg"; mv "$TEMP_FILE" "$DEST"
+) 9>"$LOCK" >/dev/null 2>&1 & disown
+exit 0

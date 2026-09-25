@@ -31,8 +31,9 @@ or Cursor, both of those now read `AGENTS.md` too, so this one file covers all t
 - Desktop session and 2D apps run on the **Intel iGPU** for idle power/thermals (`DISPLAY=:0`, `LIBVA_DRIVER_NAME=iHD`).
 - Games/3D/CUDA offload to the RTX 5050 explicitly, never globally:
   ```
-  gamemoderun prime-run %command%
+  prime-run %command%
   ```
+  *(Note: Do not combine `gamemoderun` with `ananicy-cpp` unless ananicy-cpp is stopped/disabled for that session).*
 - Keep the dGPU suspended (D3cold) until something actually requests it.
 
 ---
@@ -122,3 +123,10 @@ the strength of a description alone.
 - **Headless services:** System features (such as autologin, clipboard) must run headless in the background; never require manual GUI interaction to activate essential system functions.
 - **Btrfs snapshot pruning:** Keep only verified stable baselines. Do not allow dozens of transient package snapshots to consume exclusive disk space.
 - **Fact-checked research via headless browser:** When researching technical solutions, driver quirks, or configurations, perform live web searches and headless browser fetches. Record verified outcomes in markdown skill files (`SKILL.md`) for persistent cross-session knowledge.
+
+---
+
+## 9. MangoHud Protection
+
+- **Never modify `~/.config/MangoHud/MangoHud.conf`**. The configuration is managed by chezmoi (`pci_dev=0000:01:00.0`, custom colors, font, and scaling).
+- Keep `~/.config/MangoHud/MangoHud.conf` protected (immutable) so GUI tools like Goverlay cannot overwrite it.

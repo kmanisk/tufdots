@@ -59,6 +59,7 @@ alias envs="echo \$PATH | tr ' ' '\n'"
 alias fixtether="setup-tether-dns"
 alias fixtethering="setup-tether-dns"
 alias kg="killgame"
+alias mhud="hudtest"
 alias dsp="dsp-stat"
 alias dspstat="dsp-stat"
 

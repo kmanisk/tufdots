@@ -1,0 +1,58 @@
+#!/bin/bash
+# Show battery for ALL connected Bluetooth peripherals.
+# UPower first, bluetoothctl Battery Percentage as fallback; never drop a device.
+pct_for() { # $1 = MAC like AA:BB:CC:DD:EE:FF
+  # NOTE: upower -i on a nonexistent path exits 0 with a bogus "unknown"
+  # object whose percentage is literally "0% (should be ignored)", so every
+  # result must be validated against the MAC (serial line) before use.
+  local mac="$1" suffix="dev_$(echo "$mac" | tr ':' '_')" info pct kind
+  for kind in keyboard mouse headset; do
+    info=$(upower -i "/org/freedesktop/UPower/devices/${kind}_${suffix}" 2>/dev/null)
+    echo "$info" | grep -qi "$mac" || continue
+    pct=$(echo "$info" | awk -F: '/percentage:/ {sub(/^ +/,"",$2); print $2; exit}')
+    if [ -n "$pct" ]; then echo "$pct"; return; fi
+  done
+  pct=$(bluetoothctl info "$mac" 2>/dev/null | sed -n 's/.*Battery Percentage.*(\([0-9]*\)).*/\1%/p' | head -n1)
+  [ -z "$pct" ] && pct="n/a"
+  echo "$pct"
+}
+
+out=""
+seen=""
+# Debug log: records exact BT/UPower state at each keypress so a missing
+# device can be diagnosed after the fact (tail /tmp/bt-battery.log).
+{
+echo "=== $(date '+%F %T') ==="
+echo "--- bluetoothctl Connected:"
+bluetoothctl devices Connected 2>&1
+echo "--- upower:"
+upower -e 2>/dev/null | while read -r d; do
+  pct=$(upower -i "$d" 2>/dev/null | awk -F: '/percentage:/ {sub(/^ +/,"",$2); print $2; exit}')
+  echo "$d pct=[$pct]"
+done
+} >> /tmp/bt-battery.log 2>&1
+tail -n 40 /tmp/bt-battery.log > /tmp/bt-battery.log.tmp && mv /tmp/bt-battery.log.tmp /tmp/bt-battery.log
+# Source 1: bluetoothctl connected devices
+while read -r _ mac name; do
+  [ -z "$mac" ] && continue
+  out+="$name: $(pct_for "$mac")
+"
+  seen+=" $mac"
+done < <(bluetoothctl devices Connected 2>/dev/null)
+# Source 2: any UPower bluetooth device with a percentage (catches
+# devices bluetoothctl doesn't flag as connected)
+for d in $(upower -e 2>/dev/null | grep -oE "dev_[0-9A-F_]+"); do
+  mac=$(echo "$d" | sed 's/^dev_//; s/_/:/g')
+  [[ "$seen" == *" $mac"* ]] && continue
+  info=$(upower -i "$(upower -e 2>/dev/null | grep "$d" | head -n1)" 2>/dev/null)
+  pct=$(echo "$info" | awk -F: '/percentage:/ {sub(/^ +/,"",$2); print $2; exit}')
+  [ -z "$pct" ] && continue
+  name=$(echo "$info" | awk -F: '/model:/ {sub(/^ +/,"",$2); print $2; exit}')
+  [ -z "$name" ] && name="$mac"
+  out+="$name: $pct
+"
+done
+[ -z "$out" ] && out="No connected Bluetooth devices"
+echo "--- body sent:" >> /tmp/bt-battery.log 2>&1
+printf '%s\n' "$out" >> /tmp/bt-battery.log 2>&1
+notify-send -a BluetoothBattery "Bluetooth Battery" "$out"

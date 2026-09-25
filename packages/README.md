@@ -4,17 +4,17 @@ Declarative package sets, auto-installed by
 `run_onchange_linux-00-reconcile-packages.sh.tmpl` based on the machine profile
 in `.chezmoidata.toml`.
 
-| File | Purpose | Condition |
+| File | Purpose | Source / Condition |
 |---|---|---|
-| `common.txt` | Baseline CLI tools (git, ripgrep, btop, yazi, neovim, uv, …) | Always |
-| `linux-core.txt` | System tools (base-devel, btrfs-progs, snapper, NetworkManager, …) | Linux |
-| `i3.txt` | RETIRED 2026-09-21 (sway-only box; i3wm/i3lock removed, shared X11 utils kept) | `features.i3 = false` |
-| `gaming.txt` | Steam, Gamescope, Gamemode, Mangohud | `features.gaming = true` |
-| `nvidia.txt` | NVIDIA dGPU drivers, 32-bit Vulkan/OpenCL | `gpu_strategy = "hybrid-optimus-d3cold"` |
-| `asus.txt` | asusctl, supergfxctl, switcheroo-control | `features.asus_ctl = true` |
-| `audio.txt` | PipeWire, WirePlumber, audio firmware | audio provider starts with `pipewire` |
-| `development.txt` | Compilers, runtimes (Node.js, Python, ccache, mold) | `features.development = true` |
-| `aur-explicit.txt` | AUR packages (xremap-x11-bin, cursors, …) | AUR helper present |
+| `common.txt` | Baseline CLI tools (git, ripgrep, btop, yazi, neovim, uv, age, …) | Official / Always |
+| `linux-core.txt` | System tools (base-devel, btrfs-progs, snapper, NetworkManager, thunar, …) | Official / Linux |
+| `gaming.txt` | Steam, Gamescope, Gamemode, Mangohud, Goverlay | Official / `features.gaming = true` |
+| `nvidia.txt` | NVIDIA dGPU drivers, 32-bit Vulkan/OpenCL | Official / `gpu_strategy = "hybrid-optimus-d3cold"` |
+| `asus.txt` | asusctl, supergfxctl | Official / `features.asus_ctl = true` |
+| `sway.txt` | Sway desktop stack (mako, fuzzel, grim, slurp, brave-origin-bin) | Official / `features.sway = true` |
+| `audio.txt` | PipeWire, WirePlumber, audio firmware, rnnoise | Official / audio provider starts with `pipewire` |
+| `development.txt` | Compilers, runtimes (Node.js, Python, ccache, mold) | Official / `features.development = true` |
+| `aur-explicit.txt` | AUR packages (antigravity-cli, xremap, vkbasalt, lib32-vkbasalt) | AUR via paru / helper present |
 
 `wallpapers/` and `systemd/enabled-units-reference.txt` are references only,
 never installed automatically.

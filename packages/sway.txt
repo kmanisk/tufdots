@@ -13,6 +13,8 @@ cliphist
 grim
 slurp
 xdg-desktop-portal-wlr
+xdg-terminal-exec
+brave-origin-bin
 alacritty
 pamixer
 brightnessctl

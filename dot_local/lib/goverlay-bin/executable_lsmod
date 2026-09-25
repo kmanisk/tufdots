@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/lsmod | grep -E "Module|nvidia|amdgpu|radeon|i915|xe"

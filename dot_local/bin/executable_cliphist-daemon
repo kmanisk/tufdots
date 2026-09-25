@@ -1,36 +1,30 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# cliphist-daemon: Event-Driven Persistent X11 Clipboard Daemon
-# Uses clipnotify (XFixes event streaming) to store clips into BoltDB database
-# Zero CPU polling at idle (~4.5MB total RAM). Survives reboots & app restarts.
-#
-# Retention Limits:
-# - Max items in active database: 500 clips (auto FIFO eviction by cliphist)
-# - Hourly auto-prune of orphaned files & old temporary pins
+# cliphist-daemon: clipboard watcher (Wayland-native + XWayland fallback)
+# Single store: cliphist default DB (shared with fuzzel-clipboard/rofi-clipboard)
+# Managed by: cliphist.service (user unit, enabled)
 # ==============================================================================
-export DISPLAY="${DISPLAY:-:0}"
 export PATH="$HOME/.local/bin:$PATH"
+export DISPLAY="${DISPLAY:-:0}"
 
-DB_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/cliphist/db"
-PIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/clipboard_pins"
-mkdir -p "$(dirname "$DB_PATH")" "$PIN_DIR"
+# --- Wayland watcher: catches native app copies (Brave, Firefox, etc.) ---
+wl-paste --watch cliphist store 2>/dev/null &
+WL_PID=$!
 
-# Periodic maintenance counter (prunes every ~100 clip operations)
-COUNTER=0
-
-# Stream X11 selection changes via XFixes events
-while clipnotify; do
-    # Read clipboard content and store into BoltDB database bounded strictly to 500 items
-    xsel -b -o 2>/dev/null | cliphist -db-path "$DB_PATH" -max-items 500 store 2>/dev/null
-    
-    COUNTER=$(( COUNTER + 1 ))
-    if [ "$COUNTER" -ge 100 ]; then
-        COUNTER=0
-        # Delete unpinned history items beyond the 500 limit
-        cliphist -db-path "$DB_PATH" list 2>/dev/null | tail -n +501 | while read -r old_item; do
-            cliphist -db-path "$DB_PATH" delete <<< "$old_item" 2>/dev/null
-        done
-        # Prune pins older than 30 days
-        find "$PIN_DIR" -type f -mtime +30 -delete 2>/dev/null
-    fi
+# --- X11 watcher: catches XWayland app copies ---
+(
+while clipnotify 2>/dev/null || sleep 5; do
+    clip=$(xsel -b -o 2>/dev/null)
+    [ -n "$clip" ] && printf '%s' "$clip" | cliphist store 2>/dev/null
 done
+) &
+X11_PID=$!
+
+# --- Hourly prune (500 items + 30-day pins) ---
+(
+while sleep 3600; do
+    "$HOME/.local/bin/cliphist-prune" 2>/dev/null
+done
+) &
+
+wait $WL_PID $X11_PID

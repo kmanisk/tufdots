@@ -1,51 +1,473 @@
 ---
 name: cachyos-performance
-description: System-level performance guidelines, package management, dual-GPU offloading, and Btrfs tuning for CachyOS on modern Intel/NVIDIA laptops.
-version: 1.0.0
+description: System-level performance guidelines, package management, dual-GPU offloading, Btrfs tuning, gaming reliability, and resource-minimal architecture for CachyOS.
+version: 1.1.0
 ---
 
 # CachyOS & Performance Architecture Guidelines
 
+## Core Objective
+
+The system is optimized for:
+
+* Maximum gaming performance and frame-time consistency.
+* Low idle CPU usage and minimal background wakeups.
+* Low resident RAM consumption.
+* Minimal unnecessary disk usage.
+* Low subprocess creation and IPC overhead.
+* Fast terminal-first workflows.
+* Reliable operation over feature count.
+* No unnecessary Electron/web-app wrappers, animations, transparency, blur, or persistent GUI helpers.
+
+Performance claims must distinguish between:
+
+* CPU utilization
+* RAM usage
+* wakeups/context switches
+* disk/storage consumption
+* latency/frame-time effects
+
+Never describe a process as having "zero overhead" without measuring it on the actual machine.
+
+---
+
 ## Hardware & Architecture Rules
-- **CPU Architecture:** x86-64-v3. Always prefer packages from `[cachyos-v3]` and `[cachyos]` repositories before standard Arch repos or AUR.
-- **Kernel:** Linux-CachyOS with BORE (Burst-Oriented Response Enhancer) or EEVDF scheduler. Do not replace with generic `linux` kernel unless debugging regression.
-- **Dual-GPU Offloading (PRIME):**
-  - i3/X11 session runs on the integrated Intel Raptor Lake-S UHD GPU for minimal idle power consumption.
-  - 3D titles and Vulkan workloads run on discrete NVIDIA RTX 5050 Mobile via `prime-run` or `__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia`.
-  - Always pair with GameMode: `gamemoderun prime-run %command%`.
 
-## Package Management & Safety Guardrails
-- **Forbidden Commands:** NEVER run `pacman -Sy` (partial upgrade risk). Always use `pacman -Syu` or `cachyos-rate-mirrors`.
-- **AUR Helper:** Use `paru` with CachyOS optimizations. Avoid building packages that already exist in `[cachyos-v3]`.
-- **Proton Selection:** Default to `proton-cachyos` for Steam games for custom LTO and x86-64-v3 micro-architecture optimizations.
+* **CPU Architecture:** x86-64-v3.
+* Prefer packages from CachyOS optimized repositories when an equivalent package is available.
+* Do not assume every package has a v3 build; verify repository availability before choosing an alternative package source.
+* **Kernel:** Prefer Linux-CachyOS with its configured scheduler and CachyOS optimizations. Do not replace it with generic `linux` unless debugging a specific regression.
+* **Desktop:** Sway + Wayland.
+* **Primary GPU:** Intel integrated GPU for the desktop/session where practical.
+* **Discrete GPU:** NVIDIA RTX 5050 Mobile for GPU-heavy applications and games through PRIME render offload.
+* Prefer:
 
-## Filesystem Rules (Btrfs)
-- Btrfs Copy-on-Write (CoW) causes write amplification and frame stutters on large, frequently modified VM disk images and game binaries.
-- All Steam library directories, Wine prefixes (`~/.wine`, `~/.local/share/bottles`), and swapfiles MUST have the `nodatacow` attribute set before population:
   ```bash
-  mkdir -p ~/.local/share/Steam/steamapps/common
-  chattr +C ~/.local/share/Steam/steamapps/common
+  prime-run <application>
   ```
 
-## Service Policies
-- Keep `ananicy-cpp.service` active. It sets I/O and CPU scheduling priority on the fly when game binaries are detected.
-- Use `systemd-oomd` or `earlyoom` configured by CachyOS defaults; do not override memory pressure parameters manually without testing.
+  or the equivalent NVIDIA PRIME offload environment when required.
+* Do not force the NVIDIA GPU to remain active for the whole desktop session when offload is sufficient.
 
-## Performance & Resource Discipline (Anti-Bloat & Gaming Reliability)
-- **Core Principle & Needs:** Instantaneous, reliable competitive & AAA gaming rig paired with rapid terminal workflows. Save disk space, RAM, and CPU cycles as priority #1.
-- **Zero Animations & Zero Eye-Candy Lag:** Disable all window transitions, animations, blur shaders, and visual effects in Sway and i3. Windows map and tile immediately with 0ms delay.
-- **Daemonless Architecture:** Always prefer on-demand CLI utilities and ephemeral scripts over persistent system daemons or background tray processes. No background process may steal CPU cycles or lock RAM during gaming sessions.
-- **Autologin / Display Architecture:** Prefer No-DM Getty autologin (0 MB background RAM overhead) over full display managers.
-- **Headless Essential Services Only:** Only strictly necessary system services (PipeWire/WirePlumber, ananicy-cpp, udiskie) run in the background. Daemons must never require open GUI windows to function.
+---
 
-## Audio Pipeline (Stock PipeWire)
-- **No DSP daemon:** stock PipeWire + WirePlumber only; do not add background audio daemons.
+## Package Management & Safety Guardrails
+
+* **Forbidden:** Never run:
+
+  ```bash
+  pacman -Sy
+  ```
+* Prefer a complete system upgrade:
+
+  ```bash
+  sudo pacman -Syu
+  ```
+* Use CachyOS package/repository tooling where appropriate.
+* Prefer repository packages over AUR when an equivalent optimized package is already available.
+* Use `paru` for AUR packages when necessary.
+* Avoid unnecessary `-git` packages when a stable repository package satisfies the requirement.
+* Minimize duplicate implementations of the same functionality.
+
+---
+
+## Gaming Runtime Policy
+
+### GPU Offload
+
+For NVIDIA offload:
+
+```bash
+prime-run <game>
+```
+
+Do not add extra wrappers unless they provide a measurable benefit or are required for compatibility.
+
+### GameMode vs ananicy-cpp
+
+Do **not** automatically combine:
+
+```bash
+gamemoderun
+```
+
+with:
+
+```text
+ananicy-cpp
+```
+
+Current CachyOS gaming guidance explicitly warns against combining them because both can modify process niceness and may conflict.
+
+Default policy:
+
+* If `ananicy-cpp` is active, do not automatically add `gamemoderun`.
+* If GameMode is required and verified beneficial, stop/disable `ananicy-cpp` for that gaming session or configuration.
+* Do not claim either approach is universally faster; benchmark frame-time consistency and CPU behavior on the actual system.
+
+Use the smallest working launch command.
+
+Example with PRIME only:
+
+```bash
+prime-run %command%
+```
+
+Do not stack wrappers purely because they are commonly recommended.
+
+---
+
+## Proton Policy
+
+* Prefer `proton-cachyos` when it provides the required compatibility.
+* Verify compatibility before switching Proton versions for a game that is already stable.
+* Avoid unnecessary Proton environment variables.
+* Keep launch options minimal.
+* Add debugging variables only while diagnosing a specific problem.
+
+---
+
+## Filesystem & Btrfs Rules
+
+### General CoW Policy
+
+Do not blanket-disable Btrfs Copy-on-Write for the entire Steam library.
+
+Btrfs NOCOW has trade-offs:
+
+* disables data checksumming for those files
+* disables compression
+* changes writes to in-place updates
+* can benefit workloads with frequent overwrites
+
+These properties make NOCOW useful for selected high-write workloads, but not universally beneficial for ordinary game binaries.
+
+### Appropriate NOCOW Targets
+
+Consider NOCOW for workloads such as:
+
+* VM disk images
+* frequently rewritten large files
+* specific database/workspace workloads
+* other workloads where repeated overwrites are demonstrated to benefit from in-place updates
+
+Benchmark before making broad filesystem changes.
+
+### Steam Libraries
+
+Do not automatically apply:
+
+```bash
+chattr +C
+```
+
+to an entire Steam library.
+
+If a specific workload benefits from NOCOW, apply it to a dedicated directory **before files are created**.
+
+Important: setting `+C` on a directory affects newly created files beneath that directory; it does not retroactively convert existing file data.
+
+---
+
+## Btrfs Swapfile Policy
+
+Btrfs swapfiles have stricter requirements than ordinary files.
+
+A supported Btrfs swapfile must:
+
+* be preallocated
+* use NODATACOW
+* have no compression
+* reside on a suitable single-device/single-data-profile filesystem
+* not be inside a snapshot-able subvolume while active
+
+These restrictions are documented by both Btrfs and Arch Linux.
+
+Prefer the native helper when available:
+
+```bash
+btrfs filesystem mkswapfile
+```
+
+rather than relying on an arbitrary generic file-creation procedure.
+
+For larger systems, a dedicated swap subvolume that is excluded from snapshots is preferable because an active swapfile prevents snapshotting of the containing subvolume.
+
+---
+
+## Service & Background Process Policy
+
+### Core Principle
+
+Prefer:
+
+1. Application-native functionality.
+2. Existing compositor/session functionality.
+3. One-shot CLI commands.
+4. Event-driven native helpers.
+5. Small compiled resident processes when runtime monitoring is genuinely required.
+6. Interpreted polling only as a last resort.
+
+Do not add a daemon when a native event-driven or on-demand implementation already solves the problem.
+
+### Essential Services
+
+A service is justified when it provides functionality required continuously by the desktop or hardware.
+
+For this system, PipeWire/WirePlumber are core audio infrastructure.
+
+`udiskie` is conditional rather than universally required; keep it only when automatic removable-device handling is actually needed.
+
+`ananicy-cpp` is optional performance infrastructure, not a fundamental requirement of Linux or Sway.
+
+### Resident Process Discipline
+
+No nonessential resident process should be kept running merely for convenience.
+
+Minimize:
+
+* periodic wakeups
+* subprocess creation
+* D-Bus traffic
+* IPC
+* JSON parsing
+* filesystem polling
+* timers
+* background GUI processes
+* tray utilities
+* web runtimes
+* Electron applications
+
+A small binary is preferred over a large interpreted process when a resident component is unavoidable.
+
+RAM and CPU usage must be measured rather than assumed from executable size.
+
+---
+
+## Persistent Process & Polling Discipline
+
+* Prefer no additional resident process when an existing application, compositor, or system component can provide the required functionality.
+* Prefer one-shot commands for static operations.
+* Prefer event-driven APIs for runtime behavior.
+* When runtime monitoring is unavoidable, prefer native event mechanisms such as:
+
+  * Wayland protocol events
+  * PipeWire events
+  * D-Bus signal subscriptions
+  * epoll
+  * eventfd
+  * native filesystem notifications
+* Never use periodic shell/Python polling when an event-driven alternative exists.
+* Avoid recurring commands such as:
+
+  ```text
+  pw-dump
+  swaymsg -t get_*
+  playerctl
+  pactl
+  ps
+  ```
+
+  inside timer loops unless no practical event-driven alternative exists.
+* Never run full JSON dumps every few seconds merely to determine whether something changed.
+* Prefer `playerctl --follow` over repeated `playerctl` invocations when MPRIS monitoring is needed.
+* Prefer Wayland idle-inhibit mechanisms over custom polling.
+* If a resident compiled helper is introduced, measure:
+
+  * idle CPU
+  * resident RAM
+  * wakeups
+  * context switches
+* Do not call a resident service "zero overhead" unless measurements justify that wording.
+
+---
+
+## Sway Idle Management
+
+Prefer the following hierarchy:
+
+```text
+Application-native Wayland idle inhibit
+        ↓
+Sway-native idle inhibition / compositor mechanisms
+        ↓
+Small compiled event-driven helper
+        ↓
+D-Bus signal subscription
+        ↓
+Polling
+```
+
+Do not implement media detection using a loop such as:
+
+```bash
+while true; do
+    pw-dump
+    sleep 5
+done
+```
+
+That approach unnecessarily causes:
+
+* process launches
+* PipeWire queries
+* JSON generation
+* JSON parsing
+* periodic CPU wakeups
+
+An event-driven implementation is preferred.
+
+Sway exposes native idle-inhibit support and can represent whether a window is currently inhibiting idle.
+
+---
+
+## Audio Pipeline
+
+* Prefer stock PipeWire + WirePlumber.
+* Do not add audio DSP daemons unless a measurable requirement exists.
+* Avoid duplicate audio routing layers.
+* Remove unnecessary audio processing services that consume CPU continuously.
+* Prefer hardware acceleration or native PipeWire functionality where appropriate.
+
+---
+
+## Visual Performance Policy
+
+For maximum gaming performance and minimal compositor overhead:
+
+* Disable unnecessary animations.
+* Disable blur.
+* Disable transparency when it provides no functional benefit.
+* Avoid compositor shaders that run continuously.
+* Avoid animated wallpapers.
+* Avoid persistent visualizers unless actively being used.
+* Prefer static rendering.
+* Keep Sway configuration simple.
+* Do not add visual effects merely for aesthetics when they introduce measurable GPU or CPU activity.
+
+Performance-sensitive visual features should be benchmarked rather than judged purely by appearance.
+
+---
+
+## Display & Dual-GPU Policy
+
+* Keep the Intel GPU responsible for the normal Sway desktop when the hardware topology permits.
+* Keep the NVIDIA GPU power-gated/offloaded when idle.
+* Launch GPU-heavy programs explicitly with PRIME offload.
+* Do not force the NVIDIA GPU into the compositor unless required for a specific application or hardware configuration.
+* Avoid unnecessary Xwayland or GPU copies when native Wayland support is available and stable.
+
+---
+
+## Autologin / Session Architecture
+
+Prefer lightweight session startup over a large graphical display manager when operationally practical.
+
+A getty-based login/session setup is generally lighter than a full desktop-oriented display manager, but it is not literally zero-memory overhead.
+
+Do not describe any persistent login process as "0 MB" unless measured.
+
+---
+
+## Memory Management
+
+* Prefer the existing CachyOS/systemd memory-management configuration.
+* Do not manually tune OOM thresholds without a reproducible reason.
+* Avoid unnecessary RAM-resident helpers.
+* Prefer zram/system mechanisms already provided by the distribution before installing duplicate swap/cache managers.
+* Diagnose memory pressure with actual measurements before changing policy.
+
+---
 
 ## Btrfs Snapshot Hygiene
-- **Snapshot Retention:** Keep only stable, verified baselines. Do not accumulate large batches of transient `snap-pac` pre/post snapshots that hold old package extents.
-- **Space Auditing:** Audit snapshots using `btrfs filesystem du -s /.snapshots/*/snapshot` to measure true exclusive (reclaimable) space versus shared CoW blocks.
-- **Safe Management:** Always use scoped `snapper` subcommands (`snapper -c <config> create/delete/cleanup`) instead of raw unverified `btrfs` subvolume deletion.
+
+* Keep only stable, useful snapshots.
+* Avoid accumulating large numbers of transient snapshots.
+* Prefer Snapper for snapshot management.
+* Do not manually delete snapshot subvolumes unless the operation is understood and verified.
+* Measure filesystem usage with Btrfs-aware tools rather than relying only on `df`.
+* Use:
+
+  ```bash
+  btrfs filesystem usage /
+  ```
+
+  and, when appropriate:
+
+  ```bash
+  btrfs filesystem du -s /.snapshots/*/snapshot
+  ```
+
+Remember that shared CoW extents can make logical snapshot size very different from immediately reclaimable exclusive space.
+
+---
+
+## Benchmarking & Validation
+
+Never assume a performance optimization works merely because it is theoretically lightweight.
+
+When evaluating a persistent process or system change, measure before and after:
+
+```bash
+ps
+pidstat
+systemd-cgtop
+cat /proc/<pid>/status
+```
+
+For graphical/game workloads also examine:
+
+* frame-time consistency
+* average FPS
+* 1% low FPS where appropriate
+* CPU utilization
+* GPU utilization
+* power draw
+* temperature
+* process wakeups
+
+Prefer changes that improve measurable behavior without introducing instability.
+
+---
 
 ## Research & Verification Protocol
-- **Headless Browser & Web Search:** When researching technical topics, kernel options, compositor changes, or package updates, always execute targeted web searches and headless browser reads to verify current upstream behavior.
-- **Skill & Memory Persistence:** Record verified findings, edge cases, and architectural choices into skill markdown files (`SKILL.md`) and project rules so verified insights persist across sessions.
+
+For technical topics that can change with software releases:
+
+* Verify current upstream documentation.
+* Prefer primary sources:
+
+  * official project documentation
+  * upstream repositories
+  * ArchWiki
+  * CachyOS documentation
+  * kernel/Btrfs documentation
+* Check current package availability before recommending installation.
+* Distinguish documented behavior from benchmark results.
+* Do not extrapolate a result from one machine to another without qualification.
+* When a behavior is version-dependent, record the relevant version.
+* Persist verified architectural decisions and important edge cases in this skill file or the relevant project rules.
+
+---
+
+## Decision Rule
+
+When choosing between two implementations with equivalent functionality:
+
+```text
+native > compiled > event-driven > on-demand > interpreted polling
+```
+
+and:
+
+```text
+existing process > additional process
+```
+
+and:
+
+```text
+measured benefit > theoretical benefit
+```
+
+The preferred solution is the one that provides the required functionality with the fewest resident processes, lowest wakeup rate, lowest RAM usage, lowest CPU usage, and least complexity while preserving reliability.

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# hudtest: Toggle MangoHud telemetry preview on a spinning Vulkan cube
+# ==============================================================================
+if pgrep -x vkcube >/dev/null; then
+    pkill -x vkcube
+    exit 0
+fi
+
+TARGET_CONFIG="$1"
+if [[ -n "$TARGET_CONFIG" && -f "$TARGET_CONFIG" ]]; then
+    export MANGOHUD_CONFIGFILE="$TARGET_CONFIG"
+    shift
+fi
+
+exec prime-run mangohud vkcube "$@"
